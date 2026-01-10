@@ -1,12 +1,12 @@
-export { e as AttachmentPreview, o as AttachmentPreviewProps, A as Avatar, j as AvatarProps, C as ChatContainer, f as ChatContainerProps, d as MarkdownContent, n as MarkdownContentProps, a as Message, b as MessageComposer, i as MessageComposerProps, M as MessageList, g as MessageListProps, h as MessageProps, c as StreamingText, m as StreamingTextProps, S as SuggestedActions, l as SuggestedActionsProps, T as TypingIndicator, k as TypingIndicatorProps } from '../AttachmentPreview-y0AelCyC.js';
+export { e as AttachmentPreview, o as AttachmentPreviewProps, A as Avatar, j as AvatarProps, C as ChatContainer, f as ChatContainerProps, d as MarkdownContent, n as MarkdownContentProps, a as Message, b as MessageComposer, i as MessageComposerProps, M as MessageList, g as MessageListProps, h as MessageProps, c as StreamingText, m as StreamingTextProps, S as SuggestedActions, l as SuggestedActionsProps, T as TypingIndicator, k as TypingIndicatorProps } from '../AttachmentPreview-DjDnF8BP.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode } from 'react';
-import { S as StreamingChunk, P as PlanData, E as EventStatus, d as Event } from '../streaming-Dsbi9aRq.js';
-export { C as ChunkType, h as EventType, F as FollowupAction, O as ObservationEvent, i as PlanningEvent, g as ProgressData, e as StreamingMessage, f as SubTaskData, k as SubtaskEvent, T as ThinkingEvent, j as ToolEvent } from '../streaming-Dsbi9aRq.js';
-import { A as Attachment } from '../message-BX9GZuXy.js';
-export { C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, S as SuggestedAction } from '../message-BX9GZuXy.js';
+import { S as StreamingChunk, P as PlanData, E as EventStatus, d as Event } from '../streaming-BihTYFiX.js';
+export { C as ChunkType, h as EventType, F as FollowupAction, O as ObservationEvent, i as PlanningEvent, g as ProgressData, e as StreamingMessage, f as SubTaskData, k as SubtaskEvent, T as ThinkingEvent, j as ToolEvent } from '../streaming-BihTYFiX.js';
+import { A as Attachment } from '../message-BPljjxHd.js';
+export { C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, S as SuggestedAction } from '../message-BPljjxHd.js';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
-export { g as useComposer, u as useMessage } from '../avatar-DWen1A3u.js';
+export { g as useComposer, u as useMessage } from '../avatar-5ZTv2f_M.js';
 
 interface LoadingDotsProps {
     /** Size variant */

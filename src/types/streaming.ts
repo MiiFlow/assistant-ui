@@ -29,14 +29,22 @@ export interface StreamingOptions {
  * Extended chunk types for agentic streaming
  */
 export type ChunkType =
-  | "content"     // Regular content
-  | "thinking"    // ReAct reasoning
-  | "tool"        // Tool planned/executing
-  | "observation" // Tool result
-  | "answer"      // Final answer
-  | "planning"    // Plan creation (Plan & Execute)
-  | "subtask"     // Subtask execution (Plan & Execute)
-  | "progress";   // Progress update (Plan & Execute)
+  | "content"         // Regular content
+  | "thinking"        // ReAct reasoning
+  | "tool"            // Tool planned/executing
+  | "observation"     // Tool result
+  | "answer"          // Final answer
+  | "planning"        // Plan creation (Plan & Execute)
+  | "subtask"         // Subtask execution (Plan & Execute)
+  | "progress"        // Progress update (Plan & Execute)
+  // Claude SDK native chunk types
+  | "subagent"        // Nested subagent execution
+  | "file_operation"  // Read/Write/Edit file operations
+  | "terminal"        // Bash command execution
+  | "search_results"  // Glob/Grep search results
+  | "web_operation"   // WebSearch/WebFetch operations
+  | "claude_text"     // Claude SDK text output
+  | "claude_thinking"; // Claude SDK extended thinking
 
 /**
  * Subtask data structure for Plan & Execute mode
@@ -105,7 +113,7 @@ export interface StreamingChunk {
   isSynthesis?: boolean;
 
   // Orchestrator context (for nested execution)
-  orchestrator?: "react" | "plan_execute";
+  orchestrator?: "react" | "plan_execute" | "claude_agent_sdk";
   parentSubtaskId?: number;
 }
 
@@ -119,7 +127,7 @@ export interface StreamingMessage {
   chunks?: StreamingChunk[];
 
   // Plan execution metadata
-  orchestratorType?: "react" | "plan_execute";
+  orchestratorType?: "react" | "plan_execute" | "claude_agent_sdk";
   executionPlan?: PlanData;
 
   // Follow-up actions

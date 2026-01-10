@@ -1,6 +1,6 @@
 import * as react from 'react';
 import { KeyboardEvent } from 'react';
-import { c as StreamingOptions, b as StreamChunk } from '../streaming-Dsbi9aRq.js';
+import { c as StreamingOptions, b as StreamChunk } from '../streaming-BihTYFiX.js';
 
 interface UseAutoScrollOptions {
     /** Whether auto-scroll is enabled */
