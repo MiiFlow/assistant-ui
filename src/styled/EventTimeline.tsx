@@ -130,7 +130,7 @@ export function EventTimeline({ events, className }: EventTimelineProps) {
   const timelineItems: TimelineItemData[] = events.map((event) => ({
     id: event.id,
     status: event.status,
-    content: <EventContent event={event} />,
+    content: <EventContent event={event} isRunning={event.status === "running"} />,
   }));
 
   return <Timeline items={timelineItems} badgeSize={20} className={className} />;

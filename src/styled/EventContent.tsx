@@ -6,16 +6,18 @@ import type { Event } from "../types";
 interface EventContentProps {
   event: Event;
   className?: string;
+  /** When true, shows animated gradient border effect */
+  isRunning?: boolean;
 }
 
 /**
  * Renders content for different event types
  * - Thinking: Markdown content with subtle styling
  * - Planning: Markdown content with planning context
- * - Tool: Chip-style display with tool name
+ * - Tool: Chip-style display with tool name (+ gradient border when running)
  * - Observation: Colored result panel
  */
-export function EventContent({ event, className }: EventContentProps) {
+export function EventContent({ event, className, isRunning }: EventContentProps) {
   if (event.type === "thinking") {
     return (
       <div
@@ -25,7 +27,7 @@ export function EventContent({ event, className }: EventContentProps) {
           className
         )}
       >
-        <div className="text-[var(--chat-text-subtle)] text-sm leading-relaxed">
+        <div className="text-[var(--chat-text-subtle)] text-[15px] leading-relaxed">
           <MarkdownContent>{event.content}</MarkdownContent>
         </div>
       </div>
@@ -41,7 +43,7 @@ export function EventContent({ event, className }: EventContentProps) {
           className
         )}
       >
-        <div className="text-[var(--chat-text-subtle)] text-sm leading-relaxed">
+        <div className="text-[var(--chat-text-subtle)] text-[15px] leading-relaxed">
           <MarkdownContent>{event.content}</MarkdownContent>
         </div>
       </div>
@@ -50,18 +52,29 @@ export function EventContent({ event, className }: EventContentProps) {
 
   if (event.type === "tool") {
     return (
-      <div
-        className={cn(
-          "inline-flex items-center gap-1 px-2 py-0.5",
-          "border border-[var(--chat-border)] rounded",
-          "bg-white",
-          className
+      <div className={cn("relative inline-flex", className)}>
+        {/* Animated gradient border for running state */}
+        {isRunning && (
+          <div
+            className="absolute -inset-[2px] rounded-md bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-gradient-shift opacity-70"
+          />
         )}
-      >
-        <Wrench size={14} className="text-[var(--chat-text-subtle)]" />
-        <span className="text-sm text-[var(--chat-text)]">
-          {event.toolDescription || event.toolName}
-        </span>
+        <div
+          className={cn(
+            "relative inline-flex items-center gap-1 px-2 py-0.5",
+            "border border-[var(--chat-border)] rounded",
+            "bg-white dark:bg-gray-900",
+            isRunning && "border-transparent"
+          )}
+        >
+          <Wrench size={14} className={cn(
+            "text-[var(--chat-text-subtle)]",
+            isRunning && "text-indigo-500"
+          )} />
+          <span className="text-[15px] text-[var(--chat-text)]">
+            {event.toolDescription || event.toolName}
+          </span>
+        </div>
       </div>
     );
   }
@@ -89,7 +102,7 @@ export function EventContent({ event, className }: EventContentProps) {
         </span>
         <div
           className={cn(
-            "text-sm",
+            "text-[15px]",
             success ? "text-green-900" : "text-yellow-900"
           )}
         >

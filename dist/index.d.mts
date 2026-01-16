@@ -1,10 +1,10 @@
-export { A as Attachment, C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, R as ReasoningChunk, S as SuggestedAction } from './message-DbQVBxaK.mjs';
-export { b as StreamChunk, c as StreamingOptions, a as StreamingState } from './streaming-BihTYFiX.mjs';
+export { A as Attachment, C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, R as ReasoningChunk, S as SuggestedAction } from './message-BR6WcQyF.mjs';
+export { b as StreamChunk, c as StreamingOptions, a as StreamingState } from './streaming-beXFE8Rc.mjs';
 export { ChatContext, ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from './context/index.mjs';
 export { useAttachments, useAutoScroll, useMessageComposer, useStreaming } from './hooks/index.mjs';
-export { A as AvatarPrimitive, f as ComposerContext, C as ComposerInput, e as ComposerSubmit, d as MessageComposerPrimitive, a as MessageContentPrimitive, c as MessageContext, M as MessagePrimitive, b as MessageTimestampPrimitive, g as useComposer, u as useMessage } from './avatar-DMAlaw_y.mjs';
+export { A as AvatarPrimitive, f as ComposerContext, C as ComposerInput, e as ComposerSubmit, d as MessageComposerPrimitive, a as MessageContentPrimitive, c as MessageContext, M as MessagePrimitive, b as MessageTimestampPrimitive, g as useComposer, u as useMessage } from './avatar-kUGxt4qU.mjs';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.mjs';
-export { e as AttachmentPreview, A as Avatar, C as ChatContainer, d as MarkdownContent, a as Message, b as MessageComposer, M as MessageList, c as StreamingText, S as SuggestedActions, T as TypingIndicator } from './AttachmentPreview-CYRkFh5m.mjs';
+export { e as AttachmentPreview, A as Avatar, C as ChatContainer, d as MarkdownContent, a as Message, b as MessageComposer, M as MessageList, c as StreamingText, S as SuggestedActions, T as TypingIndicator } from './TypingIndicator-BWuipyMr.mjs';
 import { ClassValue } from 'clsx';
 import 'react/jsx-runtime';
 import 'react';

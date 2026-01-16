@@ -1,9 +1,38 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Sparkle, Wrench, ListTodo, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "../utils/cn";
 import { EventTimeline, convertChunkToEvent } from "./EventTimeline";
 import { PlanTimeline } from "./PlanTimeline";
 import type { StreamingChunk, PlanData, Event } from "../types";
+
+/**
+ * Hook for live duration counter that updates every 100ms while active
+ */
+function useLiveStreamDuration(isStreaming: boolean): string {
+  const startTimeRef = useRef<number | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (isStreaming) {
+      if (startTimeRef.current === null) {
+        startTimeRef.current = Date.now();
+      }
+
+      const interval = setInterval(() => {
+        if (startTimeRef.current !== null) {
+          setElapsed((Date.now() - startTimeRef.current) / 1000);
+        }
+      }, 100);
+
+      return () => clearInterval(interval);
+    } else {
+      startTimeRef.current = null;
+      setElapsed(0);
+    }
+  }, [isStreaming]);
+
+  return elapsed.toFixed(1);
+}
 
 export interface ReasoningPanelProps {
   /** Whether currently streaming */
@@ -46,6 +75,7 @@ export function ReasoningPanel({
   className,
 }: ReasoningPanelProps) {
   const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
+  const liveElapsed = useLiveStreamDuration(isStreaming);
 
   const isExpanded = controlledExpanded ?? localExpanded;
   const setExpanded = (value: boolean) => {
@@ -186,7 +216,7 @@ export function ReasoningPanel({
         onClick={() => setExpanded(!isExpanded)}
         className={cn(
           "inline-flex items-center gap-1.5 px-3 py-1.5",
-          "text-sm rounded-full",
+          "text-[15px] rounded-full",
           "bg-[var(--chat-panel-bg)] text-[var(--chat-text-subtle)]",
           "hover:bg-[var(--chat-panel-border)]",
           "transition-all duration-200",
@@ -195,15 +225,26 @@ export function ReasoningPanel({
           !isStreaming && "opacity-60 hover:opacity-100"
         )}
       >
-        {/* Scanning animation for streaming */}
+        {/* Animated gradient border for streaming */}
         {isStreaming && (
-          <div className="absolute inset-0 animate-scanning bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+          <>
+            <div className="absolute -inset-[1px] rounded-full bg-gradient-to-r from-indigo-500/30 via-purple-500/30 to-indigo-500/30 animate-gradient-shift" />
+            <div className="absolute inset-0 animate-scanning bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+          </>
         )}
 
-        <span className="text-[var(--chat-text-subtle)] relative z-10">
+        <span className={cn(
+          "relative z-10",
+          isStreaming ? "text-indigo-500" : "text-[var(--chat-text-subtle)]"
+        )}>
           {getChipIcon()}
         </span>
         <span className="relative z-10">{getChipLabel()}</span>
+        {isStreaming && (
+          <span className="relative z-10 text-indigo-500 font-medium tabular-nums text-sm">
+            {liveElapsed}s
+          </span>
+        )}
         <span className="relative z-10 text-[var(--chat-text-subtle)]">
           {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </span>

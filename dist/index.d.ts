@@ -1,10 +1,10 @@
-export { A as Attachment, C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, R as ReasoningChunk, S as SuggestedAction } from './message-BPljjxHd.js';
-export { b as StreamChunk, c as StreamingOptions, a as StreamingState } from './streaming-BihTYFiX.js';
+export { A as Attachment, C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, R as ReasoningChunk, S as SuggestedAction } from './message-ClH8xF3o.js';
+export { b as StreamChunk, c as StreamingOptions, a as StreamingState } from './streaming-beXFE8Rc.js';
 export { ChatContext, ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from './context/index.js';
 export { useAttachments, useAutoScroll, useMessageComposer, useStreaming } from './hooks/index.js';
-export { A as AvatarPrimitive, f as ComposerContext, C as ComposerInput, e as ComposerSubmit, d as MessageComposerPrimitive, a as MessageContentPrimitive, c as MessageContext, M as MessagePrimitive, b as MessageTimestampPrimitive, g as useComposer, u as useMessage } from './avatar-5ZTv2f_M.js';
+export { A as AvatarPrimitive, f as ComposerContext, C as ComposerInput, e as ComposerSubmit, d as MessageComposerPrimitive, a as MessageContentPrimitive, c as MessageContext, M as MessagePrimitive, b as MessageTimestampPrimitive, g as useComposer, u as useMessage } from './avatar-BJ276Koq.js';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.js';
-export { e as AttachmentPreview, A as Avatar, C as ChatContainer, d as MarkdownContent, a as Message, b as MessageComposer, M as MessageList, c as StreamingText, S as SuggestedActions, T as TypingIndicator } from './AttachmentPreview-DjDnF8BP.js';
+export { e as AttachmentPreview, A as Avatar, C as ChatContainer, d as MarkdownContent, a as Message, b as MessageComposer, M as MessageList, c as StreamingText, S as SuggestedActions, T as TypingIndicator } from './TypingIndicator-CiEEj8r8.js';
 import { ClassValue } from 'clsx';
 import 'react/jsx-runtime';
 import 'react';

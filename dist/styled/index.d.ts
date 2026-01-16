@@ -1,12 +1,12 @@
-export { e as AttachmentPreview, o as AttachmentPreviewProps, A as Avatar, j as AvatarProps, C as ChatContainer, f as ChatContainerProps, d as MarkdownContent, n as MarkdownContentProps, a as Message, b as MessageComposer, i as MessageComposerProps, M as MessageList, g as MessageListProps, h as MessageProps, c as StreamingText, m as StreamingTextProps, S as SuggestedActions, l as SuggestedActionsProps, T as TypingIndicator, k as TypingIndicatorProps } from '../AttachmentPreview-DjDnF8BP.js';
+export { e as AttachmentPreview, f as AttachmentPreviewProps, A as Avatar, g as AvatarProps, C as ChatContainer, h as ChatContainerProps, d as MarkdownContent, i as MarkdownContentProps, a as Message, b as MessageComposer, k as MessageComposerProps, M as MessageList, l as MessageListProps, j as MessageProps, c as StreamingText, m as StreamingTextProps, S as SuggestedActions, n as SuggestedActionsProps, T as TypingIndicator, o as TypingIndicatorProps } from '../TypingIndicator-CiEEj8r8.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode } from 'react';
-import { S as StreamingChunk, P as PlanData, E as EventStatus, d as Event } from '../streaming-BihTYFiX.js';
-export { C as ChunkType, h as EventType, F as FollowupAction, O as ObservationEvent, i as PlanningEvent, g as ProgressData, e as StreamingMessage, f as SubTaskData, k as SubtaskEvent, T as ThinkingEvent, j as ToolEvent } from '../streaming-BihTYFiX.js';
-import { A as Attachment } from '../message-BPljjxHd.js';
-export { C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, S as SuggestedAction } from '../message-BPljjxHd.js';
+import { A as Attachment } from '../message-ClH8xF3o.js';
+export { C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, S as SuggestedAction } from '../message-ClH8xF3o.js';
+import { S as StreamingChunk, P as PlanData, E as Event, d as EventStatus } from '../streaming-beXFE8Rc.js';
+export { C as ChunkType, e as EventType, F as FollowupAction, O as ObservationEvent, f as PlanningEvent, g as ProgressData, h as StreamingMessage, i as SubTaskData, j as SubtaskEvent, T as ThinkingEvent, k as ToolEvent } from '../streaming-beXFE8Rc.js';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
-export { g as useComposer, u as useMessage } from '../avatar-5ZTv2f_M.js';
+export { g as useComposer, u as useMessage } from '../avatar-BJ276Koq.js';
 
 interface LoadingDotsProps {
     /** Size variant */
@@ -48,6 +48,21 @@ interface ChatHeaderProps {
 }
 declare function ChatHeader({ title, subtitle, logo, actions, showClose, onClose, loading, className, style, }: ChatHeaderProps): react_jsx_runtime.JSX.Element;
 
+interface MessageAttachmentsProps {
+    /** List of attachments to display */
+    attachments: Attachment[];
+    /** Custom download handler */
+    onDownload?: (attachment: Attachment) => void;
+    /** Custom preview handler */
+    onPreview?: (attachment: Attachment) => void;
+    /** Additional class names */
+    className?: string;
+}
+/**
+ * Display attachments (images, videos, documents) in messages
+ */
+declare function MessageAttachments({ attachments, onDownload, onPreview, className, }: MessageAttachmentsProps): react_jsx_runtime.JSX.Element | null;
+
 interface ReasoningPanelProps {
     /** Whether currently streaming */
     isStreaming?: boolean;
@@ -72,20 +87,50 @@ interface ReasoningPanelProps {
  */
 declare function ReasoningPanel({ isStreaming, chunks, plan, executionTime, defaultExpanded, expanded: controlledExpanded, onExpandedChange, className, }: ReasoningPanelProps): react_jsx_runtime.JSX.Element | null;
 
-interface MessageAttachmentsProps {
-    /** List of attachments to display */
-    attachments: Attachment[];
-    /** Custom download handler */
-    onDownload?: (attachment: Attachment) => void;
-    /** Custom preview handler */
-    onPreview?: (attachment: Attachment) => void;
-    /** Additional class names */
+interface EventContentProps {
+    event: Event;
+    className?: string;
+    /** When true, shows animated gradient border effect */
+    isRunning?: boolean;
+}
+/**
+ * Renders content for different event types
+ * - Thinking: Markdown content with subtle styling
+ * - Planning: Markdown content with planning context
+ * - Tool: Chip-style display with tool name (+ gradient border when running)
+ * - Observation: Colored result panel
+ */
+declare function EventContent({ event, className, isRunning }: EventContentProps): react_jsx_runtime.JSX.Element | null;
+
+/**
+ * Convert StreamingChunk to Event format
+ */
+declare function convertChunkToEvent(chunk: StreamingChunk, index: number): Event | null;
+/**
+ * Convert timeline items (from metadata) to Events
+ */
+declare function convertTimelineToEvents(timeline: Array<Record<string, unknown>>): Event[];
+interface EventTimelineProps {
+    events: Event[];
+    isStreaming?: boolean;
     className?: string;
 }
 /**
- * Display attachments (images, videos, documents) in messages
+ * Unified event timeline component
+ * Displays thinking, tool execution, and observation events
  */
-declare function MessageAttachments({ attachments, onDownload, onPreview, className, }: MessageAttachmentsProps): react_jsx_runtime.JSX.Element | null;
+declare function EventTimeline({ events, className }: EventTimelineProps): react_jsx_runtime.JSX.Element | null;
+
+interface PlanTimelineProps {
+    plan: PlanData;
+    streamingChunks?: StreamingChunk[];
+    className?: string;
+}
+/**
+ * Timeline visualization for Plan & Execute mode
+ * Shows plan with expandable subtasks
+ */
+declare function PlanTimeline({ plan, streamingChunks, className, }: PlanTimelineProps): react_jsx_runtime.JSX.Element;
 
 interface StatusBadgeProps {
     status: EventStatus;
@@ -93,11 +138,11 @@ interface StatusBadgeProps {
     className?: string;
 }
 /**
- * Circular status badge with animations
- * - Pending: Dashed circle
- * - Running: Animated spinning loader
- * - Completed: Check circle
- * - Failed: X circle
+ * Circular status badge with magical animations
+ * - Pending: Dashed circle (muted)
+ * - Running: Glowing orb with pulse effect
+ * - Completed: Green check with pop + flash animation
+ * - Failed: Red X
  */
 declare function StatusBadge({ status, size, className }: StatusBadgeProps): react_jsx_runtime.JSX.Element;
 
@@ -127,48 +172,5 @@ interface TimelineItemProps {
  * Single timeline item (alternative API)
  */
 declare function TimelineItem({ status, isLast, badgeSize, children, className, }: TimelineItemProps): react_jsx_runtime.JSX.Element;
-
-/**
- * Convert StreamingChunk to Event format
- */
-declare function convertChunkToEvent(chunk: StreamingChunk, index: number): Event | null;
-/**
- * Convert timeline items (from metadata) to Events
- */
-declare function convertTimelineToEvents(timeline: Array<Record<string, unknown>>): Event[];
-interface EventTimelineProps {
-    events: Event[];
-    isStreaming?: boolean;
-    className?: string;
-}
-/**
- * Unified event timeline component
- * Displays thinking, tool execution, and observation events
- */
-declare function EventTimeline({ events, className }: EventTimelineProps): react_jsx_runtime.JSX.Element | null;
-
-interface EventContentProps {
-    event: Event;
-    className?: string;
-}
-/**
- * Renders content for different event types
- * - Thinking: Markdown content with subtle styling
- * - Planning: Markdown content with planning context
- * - Tool: Chip-style display with tool name
- * - Observation: Colored result panel
- */
-declare function EventContent({ event, className }: EventContentProps): react_jsx_runtime.JSX.Element | null;
-
-interface PlanTimelineProps {
-    plan: PlanData;
-    streamingChunks?: StreamingChunk[];
-    className?: string;
-}
-/**
- * Timeline visualization for Plan & Execute mode
- * Shows plan with expandable subtasks
- */
-declare function PlanTimeline({ plan, streamingChunks, className, }: PlanTimelineProps): react_jsx_runtime.JSX.Element;
 
 export { Attachment, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, LoadingDots, type LoadingDotsProps, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, StatusBadge, StreamingChunk, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, convertChunkToEvent, convertTimelineToEvents };
