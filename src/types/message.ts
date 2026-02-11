@@ -39,11 +39,22 @@ export interface MessageData {
   metadata?: Record<string, unknown>;
 }
 
+export type SuggestedActionType =
+  | "send_message"
+  | "navigate"
+  | "copy_text"
+  | "compose_email"
+  | "search_emails"
+  | "open_modal"
+  | "api_call";
+
 export interface SuggestedAction {
   id: string;
   label: string;
   value: string;
   icon?: string;
+  type?: SuggestedActionType;
+  context?: Record<string, unknown>;
 }
 
 export interface ChatMessage extends MessageData {

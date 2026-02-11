@@ -1,13 +1,14 @@
-export { A as Attachment, C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, R as ReasoningChunk, S as SuggestedAction } from './message-ClH8xF3o.js';
-export { b as StreamChunk, c as StreamingOptions, a as StreamingState } from './streaming-beXFE8Rc.js';
+export { A as Attachment, C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, R as ReasoningChunk, S as SuggestedAction, b as SuggestedActionType } from './message-2wveEpfv.js';
+export { b as StreamChunk, c as StreamingOptions, a as StreamingState } from './streaming-DsSwtonH.js';
+export { B as BrandingData } from './branding-SzYU4ncD.js';
+export { g as AttachmentPreview, A as Avatar, C as ChatContainer, f as MarkdownContent, b as Message, c as MessageComposer, M as MessageList, S as SourceReference, a as SourceTypeConfig, e as StreamingText, d as SuggestedActions, T as TypingIndicator } from './TypingIndicator-Ch2_j1Jj.js';
 export { ChatContext, ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from './context/index.js';
-export { useAttachments, useAutoScroll, useMessageComposer, useStreaming } from './hooks/index.js';
-export { A as AvatarPrimitive, f as ComposerContext, C as ComposerInput, e as ComposerSubmit, d as MessageComposerPrimitive, a as MessageContentPrimitive, c as MessageContext, M as MessagePrimitive, b as MessageTimestampPrimitive, g as useComposer, u as useMessage } from './avatar-BJ276Koq.js';
+export { useAttachments, useAutoScroll, useBrandingCSSVars, useMessageComposer, useStreaming } from './hooks/index.js';
+export { A as AvatarPrimitive, f as ComposerContext, C as ComposerInput, e as ComposerSubmit, d as MessageComposerPrimitive, a as MessageContentPrimitive, c as MessageContext, M as MessagePrimitive, b as MessageTimestampPrimitive, g as useComposer, u as useMessage } from './avatar-D1j1cPt6.js';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.js';
-export { e as AttachmentPreview, A as Avatar, C as ChatContainer, d as MarkdownContent, a as Message, b as MessageComposer, M as MessageList, c as StreamingText, S as SuggestedActions, T as TypingIndicator } from './TypingIndicator-CiEEj8r8.js';
 import { ClassValue } from 'clsx';
-import 'react/jsx-runtime';
 import 'react';
+import 'react/jsx-runtime';
 
 /**
  * Utility function to merge Tailwind CSS classes with proper precedence.

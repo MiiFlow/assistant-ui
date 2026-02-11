@@ -1,6 +1,7 @@
 import * as react from 'react';
 import { KeyboardEvent } from 'react';
-import { c as StreamingOptions, b as StreamChunk } from '../streaming-beXFE8Rc.js';
+import { c as StreamingOptions, b as StreamChunk } from '../streaming-DsSwtonH.js';
+import { B as BrandingData } from '../branding-SzYU4ncD.js';
 
 interface UseAutoScrollOptions {
     /** Whether auto-scroll is enabled */
@@ -97,4 +98,12 @@ declare function useAttachments({ maxCount, maxFileSize, allowedTypes, }?: UseAt
     canAddMore: boolean;
 };
 
-export { useAttachments, useAutoScroll, useMessageComposer, useStreaming };
+/**
+ * Converts BrandingData into CSS custom properties for chat-ui theming.
+ * Returns a CSSProperties object that can be spread onto a container element.
+ */
+declare function useBrandingCSSVars(branding: BrandingData | null | undefined, overrides?: {
+    iconColor?: string;
+}): React.CSSProperties;
+
+export { useAttachments, useAutoScroll, useBrandingCSSVars, useMessageComposer, useStreaming };

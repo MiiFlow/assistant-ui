@@ -16,6 +16,46 @@ export { ChatHeader, type ChatHeaderAction, type ChatHeaderProps } from "./ChatH
 export { MessageAttachments, type MessageAttachmentsProps } from "./MessageAttachments";
 export { ReasoningPanel, type ReasoningPanelProps } from "./ReasoningPanel";
 
+// Clarification panel
+export { ClarificationPanel, type ClarificationPanelProps } from "./ClarificationPanel";
+
+// Citation sources
+export { CitationSources, type CitationSourcesProps, InlineCitation, type InlineCitationProps, SourceDetailModal, type SourceDetailModalProps } from "./CitationSources";
+
+// Claude SDK components
+export {
+  ClaudeToolPreview,
+  type ClaudeToolPreviewProps,
+  TerminalOutput,
+  type TerminalOutputProps,
+  FileOperationPreview,
+  type FileOperationPreviewProps,
+  SearchResultsView,
+  type SearchResultsViewProps,
+  WebOperationPreview,
+  type WebOperationPreviewProps,
+  SubagentPanel,
+  type SubagentPanelProps,
+} from "./claude-sdk";
+
+// Visualization components
+export {
+  VisualizationRenderer,
+  type VisualizationRendererProps,
+  ChartVisualization,
+  type ChartVisualizationProps,
+  TableVisualization,
+  type TableVisualizationProps,
+  CardVisualization,
+  type CardVisualizationProps,
+  KpiVisualization,
+  type KpiVisualizationProps,
+  CodePreviewVisualization,
+  type CodePreviewVisualizationProps,
+  FormVisualization,
+  type FormVisualizationProps,
+} from "./visualizations";
+
 // Timeline components
 export { EventContent } from "./EventContent";
 export { convertChunkToEvent, convertTimelineToEvents, EventTimeline, type EventTimelineProps } from "./EventTimeline";
@@ -27,7 +67,7 @@ export { Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, 
 export { ChatProvider, useChatContext, type ChatContextValue, type ChatProviderProps } from "../context";
 
 // Re-export types for convenience
-export type { Attachment, ChatMessage, MessageData, Participant, ParticipantRole, SuggestedAction } from "../types";
+export type { Attachment, BrandingData, ChatMessage, MessageData, Participant, ParticipantRole, SuggestedAction, SuggestedActionType } from "../types";
 
 // Re-export advanced streaming types
 export type {
@@ -47,4 +87,24 @@ export type {
 	SubtaskEvent,
 	ThinkingEvent,
 	ToolEvent,
+	// Parallel execution types
+	WaveData,
+	ParallelSubtaskData,
+	// Multi-agent types
+	SubagentInfo,
+	// Claude SDK chunk types
+	SubagentChunkData,
+	FileOperationChunkData,
+	TerminalChunkData,
+	SearchResultsChunkData,
+	WebOperationChunkData,
+	ClaudeToolChunkData,
+	ClarificationData,
+	// Visualization types
+	VisualizationType,
+	VisualizationChunkData,
+	VisualizationConfig,
+	// Citation types
+	SourceReference,
+	SourceTypeConfig,
 } from "../types";

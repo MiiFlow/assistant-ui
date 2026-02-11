@@ -1,12 +1,14 @@
-export { e as AttachmentPreview, f as AttachmentPreviewProps, A as Avatar, g as AvatarProps, C as ChatContainer, h as ChatContainerProps, d as MarkdownContent, i as MarkdownContentProps, a as Message, b as MessageComposer, k as MessageComposerProps, M as MessageList, l as MessageListProps, j as MessageProps, c as StreamingText, m as StreamingTextProps, S as SuggestedActions, n as SuggestedActionsProps, T as TypingIndicator, o as TypingIndicatorProps } from '../TypingIndicator-BWuipyMr.mjs';
+import { S as SourceReference } from '../TypingIndicator-DsTTCkZF.mjs';
+export { g as AttachmentPreview, h as AttachmentPreviewProps, A as Avatar, i as AvatarProps, C as ChatContainer, j as ChatContainerProps, f as MarkdownContent, k as MarkdownContentProps, b as Message, c as MessageComposer, m as MessageComposerProps, M as MessageList, n as MessageListProps, l as MessageProps, a as SourceTypeConfig, e as StreamingText, o as StreamingTextProps, d as SuggestedActions, p as SuggestedActionsProps, T as TypingIndicator, q as TypingIndicatorProps } from '../TypingIndicator-DsTTCkZF.mjs';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode } from 'react';
-import { A as Attachment } from '../message-BR6WcQyF.mjs';
-export { C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, S as SuggestedAction } from '../message-BR6WcQyF.mjs';
-import { S as StreamingChunk, P as PlanData, E as Event, d as EventStatus } from '../streaming-beXFE8Rc.mjs';
-export { C as ChunkType, e as EventType, F as FollowupAction, O as ObservationEvent, f as PlanningEvent, g as ProgressData, h as StreamingMessage, i as SubTaskData, j as SubtaskEvent, T as ThinkingEvent, k as ToolEvent } from '../streaming-beXFE8Rc.mjs';
+import { A as Attachment } from '../message-i2e9SPSw.mjs';
+export { C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, S as SuggestedAction, b as SuggestedActionType } from '../message-i2e9SPSw.mjs';
+import { S as StreamingChunk, P as PlanData, C as ClarificationData, V as VisualizationChunkData, d as ChartVisualizationData, e as VisualizationConfig, T as TableVisualizationData, f as CardVisualizationData, K as KpiVisualizationData, g as CodePreviewVisualizationData, F as FormVisualizationData, E as Event, h as EventStatus } from '../streaming-DsSwtonH.mjs';
+export { i as ChunkType, z as ClaudeToolChunkData, j as EventType, v as FileOperationChunkData, k as FollowupAction, O as ObservationEvent, s as ParallelSubtaskData, l as PlanningEvent, m as ProgressData, x as SearchResultsChunkData, n as StreamingMessage, o as SubTaskData, u as SubagentChunkData, t as SubagentInfo, p as SubtaskEvent, w as TerminalChunkData, q as ThinkingEvent, r as ToolEvent, A as VisualizationType, W as WaveData, y as WebOperationChunkData } from '../streaming-DsSwtonH.mjs';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.mjs';
-export { g as useComposer, u as useMessage } from '../avatar-kUGxt4qU.mjs';
+export { B as BrandingData } from '../branding-SzYU4ncD.mjs';
+export { g as useComposer, u as useMessage } from '../avatar-BZQXxKxo.mjs';
 
 interface LoadingDotsProps {
     /** Size variant */
@@ -66,10 +68,14 @@ declare function MessageAttachments({ attachments, onDownload, onPreview, classN
 interface ReasoningPanelProps {
     /** Whether currently streaming */
     isStreaming?: boolean;
-    /** Streaming chunks (thinking, tool calls, etc.) */
+    /** Streaming chunks */
     chunks?: StreamingChunk[];
     /** Execution plan for Plan & Execute mode */
     plan?: PlanData;
+    /** Execution timeline (completed messages) */
+    executionTimeline?: any[];
+    /** User message timestamp for duration calculation */
+    userMessageTimestamp?: number;
     /** Total execution time in seconds */
     executionTime?: number;
     /** Whether expanded by default */
@@ -81,11 +87,123 @@ interface ReasoningPanelProps {
     /** Additional class names */
     className?: string;
 }
+declare function ReasoningPanel({ isStreaming, chunks, plan, executionTimeline, userMessageTimestamp, executionTime, defaultExpanded, expanded: controlledExpanded, onExpandedChange, className, }: ReasoningPanelProps): react_jsx_runtime.JSX.Element | null;
+
+interface ClarificationPanelProps {
+    clarification: ClarificationData;
+    onSubmit: (response: string) => void;
+    onOptionSelect?: (option: string) => void;
+    disabled?: boolean;
+    loading?: boolean;
+    className?: string;
+}
 /**
- * Collapsible panel showing AI reasoning, tool execution, and planning
- * Matches main app's ReasoningPanel functionality
+ * Stateless clarification panel - displays when the AI agent needs user input.
+ * Orange left-border panel with question, radio options, and free-text input.
  */
-declare function ReasoningPanel({ isStreaming, chunks, plan, executionTime, defaultExpanded, expanded: controlledExpanded, onExpandedChange, className, }: ReasoningPanelProps): react_jsx_runtime.JSX.Element | null;
+declare function ClarificationPanel({ clarification, onSubmit, onOptionSelect, disabled, loading, className, }: ClarificationPanelProps): react_jsx_runtime.JSX.Element;
+
+interface CitationSourcesProps {
+    sources: SourceReference[];
+    className?: string;
+}
+/**
+ * Renders citation sources as a horizontal row of clickable chips.
+ * Clicking a chip opens a modal showing full source content.
+ */
+declare function CitationSources({ sources, className }: CitationSourcesProps): react_jsx_runtime.JSX.Element | null;
+interface SourceDetailModalProps {
+    source: SourceReference | null;
+    onClose: () => void;
+}
+declare function SourceDetailModal({ source, onClose, }: SourceDetailModalProps): react_jsx_runtime.JSX.Element | null;
+/**
+ * Inline citation badge - renders a small numbered badge like [1]
+ * with optional tooltip on hover and click-to-open URL.
+ */
+interface InlineCitationProps {
+    index: number;
+    source?: SourceReference;
+}
+declare function InlineCitation({ index, source }: InlineCitationProps): react_jsx_runtime.JSX.Element;
+
+interface ClaudeToolPreviewProps {
+    chunk: StreamingChunk;
+}
+declare function ClaudeToolPreview({ chunk }: ClaudeToolPreviewProps): react_jsx_runtime.JSX.Element | null;
+
+interface TerminalOutputProps {
+    chunk: StreamingChunk;
+}
+declare function TerminalOutput({ chunk }: TerminalOutputProps): react_jsx_runtime.JSX.Element | null;
+
+interface FileOperationPreviewProps {
+    chunk: StreamingChunk;
+}
+declare function FileOperationPreview({ chunk }: FileOperationPreviewProps): react_jsx_runtime.JSX.Element | null;
+
+interface SearchResultsViewProps {
+    chunk: StreamingChunk;
+}
+declare function SearchResultsView({ chunk }: SearchResultsViewProps): react_jsx_runtime.JSX.Element | null;
+
+interface WebOperationPreviewProps {
+    chunk: StreamingChunk;
+}
+declare function WebOperationPreview({ chunk }: WebOperationPreviewProps): react_jsx_runtime.JSX.Element | null;
+
+interface SubagentPanelProps {
+    chunk: StreamingChunk;
+}
+declare function SubagentPanel({ chunk }: SubagentPanelProps): react_jsx_runtime.JSX.Element | null;
+
+interface VisualizationRendererProps {
+    data: VisualizationChunkData;
+    isStreaming?: boolean;
+}
+declare function VisualizationRenderer({ data, isStreaming }: VisualizationRendererProps): react_jsx_runtime.JSX.Element;
+
+interface ChartVisualizationProps {
+    data: ChartVisualizationData;
+    config?: VisualizationConfig;
+    isStreaming?: boolean;
+}
+declare function ChartVisualization({ data, config, isStreaming }: ChartVisualizationProps): react_jsx_runtime.JSX.Element;
+
+interface TableVisualizationProps {
+    data: TableVisualizationData;
+    config?: VisualizationConfig;
+    isStreaming?: boolean;
+}
+declare function TableVisualization({ data, config }: TableVisualizationProps): react_jsx_runtime.JSX.Element;
+
+interface CardVisualizationProps {
+    data: CardVisualizationData;
+    config?: VisualizationConfig;
+    isStreaming?: boolean;
+}
+declare function CardVisualization({ data, config }: CardVisualizationProps): react_jsx_runtime.JSX.Element;
+
+interface KpiVisualizationProps {
+    data: KpiVisualizationData;
+    config?: VisualizationConfig;
+    isStreaming?: boolean;
+}
+declare function KpiVisualization({ data, config, isStreaming }: KpiVisualizationProps): react_jsx_runtime.JSX.Element;
+
+interface CodePreviewVisualizationProps {
+    data: CodePreviewVisualizationData;
+    config?: VisualizationConfig;
+    isStreaming?: boolean;
+}
+declare function CodePreviewVisualization({ data }: CodePreviewVisualizationProps): react_jsx_runtime.JSX.Element;
+
+interface FormVisualizationProps {
+    data: FormVisualizationData;
+    config?: VisualizationConfig;
+    isStreaming?: boolean;
+}
+declare function FormVisualization({ data, config, isStreaming }: FormVisualizationProps): react_jsx_runtime.JSX.Element;
 
 interface EventContentProps {
     event: Event;
@@ -173,4 +291,4 @@ interface TimelineItemProps {
  */
 declare function TimelineItem({ status, isLast, badgeSize, children, className, }: TimelineItemProps): react_jsx_runtime.JSX.Element;
 
-export { Attachment, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, LoadingDots, type LoadingDotsProps, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, StatusBadge, StreamingChunk, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, convertChunkToEvent, convertTimelineToEvents };
+export { Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, ClaudeToolPreview, type ClaudeToolPreviewProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FileOperationPreview, type FileOperationPreviewProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SearchResultsView, type SearchResultsViewProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TerminalOutput, type TerminalOutputProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, VisualizationChunkData, VisualizationConfig, VisualizationRenderer, type VisualizationRendererProps, WebOperationPreview, type WebOperationPreviewProps, convertChunkToEvent, convertTimelineToEvents };

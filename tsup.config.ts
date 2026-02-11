@@ -30,6 +30,7 @@ export default defineConfig({
     "styled/index": "src/styled/index.ts",
     "hooks/index": "src/hooks/index.ts",
     "context/index": "src/context/index.ts",
+    "client/index": "src/client/index.ts",
   },
   format: ["esm", "cjs"],
   dts: true,
@@ -38,7 +39,23 @@ export default defineConfig({
   treeshake: true,
   minify: true,
   sourcemap: true,
-  external: ["react", "react-dom"],
+  // Externalize everything that uses React or is a heavy dependency.
+  // Consumers must install these (listed in peerDependencies or dependencies).
+  external: [
+    "react",
+    "react-dom",
+    "framer-motion",
+    "lucide-react",
+    "react-markdown",
+    "remark-gfm",
+    "recharts",
+    "react-syntax-highlighter",
+    /^react-syntax-highlighter\//,
+    "lexical",
+    /^@lexical\//,
+    "clsx",
+    "tailwind-merge",
+  ],
   esbuildPlugins: [noMuiPlugin],
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),

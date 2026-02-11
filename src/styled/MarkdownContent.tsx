@@ -1,37 +1,158 @@
+import { useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Check, Copy, Link as LinkIcon } from "lucide-react";
 import { cn } from "../utils/cn";
+
+// Language alias mapping
+const LANGUAGE_MAP: Record<string, string> = {
+  js: "javascript",
+  ts: "typescript",
+  jsx: "jsx",
+  tsx: "tsx",
+  py: "python",
+  rb: "ruby",
+  rs: "rust",
+  go: "go",
+  java: "java",
+  cpp: "cpp",
+  c: "c",
+  cs: "csharp",
+  swift: "swift",
+  kt: "kotlin",
+  php: "php",
+  sql: "sql",
+  sh: "bash",
+  bash: "bash",
+  zsh: "bash",
+  shell: "bash",
+  html: "html",
+  css: "css",
+  scss: "scss",
+  json: "json",
+  yaml: "yaml",
+  yml: "yaml",
+  xml: "xml",
+  md: "markdown",
+  graphql: "graphql",
+  dockerfile: "docker",
+  toml: "toml",
+};
+
+function normalizeLanguage(lang: string): string {
+  return LANGUAGE_MAP[lang.toLowerCase()] || lang.toLowerCase();
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback: noop
+    }
+  }, [text]);
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-white/10 transition-colors text-gray-400 hover:text-gray-200"
+      aria-label={copied ? "Copied" : "Copy code"}
+    >
+      {copied ? <Check size={14} /> : <Copy size={14} />}
+      {copied ? "Copied" : "Copy"}
+    </button>
+  );
+}
 
 export interface MarkdownContentProps {
   /** Markdown content to render */
   children: string;
   /** Additional CSS classes */
   className?: string;
+  /** Base font size multiplier for responsive scaling */
+  baselineFontSize?: number;
+  /** Use dark theme for code blocks */
+  darkCodeTheme?: boolean;
 }
 
 /**
- * Styled markdown renderer using react-markdown with Tailwind classes.
+ * Styled markdown renderer with syntax highlighting, copy-to-clipboard,
+ * and heading anchor links.
  */
-export function MarkdownContent({ children, className }: MarkdownContentProps) {
+export function MarkdownContent({
+  children,
+  className,
+  baselineFontSize = 1,
+  darkCodeTheme,
+}: MarkdownContentProps) {
+  // Detect dark mode from CSS if not explicitly set
+  const useDarkCode = darkCodeTheme;
+
+  const fontStyle = baselineFontSize !== 1
+    ? { fontSize: `${baselineFontSize}rem` }
+    : undefined;
+
   return (
     <ReactMarkdown
       className={cn("chat-prose", className)}
       remarkPlugins={[remarkGfm]}
       components={{
-        h1: ({ children }) => (
-          <h1 className="text-2xl font-semibold mt-4 mb-2 first:mt-0">{children}</h1>
-        ),
-        h2: ({ children }) => (
-          <h2 className="text-xl font-semibold mt-3 mb-2 first:mt-0">{children}</h2>
-        ),
-        h3: ({ children }) => (
-          <h3 className="text-lg font-medium mt-2 mb-1 first:mt-0">{children}</h3>
-        ),
+        h1: ({ children }) => {
+          const text = String(children);
+          const id = slugify(text);
+          return (
+            <h1 id={id} className="group text-2xl font-semibold mt-4 mb-2 first:mt-0" style={fontStyle}>
+              {children}
+              <a href={`#${id}`} className="ml-2 opacity-0 group-hover:opacity-50 transition-opacity" aria-label="Link to heading">
+                <LinkIcon size={16} className="inline" />
+              </a>
+            </h1>
+          );
+        },
+        h2: ({ children }) => {
+          const text = String(children);
+          const id = slugify(text);
+          return (
+            <h2 id={id} className="group text-xl font-semibold mt-3 mb-2 first:mt-0" style={fontStyle}>
+              {children}
+              <a href={`#${id}`} className="ml-2 opacity-0 group-hover:opacity-50 transition-opacity" aria-label="Link to heading">
+                <LinkIcon size={14} className="inline" />
+              </a>
+            </h2>
+          );
+        },
+        h3: ({ children }) => {
+          const text = String(children);
+          const id = slugify(text);
+          return (
+            <h3 id={id} className="group text-lg font-medium mt-2 mb-1 first:mt-0" style={fontStyle}>
+              {children}
+              <a href={`#${id}`} className="ml-2 opacity-0 group-hover:opacity-50 transition-opacity" aria-label="Link to heading">
+                <LinkIcon size={12} className="inline" />
+              </a>
+            </h3>
+          );
+        },
         h4: ({ children }) => (
-          <h4 className="text-base font-medium mt-2 mb-1 first:mt-0">{children}</h4>
+          <h4 className="text-base font-medium mt-2 mb-1 first:mt-0" style={fontStyle}>{children}</h4>
         ),
         p: ({ children }) => (
-          <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+          <p className="mb-2 last:mb-0 leading-relaxed" style={fontStyle}>{children}</p>
         ),
         a: ({ href, children }) => (
           <a
@@ -55,9 +176,9 @@ export function MarkdownContent({ children, className }: MarkdownContentProps) {
             {children}
           </blockquote>
         ),
-        code: ({ className, children }) => {
-          // Check if this is inline code or a code block
-          const isInline = !className;
+        code: ({ className: codeClassName, children }) => {
+          const match = /language-(\w+)/.exec(codeClassName || "");
+          const isInline = !match;
 
           if (isInline) {
             return (
@@ -67,16 +188,35 @@ export function MarkdownContent({ children, className }: MarkdownContentProps) {
             );
           }
 
-          // Code block
+          const language = normalizeLanguage(match[1]);
+          const codeText = String(children).replace(/\n$/, "");
+
           return (
-            <code className="block text-sm font-mono">{children}</code>
+            <div className="relative group my-2 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+              {/* Header with language badge and copy button */}
+              <div className="flex items-center justify-between px-3 py-1.5 bg-gray-800 dark:bg-gray-900 border-b border-gray-700">
+                <span className="text-xs font-mono text-gray-400">{language}</span>
+                <CopyButton text={codeText} />
+              </div>
+              <SyntaxHighlighter
+                language={language}
+                style={useDarkCode === false ? oneLight : oneDark}
+                customStyle={{
+                  margin: 0,
+                  borderRadius: 0,
+                  fontSize: "0.8125rem",
+                  lineHeight: "1.6",
+                }}
+                codeTagProps={{
+                  style: { fontFamily: "'Fira Code', 'JetBrains Mono', monospace" },
+                }}
+              >
+                {codeText}
+              </SyntaxHighlighter>
+            </div>
           );
         },
-        pre: ({ children }) => (
-          <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto text-sm my-2">
-            {children}
-          </pre>
-        ),
+        pre: ({ children }) => <>{children}</>,
         table: ({ children }) => (
           <div className="overflow-x-auto my-2 rounded-lg border border-gray-200 dark:border-gray-700">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

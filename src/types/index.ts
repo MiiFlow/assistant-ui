@@ -4,6 +4,7 @@ export type {
   Attachment,
   MessageData,
   SuggestedAction,
+  SuggestedActionType,
   ChatMessage,
   ReasoningChunk,
 } from "./message";
@@ -20,6 +21,41 @@ export type {
   StreamingChunk,
   StreamingMessage,
   FollowupAction,
+  // Parallel execution types
+  WaveData,
+  ParallelSubtaskData,
+  // Multi-agent types
+  SubagentInfo,
+  // Claude SDK chunk types
+  SearchResultItem,
+  SubagentChunkData,
+  FileOperationChunkData,
+  TerminalChunkData,
+  SearchResultsChunkData,
+  WebOperationChunkData,
+  ClaudeToolChunkData,
+  ClarificationData,
+  // Visualization types
+  VisualizationType,
+  ChartDataType,
+  ChartSeries,
+  ChartAxis,
+  ChartVisualizationData,
+  TableColumnType,
+  TableColumn,
+  TableVisualizationData,
+  CardSection,
+  CardAction,
+  CardVisualizationData,
+  KpiMetric,
+  KpiVisualizationData,
+  CodePreviewVisualizationData,
+  FormFieldType,
+  FormField,
+  FormVisualizationData,
+  VisualizationConfig,
+  VisualizationData,
+  VisualizationChunkData,
   // Event timeline types
   EventStatus,
   EventType,
@@ -31,3 +67,7 @@ export type {
   SubtaskEvent,
   Event,
 } from "./streaming";
+
+export type { BrandingData } from "./branding";
+
+export type { SourceReference, SourceTypeConfig } from "./citation";

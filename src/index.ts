@@ -7,11 +7,15 @@ export type {
   Attachment,
   MessageData,
   SuggestedAction,
+  SuggestedActionType,
   ChatMessage,
   ReasoningChunk,
   StreamingState,
   StreamChunk,
   StreamingOptions,
+  BrandingData,
+  SourceReference,
+  SourceTypeConfig,
 } from "./types";
 
 // Context & Provider
@@ -29,6 +33,7 @@ export {
   useStreaming,
   useMessageComposer,
   useAttachments,
+  useBrandingCSSVars,
 } from "./hooks";
 
 // Primitives (headless, unstyled)
