@@ -17,8 +17,7 @@ export const TypingIndicator = forwardRef<HTMLDivElement, TypingIndicatorProps>(
         ref={ref}
         className={cn(
           "inline-flex items-center gap-1",
-          "px-4 py-3 rounded-message",
-          "bg-chat-message-bg",
+          "px-4 py-3",
           className
         )}
       >

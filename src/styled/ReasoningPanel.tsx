@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import {
-  Sparkle, Wrench, ListTodo, ChevronDown, ChevronUp,
+  Sparkle, Wrench, ListTodo,
   Users, Zap, Terminal, FileText, Globe, Search, GitBranch, Loader2,
 } from "lucide-react";
 import { cn } from "../utils/cn";
+import { injectBeamerKeyframes, beamerBarStyle } from "../utils/beamer";
 import { EventTimeline, convertChunkToEvent } from "./EventTimeline";
 import { PlanTimeline } from "./PlanTimeline";
 import { Timeline, type TimelineItemData } from "./Timeline";
@@ -255,6 +256,9 @@ export function ReasoningPanel({
 }: ReasoningPanelProps) {
   const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
   const liveElapsed = useLiveStreamDuration(isStreaming);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { injectBeamerKeyframes(containerRef.current); }, []);
 
   const isExpanded = controlledExpanded ?? localExpanded;
   const setExpanded = (value: boolean) => {
@@ -274,8 +278,7 @@ export function ReasoningPanel({
 
   // Convert timeline to Events for completed messages
   const completedEvents = useMemo(() => {
-    if (!isStreaming && executionTimeline.length > 0) {
-      // Import the function from EventTimeline
+    if (!isStreaming && (executionTimeline.length > 0 || chunks.length > 0)) {
       return chunks
         .map((chunk, index) => convertChunkToEvent(chunk, index))
         .filter((event): event is Event => event !== null);
@@ -466,36 +469,41 @@ export function ReasoningPanel({
   const showPlanTimeline = shouldShowPlanTimeline(activePlan);
 
   return (
-    <div className={cn("max-w-full", className)}>
-      <button
+    <div ref={containerRef} className={cn("max-w-full", className)}>
+      {/* Clickable header: icon + label + optional timer - matches on-platform MUI approach */}
+      <div
         onClick={() => setExpanded(!isExpanded)}
-        className={cn(
-          "inline-flex items-center gap-1.5 px-3 py-1.5",
-          "text-[15px] rounded-full",
-          "bg-[var(--chat-panel-bg)] text-[var(--chat-text-subtle)]",
-          "hover:bg-[var(--chat-panel-border)]",
-          "transition-all duration-200 cursor-pointer",
-          isStreaming && "relative overflow-hidden",
-          !isStreaming && "opacity-60 hover:opacity-100"
-        )}
+        style={{
+          position: "relative",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "4px 6px",
+          overflow: "hidden",
+          borderRadius: 8,
+          cursor: "pointer",
+          transition: "opacity 0.2s",
+          ...(!isStreaming && { opacity: 0.6 }),
+        }}
       >
-        {isStreaming && (
-          <>
-            <div className="absolute -inset-[1px] rounded-full bg-gradient-to-r from-indigo-500/30 via-purple-500/30 to-indigo-500/30 animate-gradient-shift" />
-            <div className="absolute inset-0 animate-scanning bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-          </>
-        )}
-        <span className={cn("relative z-10", isStreaming ? "text-indigo-500" : "text-[var(--chat-text-subtle)]")}>
+        {isStreaming && <div style={beamerBarStyle} />}
+        <span className={cn("flex items-center text-gray-500")}>
           {getIcon()}
         </span>
-        <span className="relative z-10">{getLabel()}</span>
-        {isStreaming && parseInt(liveElapsed) > 0 && (
-          <span className="relative z-10 text-indigo-500 font-medium tabular-nums text-sm">{liveElapsed}s</span>
-        )}
-        <span className="relative z-10 text-[var(--chat-text-subtle)]">
-          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        <span
+          className={cn(
+            "text-sm font-medium",
+            isStreaming
+              ? "bg-gradient-to-r from-gray-400 via-gray-500 to-gray-400 bg-clip-text text-transparent"
+              : "text-[var(--chat-text-subtle)]"
+          )}
+        >
+          {getLabel()}
         </span>
-      </button>
+        {isStreaming && parseInt(liveElapsed) > 0 && (
+          <span className="text-gray-500 font-medium tabular-nums text-sm">{liveElapsed}s</span>
+        )}
+      </div>
 
       {isExpanded && (
         <div className="mt-3 animate-fade-in">

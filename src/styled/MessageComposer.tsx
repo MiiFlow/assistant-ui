@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useRef, useState, useEffect } from "react";
-import { ArrowUp, Paperclip, X, FileText, Image, Loader2 } from "lucide-react";
+import { ArrowUp, Paperclip, X, FileText, Image, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "../utils/cn";
 
 import { AutoLinkNode } from "@lexical/link";
@@ -43,13 +43,84 @@ const EDITOR_THEME = {
 };
 
 // ============================================================================
+// File upload constants (matching in-house backend)
+// ============================================================================
+
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+  "image/bmp",
+];
+const ALLOWED_DOCUMENT_TYPES = [
+  "application/pdf",
+  "text/plain",
+  "application/json",
+  "text/json",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+const ALLOWED_VIDEO_TYPES = [
+  "video/mp4",
+  "video/webm",
+  "video/ogg",
+  "video/avi",
+  "video/mov",
+  "video/wmv",
+  "video/flv",
+  "video/mkv",
+];
+
+const DEFAULT_ALLOWED_TYPES = [
+  ...ALLOWED_IMAGE_TYPES,
+  ...ALLOWED_DOCUMENT_TYPES,
+  ...ALLOWED_VIDEO_TYPES,
+];
+
+// ============================================================================
 // Attachment types
 // ============================================================================
+
+type AttachmentStatus = "pending" | "uploading" | "uploaded" | "error";
 
 interface AttachmentFile {
   id: string;
   file: File;
   previewUrl?: string;
+  status: AttachmentStatus;
+  attachmentId?: string;
+  error?: string;
+}
+
+// ============================================================================
+// Utility
+// ============================================================================
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+}
+
+function validateFile(
+  file: File,
+  allowedTypes: string[],
+  maxSize: number,
+): string | null {
+  if (file.size > maxSize) {
+    return `File size (${formatFileSize(file.size)}) exceeds max (${formatFileSize(maxSize)})`;
+  }
+  if (!allowedTypes.includes(file.type)) {
+    return `File type ${file.type || "unknown"} is not allowed`;
+  }
+  return null;
 }
 
 // ============================================================================
@@ -71,19 +142,33 @@ function AttachmentBar({
     <div className="flex flex-wrap gap-2 px-3 pt-3 pb-0">
       {attachments.map((att) => {
         const isImage = att.file.type.startsWith("image/");
+        const isError = att.status === "error";
+        const isUploading = att.status === "uploading";
+
         return (
           <div
             key={att.id}
-            className="relative flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-xs text-gray-600 dark:text-gray-300 max-w-[200px]"
+            className={cn(
+              "relative flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs max-w-[200px]",
+              isError
+                ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300",
+            )}
           >
-            {isImage && att.previewUrl ? (
+            {isUploading ? (
+              <Loader2 size={14} className="flex-shrink-0 animate-spin" />
+            ) : isError ? (
+              <AlertCircle size={14} className="flex-shrink-0" />
+            ) : isImage && att.previewUrl ? (
               <img src={att.previewUrl} alt={att.file.name} className="w-5 h-5 rounded object-cover" />
             ) : isImage ? (
               <Image size={14} className="flex-shrink-0" />
             ) : (
               <FileText size={14} className="flex-shrink-0" />
             )}
-            <span className="truncate">{att.file.name}</span>
+            <span className="truncate" title={isError ? att.error : att.file.name}>
+              {isError ? att.error : att.file.name}
+            </span>
             {!disabled && (
               <button
                 type="button"
@@ -153,10 +238,16 @@ export interface MessageComposerProps {
   onSubmit: (content: string, attachments?: File[]) => Promise<void>;
   /** Callback when files are attached (for upload handling) */
   onAttach?: (files: File[]) => void;
+  /** Upload a file to backend, returning an attachment ID. When provided, enables server-side upload flow. */
+  onUploadFile?: (file: File) => Promise<string>;
   /** Whether the composer is disabled */
   disabled?: boolean;
   /** Whether attachments are supported */
   supportsAttachments?: boolean;
+  /** Allowed MIME types for attachments (default: images + docs + videos) */
+  allowedFileTypes?: string[];
+  /** Maximum file size in bytes (default: 100MB) */
+  maxFileSize?: number;
   /** Placeholder text */
   placeholder?: string;
   /** Additional CSS classes */
@@ -166,15 +257,19 @@ export interface MessageComposerProps {
 }
 
 /**
- * Rich text MessageComposer with Lexical editor, attachment support, and Enter-to-submit.
+ * Rich text MessageComposer with Lexical editor, attachment support,
+ * file upload integration, drag & drop, and Enter-to-submit.
  */
 export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
   (
     {
       onSubmit,
       onAttach,
+      onUploadFile,
       disabled = false,
       supportsAttachments = true,
+      allowedFileTypes = DEFAULT_ALLOWED_TYPES,
+      maxFileSize = MAX_FILE_SIZE,
       placeholder = "Type a message...",
       className,
       isSubmitting = false,
@@ -183,11 +278,17 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
   ) => {
     const [inputText, setInputText] = useState("");
     const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
+    const [isDragOver, setIsDragOver] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const clearEditorRef = useRef<(() => void) | null>(null);
+    const dragCounterRef = useRef(0);
 
     const isDisabled = disabled || isSubmitting;
-    const hasContent = inputText.trim().length > 0 || attachments.length > 0;
+    const isAnyUploading = attachments.some((a) => a.status === "uploading");
+    const uploadedIds = attachments
+      .filter((a) => a.status === "uploaded" && a.attachmentId)
+      .map((a) => a.attachmentId!);
+    const hasContent = inputText.trim().length > 0 || uploadedIds.length > 0;
 
     const handleChange = useCallback((editorState: EditorState) => {
       editorState.read(() => {
@@ -199,11 +300,64 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       });
     }, []);
 
+    const processFiles = useCallback(
+      async (files: File[]) => {
+        const newAttachments: AttachmentFile[] = files.map((file) => {
+          const error = validateFile(file, allowedFileTypes, maxFileSize);
+          const att: AttachmentFile = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            file,
+            status: error ? "error" : onUploadFile ? "uploading" : "pending",
+            error: error || undefined,
+          };
+          if (!error && file.type.startsWith("image/")) {
+            att.previewUrl = URL.createObjectURL(file);
+          }
+          return att;
+        });
+
+        setAttachments((prev) => [...prev, ...newAttachments]);
+        onAttach?.(files);
+
+        // Upload files to backend if onUploadFile is provided
+        if (onUploadFile) {
+          for (const att of newAttachments) {
+            if (att.status !== "uploading") continue;
+            try {
+              const attachmentId = await onUploadFile(att.file);
+              setAttachments((prev) =>
+                prev.map((a) =>
+                  a.id === att.id
+                    ? { ...a, status: "uploaded" as const, attachmentId }
+                    : a,
+                ),
+              );
+            } catch (err) {
+              setAttachments((prev) =>
+                prev.map((a) =>
+                  a.id === att.id
+                    ? {
+                        ...a,
+                        status: "error" as const,
+                        error: err instanceof Error ? err.message : "Upload failed",
+                      }
+                    : a,
+                ),
+              );
+            }
+          }
+        }
+      },
+      [allowedFileTypes, maxFileSize, onUploadFile, onAttach],
+    );
+
     const handleSubmit = useCallback(async () => {
-      if (!hasContent || isDisabled) return;
+      if (!hasContent || isDisabled || isAnyUploading) return;
 
       const text = inputText;
-      const files = attachments.map((a) => a.file);
+      const rawFiles = attachments
+        .filter((a) => a.status !== "error")
+        .map((a) => a.file);
 
       // Clear state immediately
       clearEditorRef.current?.();
@@ -211,36 +365,28 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       setAttachments([]);
 
       try {
-        await onSubmit(text, files.length > 0 ? files : undefined);
+        if (onUploadFile && uploadedIds.length > 0) {
+          // Server upload flow: pass attachment IDs via metadata
+          // The parent hook's sendMessage will pick up the IDs
+          await onSubmit(text, rawFiles.length > 0 ? rawFiles : undefined);
+        } else {
+          await onSubmit(text, rawFiles.length > 0 ? rawFiles : undefined);
+        }
       } catch {
-        // Restore on error — re-insert text
+        // Restore on error
         setInputText(text);
       }
-    }, [inputText, attachments, hasContent, isDisabled, onSubmit]);
+    }, [inputText, attachments, hasContent, isDisabled, isAnyUploading, onSubmit, onUploadFile, uploadedIds]);
 
     const handleFileSelect = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
-
-        const newAttachments: AttachmentFile[] = Array.from(files).map((file) => {
-          const att: AttachmentFile = {
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-            file,
-          };
-          if (file.type.startsWith("image/")) {
-            att.previewUrl = URL.createObjectURL(file);
-          }
-          return att;
-        });
-
-        setAttachments((prev) => [...prev, ...newAttachments]);
-        onAttach?.(Array.from(files));
-
+        processFiles(Array.from(files));
         // Reset so same file can be selected again
         e.target.value = "";
       },
-      [onAttach],
+      [processFiles],
     );
 
     const handleRemoveAttachment = useCallback((id: string) => {
@@ -250,6 +396,51 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         return prev.filter((a) => a.id !== id);
       });
     }, []);
+
+    // Drag & drop handlers
+    const handleDragEnter = useCallback(
+      (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!supportsAttachments || isDisabled) return;
+        dragCounterRef.current++;
+        if (e.dataTransfer.types.includes("Files")) {
+          setIsDragOver(true);
+        }
+      },
+      [supportsAttachments, isDisabled],
+    );
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounterRef.current--;
+      if (dragCounterRef.current === 0) {
+        setIsDragOver(false);
+      }
+    }, []);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    }, []);
+
+    const handleDrop = useCallback(
+      (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounterRef.current = 0;
+        setIsDragOver(false);
+
+        if (!supportsAttachments || isDisabled) return;
+
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0) {
+          processFiles(files);
+        }
+      },
+      [supportsAttachments, isDisabled, processFiles],
+    );
 
     // Cleanup preview URLs on unmount
     useEffect(() => {
@@ -277,11 +468,15 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       <div
         ref={ref}
         className={cn(
-          "sticky bottom-0 p-4",
+          "sticky bottom-0 px-3 pt-2 pb-3",
           "border-t border-gray-200 dark:border-gray-700",
           "bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm",
           className,
         )}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
       >
         <div
           className={cn(
@@ -292,15 +487,25 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
             "shadow-sm",
             "transition-all duration-200",
             "focus-within:shadow-md focus-within:border-gray-300 dark:focus-within:border-gray-600",
+            isDragOver && "ring-2 ring-blue-400 border-blue-400",
           )}
         >
+          {/* Drag overlay */}
+          {isDragOver && (
+            <div className="px-3 pt-3 pb-0">
+              <div className="flex items-center justify-center py-4 rounded-lg border-2 border-dashed border-blue-300 bg-blue-50 dark:bg-blue-900/20 text-blue-500 text-sm">
+                Drop files here
+              </div>
+            </div>
+          )}
+
           {/* Attachment previews */}
           <AttachmentBar attachments={attachments} onRemove={handleRemoveAttachment} disabled={isDisabled} />
 
           {/* Main input row */}
           <div
             className={cn(
-              "flex items-end gap-2 p-3",
+              "flex items-center gap-2 p-3",
               attachments.length > 0 && "pt-1.5",
             )}
           >
@@ -311,7 +516,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isDisabled}
                 className={cn(
-                  "flex-shrink-0 self-center",
+                  "flex-shrink-0",
                   "w-8 h-8 rounded-lg",
                   "flex items-center justify-center",
                   "border border-gray-200 dark:border-gray-600",
@@ -353,7 +558,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                   <ListPlugin />
                   <HistoryPlugin />
                   <AutoFocusPlugin defaultSelection="rootStart" />
-                  <EnterKeyPlugin onSubmit={handleSubmit} disabled={isDisabled} />
+                  <EnterKeyPlugin onSubmit={handleSubmit} disabled={isDisabled || isAnyUploading} />
                   <ClearEditorPlugin clearRef={clearEditorRef} />
                 </div>
               </LexicalComposer>
@@ -363,7 +568,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={!hasContent || isDisabled}
+              disabled={!hasContent || isDisabled || isAnyUploading}
               className={cn(
                 "flex-shrink-0",
                 "w-9 h-9 rounded-lg",
@@ -376,7 +581,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                 "transition-all duration-200",
               )}
             >
-              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} />}
+              {isSubmitting || isAnyUploading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} />}
             </button>
           </div>
 
@@ -386,7 +591,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
               ref={fileInputRef}
               type="file"
               multiple
-              accept="image/*,application/pdf,text/plain,application/json,video/*"
+              accept={allowedFileTypes.join(",")}
               onChange={handleFileSelect}
               className="hidden"
             />

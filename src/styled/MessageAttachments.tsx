@@ -60,7 +60,7 @@ export function MessageAttachments({
   };
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("flex flex-wrap gap-1.5", className)}>
       {attachments.map((attachment) => (
         <AttachmentCard
           key={attachment.id}
@@ -104,103 +104,51 @@ function AttachmentCard({
   onDownload: () => void;
   onPreview: () => void;
 }) {
-  // Image attachment
-  if (attachment.isImage && attachment.url) {
-    return (
-      <div className="rounded-lg border border-[var(--chat-border)] overflow-hidden">
-        <div
-          className="relative h-48 cursor-pointer hover:opacity-80 transition-opacity"
-          onClick={onPreview}
-        >
-          <img
-            src={attachment.previewUrl || attachment.url}
-            alt={attachment.filename}
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <div className="flex items-center justify-between px-3 py-2 bg-[var(--chat-panel-bg)]">
-          <div className="flex items-center gap-2 min-w-0">
-            <ImageIcon size={16} className="text-[var(--chat-primary)] flex-shrink-0" />
-            <span className="text-sm text-[var(--chat-text)] truncate">
-              {attachment.filename}
-            </span>
-          </div>
-          <button
-            onClick={onDownload}
-            className="p-1.5 hover:bg-[var(--chat-border)] rounded transition-colors flex-shrink-0"
-            aria-label="Download"
-          >
-            <Download size={16} className="text-[var(--chat-text-subtle)]" />
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Compact inline card for all attachment types
+  const sizeLabel = attachment.humanReadableSize || formatFileSize(attachment.size);
 
-  // Video attachment
-  if (attachment.isVideo && attachment.url) {
-    return (
-      <div className="rounded-lg border border-[var(--chat-border)] overflow-hidden">
-        <video
-          src={attachment.url}
-          controls
-          className="w-full h-48 object-cover"
-        />
-        <div className="flex items-center justify-between px-3 py-2 bg-[var(--chat-panel-bg)]">
-          <div className="flex items-center gap-2 min-w-0">
-            <Video size={16} className="text-[var(--chat-primary)] flex-shrink-0" />
-            <span className="text-sm text-[var(--chat-text)] truncate">
-              {attachment.filename}
-            </span>
-          </div>
-          <button
-            onClick={onDownload}
-            className="p-1.5 hover:bg-[var(--chat-border)] rounded transition-colors flex-shrink-0"
-            aria-label="Download"
-          >
-            <Download size={16} className="text-[var(--chat-text-subtle)]" />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Document/file attachment
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border border-[var(--chat-border)] bg-[var(--chat-panel-bg)]">
-      <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-gray-100 rounded-lg">
-        <FileTypeIcon mimeType={attachment.mimeType} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-[var(--chat-text)] truncate">
-          {attachment.filename}
-        </p>
-        <p className="text-xs text-[var(--chat-text-subtle)]">
-          {attachment.humanReadableSize || formatFileSize(attachment.size)}
-        </p>
-      </div>
-      <button
-        onClick={onDownload}
-        className="p-2 hover:bg-[var(--chat-border)] rounded-lg transition-colors flex-shrink-0"
-        aria-label="Download"
-      >
-        <Download size={18} className="text-[var(--chat-text-subtle)]" />
-      </button>
+    <div
+      className={cn(
+        "inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg max-w-full",
+        "border border-[var(--chat-border)] bg-[var(--chat-panel-bg)]",
+        attachment.isImage && attachment.url && "cursor-pointer hover:bg-[var(--chat-border)]/30",
+      )}
+      onClick={attachment.isImage && attachment.url ? onPreview : undefined}
+    >
+      <FileTypeIcon mimeType={attachment.mimeType} size={14} />
+      <span className="text-xs text-[var(--chat-text)] truncate min-w-0">
+        {attachment.filename}
+      </span>
+      {sizeLabel && sizeLabel !== "0 Bytes" && (
+        <span className="text-[10px] text-[var(--chat-text-subtle)] flex-shrink-0">
+          {sizeLabel}
+        </span>
+      )}
+      {attachment.url && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDownload(); }}
+          className="p-0.5 hover:bg-[var(--chat-border)] rounded transition-colors flex-shrink-0"
+          aria-label="Download"
+        >
+          <Download size={12} className="text-[var(--chat-text-subtle)]" />
+        </button>
+      )}
     </div>
   );
 }
 
-function FileTypeIcon({ mimeType }: { mimeType: string }) {
+function FileTypeIcon({ mimeType, size = 14 }: { mimeType: string; size?: number }) {
   if (mimeType.startsWith("image/")) {
-    return <ImageIcon size={20} className="text-[var(--chat-primary)]" />;
+    return <ImageIcon size={size} className="text-[var(--chat-primary)] flex-shrink-0" />;
   }
   if (mimeType.startsWith("video/")) {
-    return <Video size={20} className="text-[var(--chat-primary)]" />;
+    return <Video size={size} className="text-[var(--chat-primary)] flex-shrink-0" />;
   }
   if (mimeType === "application/pdf") {
-    return <FileText size={20} className="text-red-500" />;
+    return <FileText size={size} className="text-red-500 flex-shrink-0" />;
   }
-  return <FileIcon size={20} className="text-gray-500" />;
+  return <FileIcon size={size} className="text-gray-500 flex-shrink-0" />;
 }
 
 function formatFileSize(bytes: number): string {

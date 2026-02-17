@@ -68,6 +68,7 @@ export {
 // Styled components (TailwindCSS defaults)
 export {
   ChatContainer,
+  ChatLayout,
   MessageList,
   Message,
   MessageComposer,
@@ -77,6 +78,7 @@ export {
   StreamingText,
   MarkdownContent,
   AttachmentPreview,
+  WelcomeScreen,
 } from "./styled";
 
 // Utilities

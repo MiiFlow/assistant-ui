@@ -11,6 +11,9 @@ export {
   getBackendBaseUrl,
   getOrCreateUserId,
   registerToolsOnBackend,
+  uploadFile,
+  sendSystemEvent,
+  sendToolResult,
 } from "./session";
 
 // Token utilities
@@ -41,6 +44,7 @@ export type {
   ToolHandler,
   ToolInvocationRequest,
   ToolExecutionResult,
+  SystemEvent,
   WidgetEventType,
   WidgetEventPayload,
   WidgetEventCallback,

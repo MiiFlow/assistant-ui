@@ -101,7 +101,8 @@ export function MarkdownContent({
   darkCodeTheme,
 }: MarkdownContentProps) {
   // Detect dark mode from CSS if not explicitly set
-  const useDarkCode = darkCodeTheme;
+  const useDarkCode = darkCodeTheme ??
+    (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
 
   const fontStyle = baselineFontSize !== 1
     ? { fontSize: `${baselineFontSize}rem` }
@@ -160,6 +161,7 @@ export function MarkdownContent({
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary underline hover:opacity-80 transition-opacity"
+            style={fontStyle}
           >
             {children}
           </a>
@@ -170,26 +172,26 @@ export function MarkdownContent({
         ol: ({ children }) => (
           <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>
         ),
-        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+        li: ({ children }) => <li className="leading-relaxed" style={fontStyle}>{children}</li>,
         blockquote: ({ children }) => (
-          <blockquote className="border-l-2 border-gray-300 dark:border-gray-600 pl-3 my-2 italic text-chat-subtle">
+          <blockquote className="border-l-2 border-gray-300 dark:border-gray-600 pl-3 my-2 italic text-chat-subtle" style={fontStyle}>
             {children}
           </blockquote>
         ),
         code: ({ className: codeClassName, children }) => {
           const match = /language-(\w+)/.exec(codeClassName || "");
-          const isInline = !match;
+          const codeText = String(children).replace(/\n$/, "");
+          const isInline = !match && !codeText.includes("\n");
 
           if (isInline) {
             return (
-              <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono">
+              <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono" style={fontStyle}>
                 {children}
               </code>
             );
           }
 
-          const language = normalizeLanguage(match[1]);
-          const codeText = String(children).replace(/\n$/, "");
+          const language = match ? normalizeLanguage(match[1]) : "text";
 
           return (
             <div className="relative group my-2 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
@@ -228,12 +230,12 @@ export function MarkdownContent({
           <thead className="bg-gray-50 dark:bg-gray-800">{children}</thead>
         ),
         th: ({ children }) => (
-          <th className="px-3 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+          <th className="px-3 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300" style={fontStyle}>
             {children}
           </th>
         ),
         td: ({ children }) => (
-          <td className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700">
+          <td className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700" style={fontStyle}>
             {children}
           </td>
         ),

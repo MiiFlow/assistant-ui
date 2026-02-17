@@ -26,7 +26,8 @@
       "import": "./dist/client/index.mjs",
       "require": "./dist/client/index.js"
     },
-    "./styles.css": "./dist/styles.css"
+    "./styles.css": "./dist/styles.css",
+    "./styles-no-preflight.css": "./dist/styles-no-preflight.css"
   },
   "sideEffects": [
     "*.css"
@@ -36,8 +37,9 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup && yarn build:css",
+    "build": "tsup && yarn build:css && yarn build:css-no-preflight",
     "build:css": "tailwindcss -i ./src/styles/index.css -o ./dist/styles.css --minify",
+    "build:css-no-preflight": "tailwindcss -c ./tailwind.no-preflight.config.js -i ./src/styles/no-preflight.css -o ./dist/styles-no-preflight.css --minify",
     "dev": "tsup --watch",
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",

@@ -1,14 +1,13 @@
-import { S as SourceReference } from '../TypingIndicator-Ch2_j1Jj.js';
-export { g as AttachmentPreview, h as AttachmentPreviewProps, A as Avatar, i as AvatarProps, C as ChatContainer, j as ChatContainerProps, f as MarkdownContent, k as MarkdownContentProps, b as Message, c as MessageComposer, m as MessageComposerProps, M as MessageList, n as MessageListProps, l as MessageProps, a as SourceTypeConfig, e as StreamingText, o as StreamingTextProps, d as SuggestedActions, p as SuggestedActionsProps, T as TypingIndicator, q as TypingIndicatorProps } from '../TypingIndicator-Ch2_j1Jj.js';
+export { f as AttachmentPreview, g as AttachmentPreviewProps, A as Avatar, h as AvatarProps, C as ChatContainer, i as ChatContainerProps, a as ChatLayout, q as ChatLayoutProps, e as MarkdownContent, j as MarkdownContentProps, b as Message, c as MessageComposer, l as MessageComposerProps, M as MessageList, m as MessageListProps, k as MessageProps, d as StreamingText, n as StreamingTextProps, S as SuggestedActions, o as SuggestedActionsProps, T as TypingIndicator, p as TypingIndicatorProps, W as WelcomeScreen, r as WelcomeScreenProps } from '../WelcomeScreen-DY5oQa5M.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode } from 'react';
-import { A as Attachment } from '../message-2wveEpfv.js';
-export { C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, S as SuggestedAction, b as SuggestedActionType } from '../message-2wveEpfv.js';
+import { A as Attachment, c as SourceReference } from '../message-SQ4slgBA.js';
+export { C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, d as SourceTypeConfig, S as SuggestedAction, b as SuggestedActionType } from '../message-SQ4slgBA.js';
 import { S as StreamingChunk, P as PlanData, C as ClarificationData, V as VisualizationChunkData, d as ChartVisualizationData, e as VisualizationConfig, T as TableVisualizationData, f as CardVisualizationData, K as KpiVisualizationData, g as CodePreviewVisualizationData, F as FormVisualizationData, E as Event, h as EventStatus } from '../streaming-DsSwtonH.js';
 export { i as ChunkType, z as ClaudeToolChunkData, j as EventType, v as FileOperationChunkData, k as FollowupAction, O as ObservationEvent, s as ParallelSubtaskData, l as PlanningEvent, m as ProgressData, x as SearchResultsChunkData, n as StreamingMessage, o as SubTaskData, u as SubagentChunkData, t as SubagentInfo, p as SubtaskEvent, w as TerminalChunkData, q as ThinkingEvent, r as ToolEvent, A as VisualizationType, W as WaveData, y as WebOperationChunkData } from '../streaming-DsSwtonH.js';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
 export { B as BrandingData } from '../branding-SzYU4ncD.js';
-export { g as useComposer, u as useMessage } from '../avatar-D1j1cPt6.js';
+export { g as useComposer, u as useMessage } from '../avatar-Dsrx9AN1.js';
 
 interface LoadingDotsProps {
     /** Size variant */
@@ -20,6 +19,18 @@ interface LoadingDotsProps {
  * Animated loading dots indicator
  */
 declare function LoadingDots({ size, className }: LoadingDotsProps): react_jsx_runtime.JSX.Element;
+
+interface TimeMarkerProps {
+    /** The label to display (e.g. "Today", "Yesterday", "Monday") */
+    label: string;
+    /** Additional CSS classes */
+    className?: string;
+}
+/**
+ * Centered time separator between message groups.
+ * Displays a label like "Today" or "Yesterday" with horizontal rules.
+ */
+declare function TimeMarker({ label, className }: TimeMarkerProps): react_jsx_runtime.JSX.Element;
 
 interface ChatHeaderAction {
     id: string;
@@ -208,14 +219,14 @@ declare function FormVisualization({ data, config, isStreaming }: FormVisualizat
 interface EventContentProps {
     event: Event;
     className?: string;
-    /** When true, shows animated gradient border effect */
+    /** When true, shows beamer scanning effect on tool items */
     isRunning?: boolean;
 }
 /**
  * Renders content for different event types
  * - Thinking: Markdown content with subtle styling
  * - Planning: Markdown content with planning context
- * - Tool: Chip-style display with tool name (+ gradient border when running)
+ * - Tool: Inline icon + text display with beamer effect when running
  * - Observation: Colored result panel
  */
 declare function EventContent({ event, className, isRunning }: EventContentProps): react_jsx_runtime.JSX.Element | null;
@@ -245,8 +256,8 @@ interface PlanTimelineProps {
     className?: string;
 }
 /**
- * Timeline visualization for Plan & Execute mode
- * Shows plan with expandable subtasks
+ * Minimal timeline for Plan & Execute mode.
+ * Matches in-house style: simple "Plan:" header + inline text rows.
  */
 declare function PlanTimeline({ plan, streamingChunks, className, }: PlanTimelineProps): react_jsx_runtime.JSX.Element;
 
@@ -291,4 +302,4 @@ interface TimelineItemProps {
  */
 declare function TimelineItem({ status, isLast, badgeSize, children, className, }: TimelineItemProps): react_jsx_runtime.JSX.Element;
 
-export { Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, ClaudeToolPreview, type ClaudeToolPreviewProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FileOperationPreview, type FileOperationPreviewProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SearchResultsView, type SearchResultsViewProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TerminalOutput, type TerminalOutputProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, VisualizationChunkData, VisualizationConfig, VisualizationRenderer, type VisualizationRendererProps, WebOperationPreview, type WebOperationPreviewProps, convertChunkToEvent, convertTimelineToEvents };
+export { Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, ClaudeToolPreview, type ClaudeToolPreviewProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FileOperationPreview, type FileOperationPreviewProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SearchResultsView, type SearchResultsViewProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TerminalOutput, type TerminalOutputProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, VisualizationChunkData, VisualizationConfig, VisualizationRenderer, type VisualizationRendererProps, WebOperationPreview, type WebOperationPreviewProps, convertChunkToEvent, convertTimelineToEvents };

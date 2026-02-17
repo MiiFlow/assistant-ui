@@ -2,19 +2,24 @@
  * Session initialization and management for Miiflow embedded chat.
  */
 
-import type { MiiflowChatConfig, EmbedSession } from "./types";
+import type {
+  MiiflowChatConfig,
+  EmbedSession,
+  SystemEvent,
+  ToolExecutionResult,
+} from "./types";
 
 /**
  * Determine the backend base URL from config.
  */
 export function getBackendBaseUrl(config: MiiflowChatConfig): string {
-  if (config.baseUrl) return config.baseUrl;
+  if (config.baseUrl) return config.baseUrl.replace(/\/api\/?$/, "");
 
   const isDev =
     config.bundleUrl?.includes("localhost") ||
     config.bundleUrl?.includes("127.0.0.1") ||
     false;
-  return isDev ? "http://localhost:8000/api" : "https://api.miiflow.ai/api";
+  return isDev ? "http://localhost:8003" : "https://api.miiflow.ai";
 }
 
 /**
@@ -47,7 +52,7 @@ export async function initSession(
 ): Promise<EmbedSession> {
   const backendBaseUrl = getBackendBaseUrl(config);
 
-  const response = await fetch(`${backendBaseUrl}/embed/init`, {
+  const response = await fetch(`${backendBaseUrl}/api/embed/init`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -90,7 +95,7 @@ export async function createThread(
 ): Promise<{ threadId: string; token?: string }> {
   const backendBaseUrl = getBackendBaseUrl(config);
 
-  const response = await fetch(`${backendBaseUrl}/embed/graphql`, {
+  const response = await fetch(`${backendBaseUrl}/api/embed/graphql`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -138,7 +143,7 @@ export async function updateUser(
 ): Promise<void> {
   const backendBaseUrl = getBackendBaseUrl(config);
 
-  await fetch(`${backendBaseUrl}/embed/update`, {
+  await fetch(`${backendBaseUrl}/api/embed/update`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -146,6 +151,116 @@ export async function updateUser(
     },
     body: JSON.stringify({ user_data: userData }),
   });
+}
+
+/**
+ * Upload a file attachment via REST endpoint.
+ * Returns the attachment ID for use in sendMessage.
+ */
+export async function uploadFile(
+  config: MiiflowChatConfig,
+  session: EmbedSession,
+  file: File,
+): Promise<string> {
+  const backendBaseUrl = getBackendBaseUrl(config);
+  const uploadUrl = `${backendBaseUrl}/api/embed/upload-attachment`;
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${session.token}`,
+      "x-mii-user-id": getOrCreateUserId(),
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+  }
+
+  const json = await response.json();
+  const attachmentId = json.attachment?.id;
+
+  if (!attachmentId) {
+    throw new Error("No attachment ID returned");
+  }
+
+  return attachmentId;
+}
+
+/**
+ * Send a system event to the backend (invisible to chat, processed by assistant).
+ */
+export async function sendSystemEvent(
+  config: MiiflowChatConfig,
+  session: EmbedSession,
+  systemEvent: SystemEvent
+): Promise<void> {
+  const backendBaseUrl = getBackendBaseUrl(config);
+
+  const response = await fetch(`${backendBaseUrl}/api/embed/system-event`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.token}`,
+      "x-mii-user-id": getOrCreateUserId(),
+    },
+    body: JSON.stringify({
+      thread_id: session.config.thread_id,
+      system_event: {
+        action: systemEvent.action,
+        description: systemEvent.description,
+        followUpInstruction: systemEvent.followUpInstruction,
+        metadata: systemEvent.metadata || {},
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to send system event: ${response.status} - ${errorText}`
+    );
+  }
+
+  const result = await response.json();
+  if (!result.success) {
+    throw new Error(result.error || "Failed to send system event");
+  }
+}
+
+/**
+ * Send a tool execution result back to the backend.
+ */
+export async function sendToolResult(
+  config: MiiflowChatConfig,
+  session: EmbedSession,
+  result: ToolExecutionResult
+): Promise<void> {
+  const backendBaseUrl = getBackendBaseUrl(config);
+
+  const response = await fetch(`${backendBaseUrl}/api/embed/tool-result`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.token}`,
+    },
+    body: JSON.stringify(result),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to send tool result: ${response.status} - ${errorText}`);
+  }
+
+  const responseData = await response.json();
+  if (!responseData.success) {
+    throw new Error(`Failed to send tool result: ${responseData.error}`);
+  }
 }
 
 /**
@@ -159,7 +274,7 @@ export async function registerToolsOnBackend(
   const backendBaseUrl = getBackendBaseUrl(config);
 
   if (toolDefinitions.length === 1) {
-    const response = await fetch(`${backendBaseUrl}/embed/register-tool`, {
+    const response = await fetch(`${backendBaseUrl}/api/embed/register-tool`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -169,10 +284,15 @@ export async function registerToolsOnBackend(
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to register tool: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`Failed to register tool: ${response.status} - ${errorText}`);
+    }
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(`Failed to register tool: ${data.error || "Unknown error"}`);
     }
   } else if (toolDefinitions.length > 1) {
-    await fetch(`${backendBaseUrl}/embed/register-tools`, {
+    const response = await fetch(`${backendBaseUrl}/api/embed/register-tools`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -180,5 +300,14 @@ export async function registerToolsOnBackend(
       },
       body: JSON.stringify(toolDefinitions),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to register tools: ${response.status} - ${errorText}`);
+    }
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(`Failed to register tools: ${data.error || "Unknown error"}`);
+    }
   }
 }

@@ -32,6 +32,14 @@ export interface MiiflowChatConfig {
   bundleUrl?: string;
   /** Response timeout in milliseconds (default: 60000) */
   responseTimeout?: number;
+  /** WebSocket URL for bidirectional events (tool invocations). Auto-derived from baseUrl if not set. */
+  webSocketUrl?: string;
+  /** Fallback for tool invocations not handled locally (multi-widget routing) */
+  onToolInvocationFallback?: (invocation: ToolInvocationRequest) => Promise<boolean>;
+  /** Callback fired when a user message is created (for widget event emission) */
+  onUserMessageCreated?: (message: { id: string; content: string }) => void;
+  /** Callback fired when an assistant message stream completes (for widget event emission) */
+  onAssistantMessageComplete?: (message: { id: string; content: string }) => void;
 }
 
 // ============================================================================
@@ -77,8 +85,10 @@ export interface MiiflowChatResult {
   isStreaming: boolean;
   /** ID of the message being streamed */
   streamingMessageId: string | null;
-  /** Send a message to the assistant */
-  sendMessage: (content: string) => Promise<void>;
+  /** Send a message to the assistant, optionally with attachment IDs */
+  sendMessage: (content: string, attachmentIds?: string[]) => Promise<void>;
+  /** Upload a file and return its attachment ID */
+  uploadFile: (file: File) => Promise<string>;
 
   /** Current session data */
   session: EmbedSession | null;
@@ -99,6 +109,13 @@ export interface MiiflowChatResult {
   registerTool: (tool: ClientToolDefinition) => Promise<void>;
   /** Register multiple client-side tools */
   registerTools: (tools: ClientToolDefinition[]) => Promise<void>;
+
+  /** Send a system event (invisible to chat, processed by assistant) */
+  sendSystemEvent: (event: SystemEvent) => Promise<void>;
+  /** Execute a client tool invocation (called when backend invokes a registered tool). Returns true if handled. */
+  handleToolInvocation: (invocation: ToolInvocationRequest) => Promise<boolean>;
+  /** Update the session externally (e.g. after token refresh) */
+  updateSession: (session: EmbedSession) => void;
 }
 
 // ============================================================================
@@ -153,6 +170,17 @@ export interface ToolExecutionResult {
   invocation_id: string;
   result?: unknown;
   error?: string;
+}
+
+// ============================================================================
+// System Events
+// ============================================================================
+
+export interface SystemEvent {
+  action: string;
+  description: string;
+  followUpInstruction: string;
+  metadata?: Record<string, unknown>;
 }
 
 // ============================================================================

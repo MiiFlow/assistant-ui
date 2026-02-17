@@ -1,12 +1,14 @@
+import { useEffect, useRef } from "react";
 import { Wrench } from "lucide-react";
 import { cn } from "../utils/cn";
+import { injectBeamerKeyframes, beamerBarStyle } from "../utils/beamer";
 import { MarkdownContent } from "./MarkdownContent";
 import type { Event } from "../types";
 
 interface EventContentProps {
   event: Event;
   className?: string;
-  /** When true, shows animated gradient border effect */
+  /** When true, shows beamer scanning effect on tool items */
   isRunning?: boolean;
 }
 
@@ -14,21 +16,24 @@ interface EventContentProps {
  * Renders content for different event types
  * - Thinking: Markdown content with subtle styling
  * - Planning: Markdown content with planning context
- * - Tool: Chip-style display with tool name (+ gradient border when running)
+ * - Tool: Inline icon + text display with beamer effect when running
  * - Observation: Colored result panel
  */
 export function EventContent({ event, className, isRunning }: EventContentProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { injectBeamerKeyframes(containerRef.current); }, []);
   if (event.type === "thinking") {
     return (
       <div
+        ref={containerRef}
         className={cn(
           "p-1 rounded transition-colors",
           "bg-black/[0.01] hover:bg-black/[0.02]",
           className
         )}
       >
-        <div className="text-[var(--chat-text-subtle)] text-[15px] leading-relaxed">
-          <MarkdownContent>{event.content}</MarkdownContent>
+        <div className="text-[var(--chat-text-subtle)] leading-relaxed">
+          <MarkdownContent className="text-[14px]">{event.content}</MarkdownContent>
         </div>
       </div>
     );
@@ -37,14 +42,15 @@ export function EventContent({ event, className, isRunning }: EventContentProps)
   if (event.type === "planning") {
     return (
       <div
+        ref={containerRef}
         className={cn(
           "p-1 rounded transition-colors",
           "bg-black/[0.01] hover:bg-black/[0.02]",
           className
         )}
       >
-        <div className="text-[var(--chat-text-subtle)] text-[15px] leading-relaxed">
-          <MarkdownContent>{event.content}</MarkdownContent>
+        <div className="text-[var(--chat-text-subtle)] leading-relaxed">
+          <MarkdownContent className="text-[14px]">{event.content}</MarkdownContent>
         </div>
       </div>
     );
@@ -52,29 +58,24 @@ export function EventContent({ event, className, isRunning }: EventContentProps)
 
   if (event.type === "tool") {
     return (
-      <div className={cn("relative inline-flex", className)}>
-        {/* Animated gradient border for running state */}
-        {isRunning && (
-          <div
-            className="absolute -inset-[2px] rounded-md bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-gradient-shift opacity-70"
-          />
-        )}
-        <div
-          className={cn(
-            "relative inline-flex items-center gap-1 px-2 py-0.5",
-            "border border-[var(--chat-border)] rounded",
-            "bg-white dark:bg-gray-900",
-            isRunning && "border-transparent"
-          )}
-        >
-          <Wrench size={14} className={cn(
-            "text-[var(--chat-text-subtle)]",
-            isRunning && "text-indigo-500"
-          )} />
-          <span className="text-[15px] text-[var(--chat-text)]">
-            {event.toolDescription || event.toolName}
-          </span>
-        </div>
+      <div
+        ref={containerRef}
+        className={cn("inline-flex items-center gap-1.5", className)}
+        style={{
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: 4,
+          ...(isRunning && {
+            backgroundColor: "rgba(0, 0, 0, 0.02)",
+            padding: "2px 4px",
+          }),
+        }}
+      >
+        {isRunning && <div style={beamerBarStyle} />}
+        <Wrench size={14} className="text-black/50 relative z-10 shrink-0" />
+        <span className="text-[14px] text-black/65 relative z-10">
+          {event.toolDescription || event.toolName}
+        </span>
       </div>
     );
   }
@@ -84,6 +85,7 @@ export function EventContent({ event, className, isRunning }: EventContentProps)
 
     return (
       <div
+        ref={containerRef}
         className={cn(
           "px-3 py-1.5 rounded max-w-full overflow-auto",
           success
@@ -102,11 +104,10 @@ export function EventContent({ event, className, isRunning }: EventContentProps)
         </span>
         <div
           className={cn(
-            "text-[15px]",
             success ? "text-green-900" : "text-yellow-900"
           )}
         >
-          <MarkdownContent>{event.content}</MarkdownContent>
+          <MarkdownContent className="text-[14px]">{event.content}</MarkdownContent>
         </div>
       </div>
     );

@@ -9,12 +9,17 @@ export { MessageComposer, useComposer, type MessageComposerProps } from "./Messa
 export { MessageList, type MessageListProps } from "./MessageList";
 export { StreamingText, type StreamingTextProps } from "./StreamingText";
 export { SuggestedActions, type SuggestedActionsProps } from "./SuggestedActions";
+export { TimeMarker, type TimeMarkerProps } from "./TimeMarker";
 export { TypingIndicator, type TypingIndicatorProps } from "./TypingIndicator";
 
 // New components for main app integration
 export { ChatHeader, type ChatHeaderAction, type ChatHeaderProps } from "./ChatHeader";
 export { MessageAttachments, type MessageAttachmentsProps } from "./MessageAttachments";
 export { ReasoningPanel, type ReasoningPanelProps } from "./ReasoningPanel";
+
+// Layout components
+export { ChatLayout, type ChatLayoutProps } from "./ChatLayout";
+export { WelcomeScreen, type WelcomeScreenProps } from "./WelcomeScreen";
 
 // Clarification panel
 export { ClarificationPanel, type ClarificationPanelProps } from "./ClarificationPanel";

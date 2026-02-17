@@ -56,6 +56,24 @@ export function useAutoScroll<T extends HTMLElement>({
     }
   }, [enabled, scrollToBottom]);
 
+  // Watch for DOM mutations (new messages, streaming content)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !enabled) return;
+
+    const observer = new MutationObserver(() => {
+      scrollToBottom();
+    });
+
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    return () => observer.disconnect();
+  }, [enabled, scrollToBottom]);
+
   // Attach scroll listener
   useEffect(() => {
     const container = containerRef.current;

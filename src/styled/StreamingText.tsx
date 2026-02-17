@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import { StreamingText as StreamingTextPrimitive } from "../primitives";
-import { MarkdownContent } from "./MarkdownContent";
+import { MarkdownContent, type MarkdownContentProps } from "./MarkdownContent";
 import { cn } from "../utils/cn";
 
 export interface StreamingTextProps {
@@ -12,38 +12,51 @@ export interface StreamingTextProps {
   renderMarkdown?: boolean;
   /** Additional CSS classes */
   className?: string;
+  /** Base font size multiplier (passed to MarkdownContent) */
+  baselineFontSize?: number;
+  /** Props forwarded to MarkdownContent */
+  markdownProps?: Partial<MarkdownContentProps>;
 }
 
 /**
- * Styled StreamingText with cursor animation.
+ * Styled StreamingText that renders content directly as tokens arrive.
+ *
+ * Text appears instantly (no artificial typewriter delay), matching
+ * platform-standard behavior. A blinking cursor is shown during streaming.
  */
 export const StreamingText = forwardRef<HTMLDivElement, StreamingTextProps>(
-  ({ content, isStreaming = false, renderMarkdown = true, className }, ref) => {
+  (
+    {
+      content,
+      isStreaming = false,
+      renderMarkdown = true,
+      className,
+      baselineFontSize,
+      markdownProps,
+    },
+    ref,
+  ) => {
     return (
       <StreamingTextPrimitive
         ref={ref}
         content={content}
         isStreaming={isStreaming}
-        showCursor={isStreaming}
+        showCursor={false}
         className={cn("relative", className)}
-        cursor={
-          <span
-            className={cn(
-              "inline-block w-0.5 h-[1em] ml-0.5",
-              "bg-current align-text-bottom",
-              "animate-[blink_1s_step-end_infinite]"
-            )}
-          />
-        }
       >
         {renderMarkdown ? (
-          <MarkdownContent>{content}</MarkdownContent>
+          <MarkdownContent
+            baselineFontSize={baselineFontSize}
+            {...markdownProps}
+          >
+            {content}
+          </MarkdownContent>
         ) : (
           <span className="whitespace-pre-wrap">{content}</span>
         )}
       </StreamingTextPrimitive>
     );
-  }
+  },
 );
 
 StreamingText.displayName = "StreamingText";

@@ -60,6 +60,7 @@ export interface SuggestedAction {
 export interface ChatMessage extends MessageData {
   suggestedActions?: SuggestedAction[];
   reasoning?: StreamingChunk[];
+  citations?: import("./citation").SourceReference[];
 }
 
 // Legacy type - kept for backwards compatibility

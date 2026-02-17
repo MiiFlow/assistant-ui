@@ -1,7 +1,8 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { cn } from "../utils/cn";
 import { StatusBadge } from "./StatusBadge";
 import type { EventStatus } from "../types";
+import { injectBeamerKeyframes, beamerBarStyle } from "../utils/beamer";
 
 export interface TimelineItemData {
   id: string;
@@ -20,12 +21,15 @@ export interface TimelineProps {
  * Displays items with status badges and connecting lines
  */
 export function Timeline({ items, badgeSize = 20, className }: TimelineProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { injectBeamerKeyframes(containerRef.current); }, []);
+
   if (items.length === 0) {
     return null;
   }
 
   return (
-    <div className={cn("max-w-full", className)}>
+    <div ref={containerRef} className={cn("max-w-full", className)}>
       <div className="flex flex-col">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
@@ -90,8 +94,23 @@ export function Timeline({ items, badgeSize = 20, className }: TimelineProps) {
                 )}
               </div>
 
-              {/* Content */}
-              <div className="min-w-0 flex-1 flex items-center">
+              {/* Content - with beamer effect when running */}
+              <div
+                style={{
+                  minWidth: 0,
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  position: "relative",
+                  overflow: "hidden",
+                  borderRadius: 4,
+                  ...(item.status === "running" && {
+                    backgroundColor: "rgba(0, 0, 0, 0.02)",
+                    padding: "2px 4px",
+                  }),
+                }}
+              >
+                {item.status === "running" && <div style={beamerBarStyle} />}
                 {item.content}
               </div>
             </div>
@@ -120,10 +139,13 @@ export function TimelineItem({
   children,
   className,
 }: TimelineItemProps) {
+  const itemRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { injectBeamerKeyframes(itemRef.current); }, []);
   const showAnimatedLine = status === "running" && !isLast;
 
   return (
     <div
+      ref={itemRef}
       className={cn(
         "relative flex items-start gap-3 animate-fade-in",
         !isLast && "pb-3",
@@ -170,8 +192,23 @@ export function TimelineItem({
         )}
       </div>
 
-      {/* Content */}
-      <div className="min-w-0 flex-1">{children}</div>
+      {/* Content - with beamer effect when running */}
+      <div
+        style={{
+          minWidth: 0,
+          flex: 1,
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: 4,
+          ...(status === "running" && {
+            backgroundColor: "rgba(0, 0, 0, 0.02)",
+            padding: "2px 4px",
+          }),
+        }}
+      >
+        {status === "running" && <div style={beamerBarStyle} />}
+        {children}
+      </div>
     </div>
   );
 }

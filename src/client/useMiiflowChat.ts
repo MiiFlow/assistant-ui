@@ -14,6 +14,8 @@ import type {
   EmbedSession,
   ClientToolDefinition,
   ToolHandler,
+  ToolInvocationRequest,
+  SystemEvent,
 } from "./types";
 import {
   initSession,
@@ -21,9 +23,38 @@ import {
   getOrCreateUserId,
   createThread,
   registerToolsOnBackend,
+  uploadFile as uploadFileToBackend,
+  sendSystemEvent as sendSystemEventToBackend,
+  sendToolResult,
 } from "./session";
 import { validateToolDefinition, serializeToolDefinition } from "./tool-validator";
 import { useBrandingCSSVars } from "../hooks/use-branding-css-vars";
+
+// ============================================================================
+// WebSocket helpers
+// ============================================================================
+
+const WS_HEARTBEAT_INTERVAL = 21000; // 21 seconds — matches web app
+const WS_RECONNECT_BASE_DELAY = 1000;
+const WS_RECONNECT_MAX_DELAY = 30000;
+
+function buildWebSocketUrl(config: MiiflowChatConfig, session: EmbedSession): string {
+  if (config.webSocketUrl) {
+    const url = new URL(config.webSocketUrl);
+    url.pathname = `/ws/assistant/thread/${session.config.thread_id}/`;
+    url.searchParams.set("role", "user");
+    url.searchParams.set("user_id", getOrCreateUserId());
+    url.searchParams.set("embed_token", session.token);
+    return url.toString();
+  }
+
+  const baseUrl = getBackendBaseUrl(config);
+  // Strip /api suffix to get host origin, then convert protocol
+  const origin = baseUrl.replace(/\/api$/, "");
+  const wsOrigin = origin.replace(/^https:/, "wss:").replace(/^http:/, "ws:");
+  const userId = getOrCreateUserId();
+  return `${wsOrigin}/ws/assistant/thread/${session.config.thread_id}/?role=user&user_id=${encodeURIComponent(userId)}&embed_token=${encodeURIComponent(session.token)}`;
+}
 
 // ============================================================================
 // Internal types
@@ -42,6 +73,7 @@ interface InternalMessage {
   isStreaming?: boolean;
   reasoning?: StreamingChunk[];
   suggestedActions?: Array<{ id: string; label: string; value: string }>;
+  citations?: import("../types").SourceReference[];
 }
 
 type ChunkType =
@@ -100,8 +132,10 @@ interface StreamParseCallbacks {
     finalContent: string,
     finalId?: string,
     chunks?: StreamingChunk[],
-    suggestedActions?: Array<{ id: string; label: string; value: string }>
+    suggestedActions?: Array<{ id: string; label: string; value: string }>,
+    sources?: any[]
   ) => void;
+  onToolInvocation?: (invocation: ToolInvocationRequest) => void;
 }
 
 async function parseSSEStream(
@@ -365,17 +399,26 @@ async function parseSSEStream(
           const finalContent =
             parsed.message?.text_content || assistantContent;
           const finalId = parsed.message?.id;
+          const sources = parsed.message?.metadata?.sources;
 
           callbacks.onComplete(
             assistantMsgId,
             finalContent,
             finalId,
             chunks as unknown as StreamingChunk[],
-            suggestedActions
+            suggestedActions,
+            sources
           );
           assistantContent = finalContent;
           if (finalId) assistantMsgId = finalId;
           break;
+        } else if (
+          parsed.type === "client_tool_invocation" &&
+          parsed.invocation &&
+          callbacks.onToolInvocation
+        ) {
+          // Execute async — don't block the stream
+          callbacks.onToolInvocation(parsed.invocation);
         } else if (parsed.type === "error") {
           throw new Error(parsed.error || "Stream error");
         } else if (parsed.type === "done") {
@@ -428,6 +471,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   const toolDefinitionsRef = useRef(
     new Map<string, Omit<ClientToolDefinition, "handler">>()
   );
+  const [toolCount, setToolCount] = useState(0);
 
   // Initialize session on mount
   useEffect(() => {
@@ -460,9 +504,154 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   const branding = useMemo(() => mapSessionBranding(session), [session]);
   const brandingCSSVars = useBrandingCSSVars(branding);
 
+  // Upload file
+  const uploadFile = useCallback(
+    async (file: File): Promise<string> => {
+      if (!session) throw new Error("Not initialized");
+      return uploadFileToBackend(configRef.current, session, file);
+    },
+    [session],
+  );
+
+  // Handle tool invocation from backend. Returns true if handled locally.
+  const handleToolInvocation = useCallback(
+    async (invocation: ToolInvocationRequest): Promise<boolean> => {
+      if (!session) throw new Error("Not initialized");
+
+      const { invocation_id, tool_name, parameters } = invocation;
+      const handler = toolHandlersRef.current.get(tool_name);
+
+      if (!handler) {
+        // No local handler — let caller try fallback / sibling widgets
+        return false;
+      }
+
+      try {
+        const result = await Promise.race([
+          handler(parameters),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Tool execution timeout (30s)")),
+              30000
+            )
+          ),
+        ]);
+
+        await sendToolResult(configRef.current, session, {
+          invocation_id,
+          result,
+        });
+        return true;
+      } catch (error) {
+        console.error(
+          `[Miiflow] Tool '${tool_name}' execution failed:`,
+          error
+        );
+        await sendToolResult(configRef.current, session, {
+          invocation_id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return true; // Handler existed but threw — still "handled"
+      }
+    },
+    [session]
+  );
+
+  // WebSocket connection for client tool invocations
+  useEffect(() => {
+    if (!session || toolCount === 0) return;
+
+    const currentSession = session; // capture non-null for closure
+
+    let ws: WebSocket | null = null;
+    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let reconnectAttempt = 0;
+    let disposed = false;
+
+    function connect() {
+      if (disposed) return;
+
+      const url = buildWebSocketUrl(configRef.current, currentSession);
+      ws = new WebSocket(url);
+
+      ws.onopen = () => {
+        console.log("[Miiflow] WebSocket connected");
+        reconnectAttempt = 0;
+
+        // Start heartbeat
+        heartbeatTimer = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "heartbeat" }));
+          }
+        }, WS_HEARTBEAT_INTERVAL);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "client_tool_invocation" && data.invocation) {
+            handleToolInvocation(data.invocation).then((handled) => {
+              if (!handled) {
+                const fallback = configRef.current.onToolInvocationFallback;
+                if (fallback) {
+                  fallback(data.invocation).catch(console.error);
+                }
+              }
+            }).catch(console.error);
+          }
+        } catch {
+          // Ignore malformed messages
+        }
+      };
+
+      ws.onclose = () => {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+        }
+
+        if (!disposed) {
+          const delay = Math.min(
+            WS_RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttempt),
+            WS_RECONNECT_MAX_DELAY,
+          );
+          reconnectAttempt++;
+          console.log(`[Miiflow] WebSocket closed, reconnecting in ${delay}ms`);
+          reconnectTimer = setTimeout(connect, delay);
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.error("[Miiflow] WebSocket error:", err);
+      };
+    }
+
+    connect();
+
+    return () => {
+      disposed = true;
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (ws) {
+        ws.onclose = null; // Prevent reconnect on intentional close
+        ws.close();
+      }
+    };
+  }, [session, toolCount, handleToolInvocation]);
+
+  // Send system event
+  const sendSystemEvent = useCallback(
+    async (event: SystemEvent): Promise<void> => {
+      if (!session) throw new Error("Not initialized");
+      await sendSystemEventToBackend(configRef.current, session, event);
+    },
+    [session]
+  );
+
   // Send message
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, attachmentIds?: string[]) => {
       if (!content.trim() || isStreaming || !session) return;
 
       const optimisticId = `msg-${Date.now()}`;
@@ -478,15 +667,35 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         createdAt: new Date().toISOString(),
       };
 
-      setMessages((prev) => [...prev, userMessage]);
+      // Add placeholder assistant message to show loading dots immediately
+      const placeholderAssistantId = `assistant-pending-${Date.now()}`;
+      const placeholderAssistant: InternalMessage = {
+        id: placeholderAssistantId,
+        textContent: "",
+        participant: {
+          id: "assistant",
+          name:
+            session.config.branding?.custom_name ||
+            session.config.assistant_name,
+          role: "assistant",
+          avatarUrl: session.config.branding?.assistant_avatar,
+        },
+        createdAt: new Date().toISOString(),
+        isStreaming: true,
+      };
+
+      setMessages((prev) => [...prev, userMessage, placeholderAssistant]);
       setIsStreaming(true);
+      setStreamingMessageId(placeholderAssistantId);
+
+      // Notify consumer that a user message was created (for widget event emission)
+      configRef.current.onUserMessageCreated?.({ id: optimisticId, content });
 
       try {
         const backendBaseUrl = getBackendBaseUrl(configRef.current);
-        const hostBaseUrl = backendBaseUrl.replace(/\/api$/, "");
 
         const response = await fetch(
-          `${hostBaseUrl}/assistant/message/stream/`,
+          `${backendBaseUrl}/assistant/message/stream/`,
           {
             method: "POST",
             headers: {
@@ -499,7 +708,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
               text_content: content,
               message_id: optimisticId,
               metadata: {},
-              attachment_ids: [],
+              attachment_ids: attachmentIds || [],
             }),
           }
         );
@@ -518,7 +727,13 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           {
             onMessageCreate: (msg) => {
               setStreamingMessageId(msg.id);
-              setMessages((prev) => [...prev, msg]);
+              // Replace placeholder with real streaming message
+              setMessages((prev) => {
+                const filtered = prev.filter(
+                  (m) => m.id !== placeholderAssistantId
+                );
+                return [...filtered, msg];
+              });
             },
             onMessageUpdate: (update) => {
               setMessages((prev) =>
@@ -539,7 +754,8 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
               finalContent,
               finalId,
               chunks,
-              suggestedActions
+              suggestedActions,
+              sources
             ) => {
               if (assistantMsgId) {
                 setMessages((prev) =>
@@ -552,10 +768,30 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
                           isStreaming: false,
                           reasoning: chunks,
                           suggestedActions,
+                          citations: sources,
                         }
                       : msg
                   )
                 );
+              }
+
+              // Notify consumer that assistant message is complete (for widget event emission)
+              configRef.current.onAssistantMessageComplete?.({
+                id: finalId || assistantMsgId || "",
+                content: finalContent,
+              });
+            },
+            onToolInvocation: async (invocation) => {
+              const handled = await handleToolInvocation(invocation);
+              if (!handled) {
+                const fallback = configRef.current.onToolInvocationFallback;
+                const fallbackHandled = fallback ? await fallback(invocation) : false;
+                if (!fallbackHandled && session) {
+                  await sendToolResult(configRef.current, session, {
+                    invocation_id: invocation.invocation_id,
+                    error: `No handler found for tool '${invocation.tool_name}'`,
+                  });
+                }
               }
             },
           }
@@ -587,14 +823,18 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           },
           createdAt: new Date().toISOString(),
         };
-        setMessages((prev) => [...prev, errorMsg]);
+        // Remove placeholder and add error message
+        setMessages((prev) => [
+          ...prev.filter((m) => m.id !== placeholderAssistantId),
+          errorMsg,
+        ]);
         setError(err instanceof Error ? err.message : "Send failed");
       } finally {
         setIsStreaming(false);
         setStreamingMessageId(null);
       }
     },
-    [isStreaming, session]
+    [isStreaming, session, handleToolInvocation]
   );
 
   // Start new thread
@@ -639,6 +879,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
 
       try {
         await registerToolsOnBackend(configRef.current, session, [serialized]);
+        setToolCount(toolHandlersRef.current.size);
       } catch (err) {
         toolHandlersRef.current.delete(tool.name);
         toolDefinitionsRef.current.delete(tool.name);
@@ -663,21 +904,28 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     () =>
       messages.map((msg) => ({
         id: msg.id,
-        textContent: msg.textContent,
+        textContent: msg.textContent?.replace(/\[ref:[\w]+\]/g, '') || msg.textContent,
         participant: msg.participant,
         createdAt: msg.createdAt,
         isStreaming: msg.isStreaming,
         reasoning: msg.reasoning,
         suggestedActions: msg.suggestedActions,
+        citations: msg.citations,
       })),
     [messages]
   );
+
+  // Allow external session updates (e.g. token refresh from widget class)
+  const updateSession = useCallback((newSession: EmbedSession) => {
+    setSession(newSession);
+  }, []);
 
   return {
     messages: chatMessages,
     isStreaming,
     streamingMessageId,
     sendMessage,
+    uploadFile,
     session,
     loading,
     error,
@@ -686,5 +934,8 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     startNewThread,
     registerTool,
     registerTools,
+    sendSystemEvent,
+    handleToolInvocation,
+    updateSession,
   };
 }
