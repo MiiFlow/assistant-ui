@@ -59,6 +59,18 @@ export {
   type CodePreviewVisualizationProps,
   FormVisualization,
   type FormVisualizationProps,
+  // Registry
+  registerVisualization,
+  getVisualization,
+  getRegisteredTypes,
+  type VisualizationEntry,
+  // Schemas
+  chartVisualizationSchema,
+  tableVisualizationSchema,
+  cardVisualizationSchema,
+  kpiVisualizationSchema,
+  codePreviewVisualizationSchema,
+  formVisualizationSchema,
 } from "./visualizations";
 
 // Timeline components
@@ -109,6 +121,7 @@ export type {
 	VisualizationType,
 	VisualizationChunkData,
 	VisualizationConfig,
+	VisualizationActionEvent,
 	// Citation types
 	SourceReference,
 	SourceTypeConfig,

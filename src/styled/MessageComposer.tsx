@@ -235,11 +235,13 @@ function ClearEditorPlugin({ clearRef }: { clearRef: React.MutableRefObject<(() 
 
 export interface MessageComposerProps {
   /** Callback when message is submitted */
-  onSubmit: (content: string, attachments?: File[]) => Promise<void>;
+  onSubmit: (content: string, attachments?: File[], attachmentIds?: string[]) => Promise<void>;
   /** Callback when files are attached (for upload handling) */
   onAttach?: (files: File[]) => void;
   /** Upload a file to backend, returning an attachment ID. When provided, enables server-side upload flow. */
   onUploadFile?: (file: File) => Promise<string>;
+  /** Notify backend/hook that an uploaded attachment was removed before sending. */
+  onRemoveUploadedAttachment?: (attachmentId: string) => void;
   /** Whether the composer is disabled */
   disabled?: boolean;
   /** Whether attachments are supported */
@@ -266,6 +268,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       onSubmit,
       onAttach,
       onUploadFile,
+      onRemoveUploadedAttachment,
       disabled = false,
       supportsAttachments = true,
       allowedFileTypes = DEFAULT_ALLOWED_TYPES,
@@ -283,12 +286,13 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     const clearEditorRef = useRef<(() => void) | null>(null);
     const dragCounterRef = useRef(0);
 
-    const isDisabled = disabled || isSubmitting;
+    const isSubmitDisabled = disabled || isSubmitting;
     const isAnyUploading = attachments.some((a) => a.status === "uploading");
     const uploadedIds = attachments
       .filter((a) => a.status === "uploaded" && a.attachmentId)
       .map((a) => a.attachmentId!);
-    const hasContent = inputText.trim().length > 0 || uploadedIds.length > 0;
+    const hasAttachments = uploadedIds.length > 0 || attachments.some((a) => a.status === "pending");
+    const hasContent = inputText.trim().length > 0 || hasAttachments;
 
     const handleChange = useCallback((editorState: EditorState) => {
       editorState.read(() => {
@@ -352,12 +356,13 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     );
 
     const handleSubmit = useCallback(async () => {
-      if (!hasContent || isDisabled || isAnyUploading) return;
+      if (!hasContent || isSubmitDisabled || isAnyUploading) return;
 
       const text = inputText;
       const rawFiles = attachments
         .filter((a) => a.status !== "error")
         .map((a) => a.file);
+      const savedAttachments = attachments;
 
       // Clear state immediately
       clearEditorRef.current?.();
@@ -366,17 +371,16 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
 
       try {
         if (onUploadFile && uploadedIds.length > 0) {
-          // Server upload flow: pass attachment IDs via metadata
-          // The parent hook's sendMessage will pick up the IDs
-          await onSubmit(text, rawFiles.length > 0 ? rawFiles : undefined);
+          await onSubmit(text, undefined, uploadedIds);
         } else {
           await onSubmit(text, rawFiles.length > 0 ? rawFiles : undefined);
         }
       } catch {
         // Restore on error
         setInputText(text);
+        setAttachments(savedAttachments);
       }
-    }, [inputText, attachments, hasContent, isDisabled, isAnyUploading, onSubmit, onUploadFile, uploadedIds]);
+    }, [inputText, attachments, hasContent, isSubmitDisabled, isAnyUploading, onSubmit, onUploadFile, uploadedIds]);
 
     const handleFileSelect = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -393,22 +397,26 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       setAttachments((prev) => {
         const removed = prev.find((a) => a.id === id);
         if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+        // Clean up backend-side metadata for uploaded attachments
+        if (removed?.attachmentId && onRemoveUploadedAttachment) {
+          onRemoveUploadedAttachment(removed.attachmentId);
+        }
         return prev.filter((a) => a.id !== id);
       });
-    }, []);
+    }, [onRemoveUploadedAttachment]);
 
     // Drag & drop handlers
     const handleDragEnter = useCallback(
       (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!supportsAttachments || isDisabled) return;
+        if (!supportsAttachments || isSubmitting) return;
         dragCounterRef.current++;
         if (e.dataTransfer.types.includes("Files")) {
           setIsDragOver(true);
         }
       },
-      [supportsAttachments, isDisabled],
+      [supportsAttachments, isSubmitting],
     );
 
     const handleDragLeave = useCallback((e: React.DragEvent) => {
@@ -432,14 +440,14 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         dragCounterRef.current = 0;
         setIsDragOver(false);
 
-        if (!supportsAttachments || isDisabled) return;
+        if (!supportsAttachments || isSubmitting) return;
 
         const files = Array.from(e.dataTransfer.files);
         if (files.length > 0) {
           processFiles(files);
         }
       },
-      [supportsAttachments, isDisabled, processFiles],
+      [supportsAttachments, isSubmitting, processFiles],
     );
 
     // Cleanup preview URLs on unmount
@@ -461,7 +469,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         return $convertFromMarkdownString("", TRANSFORMERS);
       },
       nodes: [ListItemNode, ListNode, AutoLinkNode, QuoteNode],
-      editable: !isDisabled,
+      editable: !isSubmitting,
     };
 
     return (
@@ -500,7 +508,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
           )}
 
           {/* Attachment previews */}
-          <AttachmentBar attachments={attachments} onRemove={handleRemoveAttachment} disabled={isDisabled} />
+          <AttachmentBar attachments={attachments} onRemove={handleRemoveAttachment} disabled={isSubmitting} />
 
           {/* Main input row */}
           <div
@@ -514,7 +522,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isDisabled}
+                disabled={isSubmitting}
                 className={cn(
                   "flex-shrink-0",
                   "w-8 h-8 rounded-lg",
@@ -558,7 +566,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                   <ListPlugin />
                   <HistoryPlugin />
                   <AutoFocusPlugin defaultSelection="rootStart" />
-                  <EnterKeyPlugin onSubmit={handleSubmit} disabled={isDisabled || isAnyUploading} />
+                  <EnterKeyPlugin onSubmit={handleSubmit} disabled={isSubmitDisabled || isAnyUploading} />
                   <ClearEditorPlugin clearRef={clearEditorRef} />
                 </div>
               </LexicalComposer>
@@ -568,7 +576,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={!hasContent || isDisabled || isAnyUploading}
+              disabled={!hasContent || isSubmitDisabled || isAnyUploading}
               className={cn(
                 "flex-shrink-0",
                 "w-9 h-9 rounded-lg",

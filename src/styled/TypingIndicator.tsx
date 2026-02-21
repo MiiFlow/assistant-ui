@@ -1,6 +1,7 @@
 import { forwardRef } from "react";
 import { TypingIndicator as TypingIndicatorPrimitive } from "../primitives";
 import { cn } from "../utils/cn";
+import { LoadingDots } from "./LoadingDots";
 
 export interface TypingIndicatorProps {
   /** Additional CSS classes */
@@ -21,20 +22,7 @@ export const TypingIndicator = forwardRef<HTMLDivElement, TypingIndicatorProps>(
           className
         )}
       >
-        <span className="flex gap-1">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className={cn(
-                "w-2 h-2 rounded-full bg-chat-subtle",
-                "animate-typing"
-              )}
-              style={{
-                animationDelay: `${i * 0.2}s`,
-              }}
-            />
-          ))}
-        </span>
+        <LoadingDots size="small" />
       </TypingIndicatorPrimitive>
     );
   }

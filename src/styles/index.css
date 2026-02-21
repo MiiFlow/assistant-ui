@@ -103,7 +103,12 @@
 
   /* Message prose styling */
   .chat-prose {
-    @apply text-base leading-relaxed;
+    @apply leading-relaxed;
+    color: var(--chat-text);
+  }
+
+  .chat-prose.prose-invert {
+    color: white;
   }
 
   .chat-prose p {

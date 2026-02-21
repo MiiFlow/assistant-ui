@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { cn } from "../../utils/cn";
-import type { FormVisualizationData, FormField, VisualizationConfig } from "../../types";
+import type { FormVisualizationData, FormField, VisualizationConfig, VisualizationActionEvent } from "../../types";
 
 export interface FormVisualizationProps {
   data: FormVisualizationData;
   config?: VisualizationConfig;
   isStreaming?: boolean;
+  onAction?: (event: VisualizationActionEvent) => void;
 }
 
-export function FormVisualization({ data, config, isStreaming = false }: FormVisualizationProps) {
+export function FormVisualization({ data, config, isStreaming = false, onAction }: FormVisualizationProps) {
   const { fields, submitAction } = data;
   const submitButtonText = config?.submitButtonText || "Submit";
   const cancelButtonText = config?.cancelButtonText || "Cancel";
@@ -58,12 +59,20 @@ export function FormVisualization({ data, config, isStreaming = false }: FormVis
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    window.dispatchEvent(new CustomEvent("visualization-form-submit", { detail: { action: submitAction, data: formData } }));
+    if (onAction) {
+      onAction({ type: "form_submit", action: submitAction || "", data: formData });
+    } else {
+      window.dispatchEvent(new CustomEvent("visualization-form-submit", { detail: { action: submitAction, data: formData } }));
+    }
     setSubmitted(true);
   };
 
   const handleCancel = () => {
-    window.dispatchEvent(new CustomEvent("visualization-form-cancel", { detail: { action: submitAction } }));
+    if (onAction) {
+      onAction({ type: "form_cancel", action: submitAction || "" });
+    } else {
+      window.dispatchEvent(new CustomEvent("visualization-form-cancel", { detail: { action: submitAction } }));
+    }
   };
 
   if (submitted) {

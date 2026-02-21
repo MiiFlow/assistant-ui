@@ -74,6 +74,7 @@ interface InternalMessage {
   reasoning?: StreamingChunk[];
   suggestedActions?: Array<{ id: string; label: string; value: string }>;
   citations?: import("../types").SourceReference[];
+  attachments?: import("../types").Attachment[];
 }
 
 type ChunkType =
@@ -467,6 +468,13 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   const configRef = useRef(config);
   configRef.current = config;
 
+  // Refs for mutable state — allows stable callback references
+  // that always read the latest values (fixes stale closure in widget bridge)
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const isStreamingRef = useRef(isStreaming);
+  isStreamingRef.current = isStreaming;
+
   const toolHandlersRef = useRef(new Map<string, ToolHandler>());
   const toolDefinitionsRef = useRef(
     new Map<string, Omit<ClientToolDefinition, "handler">>()
@@ -504,19 +512,40 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   const branding = useMemo(() => mapSessionBranding(session), [session]);
   const brandingCSSVars = useBrandingCSSVars(branding);
 
-  // Upload file
+  // Upload file — store metadata for attaching to user messages
+  const uploadedAttachmentsRef = useRef(new Map<string, import("../types").Attachment>());
+
+  // Upload file — uses sessionRef for stable reference
   const uploadFile = useCallback(
     async (file: File): Promise<string> => {
-      if (!session) throw new Error("Not initialized");
-      return uploadFileToBackend(configRef.current, session, file);
+      const currentSession = sessionRef.current;
+      if (!currentSession) throw new Error("Not initialized");
+      const attachmentId = await uploadFileToBackend(configRef.current, currentSession, file);
+      uploadedAttachmentsRef.current.set(attachmentId, {
+        id: attachmentId,
+        filename: file.name,
+        mimeType: file.type,
+        size: file.size,
+        isImage: file.type.startsWith("image/"),
+        isVideo: file.type.startsWith("video/"),
+        isDocument: !file.type.startsWith("image/") && !file.type.startsWith("video/"),
+      });
+      return attachmentId;
     },
-    [session],
+    [], // stable — reads sessionRef
   );
 
+  // Remove uploaded attachment metadata (called when user removes attachment before sending)
+  const removeUploadedAttachment = useCallback((attachmentId: string) => {
+    uploadedAttachmentsRef.current.delete(attachmentId);
+  }, []);
+
   // Handle tool invocation from backend. Returns true if handled locally.
+  // Uses sessionRef for stable reference — safe to capture in widget bridge.
   const handleToolInvocation = useCallback(
     async (invocation: ToolInvocationRequest): Promise<boolean> => {
-      if (!session) throw new Error("Not initialized");
+      const currentSession = sessionRef.current;
+      if (!currentSession) throw new Error("Not initialized");
 
       const { invocation_id, tool_name, parameters } = invocation;
       const handler = toolHandlersRef.current.get(tool_name);
@@ -537,7 +566,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           ),
         ]);
 
-        await sendToolResult(configRef.current, session, {
+        await sendToolResult(configRef.current, currentSession, {
           invocation_id,
           result,
         });
@@ -547,14 +576,14 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           `[Miiflow] Tool '${tool_name}' execution failed:`,
           error
         );
-        await sendToolResult(configRef.current, session, {
+        await sendToolResult(configRef.current, currentSession, {
           invocation_id,
           error: error instanceof Error ? error.message : String(error),
         });
         return true; // Handler existed but threw — still "handled"
       }
     },
-    [session]
+    [] // stable — reads sessionRef
   );
 
   // WebSocket connection for client tool invocations
@@ -640,21 +669,31 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     };
   }, [session, toolCount, handleToolInvocation]);
 
-  // Send system event
+  // Send system event — uses sessionRef for stable reference
   const sendSystemEvent = useCallback(
     async (event: SystemEvent): Promise<void> => {
-      if (!session) throw new Error("Not initialized");
-      await sendSystemEventToBackend(configRef.current, session, event);
+      const currentSession = sessionRef.current;
+      if (!currentSession) throw new Error("Not initialized");
+      await sendSystemEventToBackend(configRef.current, currentSession, event);
     },
-    [session]
+    [] // stable — reads sessionRef
   );
 
-  // Send message
+  // Send message — uses refs for stable reference, safe to capture in widget bridge.
+  // Also fixes: allows attachment-only messages (empty text with attachmentIds).
   const sendMessage = useCallback(
     async (content: string, attachmentIds?: string[]) => {
-      if (!content.trim() || isStreaming || !session) return;
+      const currentSession = sessionRef.current;
+      const hasText = !!content.trim();
+      const hasAttachments = attachmentIds && attachmentIds.length > 0;
+
+      if ((!hasText && !hasAttachments) || isStreamingRef.current || !currentSession) return;
 
       const optimisticId = `msg-${Date.now()}`;
+
+      const messageAttachments = attachmentIds
+        ?.map((id) => uploadedAttachmentsRef.current.get(id))
+        .filter(Boolean) as import("../types").Attachment[] | undefined;
 
       const userMessage: InternalMessage = {
         id: optimisticId,
@@ -665,7 +704,11 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           role: "user",
         },
         createdAt: new Date().toISOString(),
+        attachments: messageAttachments?.length ? messageAttachments : undefined,
       };
+
+      // Clean up stored attachment metadata
+      attachmentIds?.forEach((id) => uploadedAttachmentsRef.current.delete(id));
 
       // Add placeholder assistant message to show loading dots immediately
       const placeholderAssistantId = `assistant-pending-${Date.now()}`;
@@ -675,10 +718,10 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         participant: {
           id: "assistant",
           name:
-            session.config.branding?.custom_name ||
-            session.config.assistant_name,
+            currentSession.config.branding?.custom_name ||
+            currentSession.config.assistant_name,
           role: "assistant",
-          avatarUrl: session.config.branding?.assistant_avatar,
+          avatarUrl: currentSession.config.branding?.assistant_avatar,
         },
         createdAt: new Date().toISOString(),
         isStreaming: true,
@@ -700,11 +743,11 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${session.token}`,
+              Authorization: `Bearer ${currentSession.token}`,
               "x-mii-user-id": getOrCreateUserId(),
             },
             body: JSON.stringify({
-              thread_id: session.config.thread_id,
+              thread_id: currentSession.config.thread_id,
               text_content: content,
               message_id: optimisticId,
               metadata: {},
@@ -722,7 +765,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
 
         const result = await parseSSEStream(
           reader,
-          session,
+          currentSession,
           optimisticId,
           {
             onMessageCreate: (msg) => {
@@ -786,11 +829,14 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
               if (!handled) {
                 const fallback = configRef.current.onToolInvocationFallback;
                 const fallbackHandled = fallback ? await fallback(invocation) : false;
-                if (!fallbackHandled && session) {
-                  await sendToolResult(configRef.current, session, {
-                    invocation_id: invocation.invocation_id,
-                    error: `No handler found for tool '${invocation.tool_name}'`,
-                  });
+                if (!fallbackHandled) {
+                  const sess = sessionRef.current;
+                  if (sess) {
+                    await sendToolResult(configRef.current, sess, {
+                      invocation_id: invocation.invocation_id,
+                      error: `No handler found for tool '${invocation.tool_name}'`,
+                    });
+                  }
                 }
               }
             },
@@ -810,16 +856,17 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
       } catch (err) {
         console.error("[Miiflow] Send error:", err);
 
+        const sess = sessionRef.current;
         const errorMsg: InternalMessage = {
           id: `error-${Date.now()}`,
           textContent: "Sorry, I encountered an error. Please try again.",
           participant: {
             id: "assistant",
             name:
-              session.config.branding?.custom_name ||
-              session.config.assistant_name,
+              sess?.config.branding?.custom_name ||
+              sess?.config.assistant_name || "Assistant",
             role: "assistant",
-            avatarUrl: session.config.branding?.assistant_avatar,
+            avatarUrl: sess?.config.branding?.assistant_avatar,
           },
           createdAt: new Date().toISOString(),
         };
@@ -834,18 +881,19 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         setStreamingMessageId(null);
       }
     },
-    [isStreaming, session, handleToolInvocation]
+    [handleToolInvocation] // stable — reads sessionRef and isStreamingRef
   );
 
-  // Start new thread
+  // Start new thread — uses sessionRef for stable reference
   const startNewThread = useCallback(async (): Promise<string> => {
-    if (!session) throw new Error("Not initialized");
+    const currentSession = sessionRef.current;
+    if (!currentSession) throw new Error("Not initialized");
 
-    const result = await createThread(configRef.current, session);
+    const result = await createThread(configRef.current, currentSession);
     const updatedSession: EmbedSession = {
-      ...session,
-      config: { ...session.config, thread_id: result.threadId },
-      token: result.token || session.token,
+      ...currentSession,
+      config: { ...currentSession.config, thread_id: result.threadId },
+      token: result.token || currentSession.token,
     };
     setSession(updatedSession);
     setMessages([]);
@@ -864,12 +912,13 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     }
 
     return result.threadId;
-  }, [session]);
+  }, []); // stable — reads sessionRef
 
-  // Register tool
+  // Register tool — uses sessionRef for stable reference
   const registerTool = useCallback(
     async (tool: ClientToolDefinition): Promise<void> => {
-      if (!session) throw new Error("Not initialized");
+      const currentSession = sessionRef.current;
+      if (!currentSession) throw new Error("Not initialized");
 
       validateToolDefinition(tool);
 
@@ -878,7 +927,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
       toolDefinitionsRef.current.set(tool.name, serialized);
 
       try {
-        await registerToolsOnBackend(configRef.current, session, [serialized]);
+        await registerToolsOnBackend(configRef.current, currentSession, [serialized]);
         setToolCount(toolHandlersRef.current.size);
       } catch (err) {
         toolHandlersRef.current.delete(tool.name);
@@ -886,7 +935,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         throw err;
       }
     },
-    [session]
+    [] // stable — reads sessionRef
   );
 
   // Register multiple tools
@@ -911,6 +960,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         reasoning: msg.reasoning,
         suggestedActions: msg.suggestedActions,
         citations: msg.citations,
+        attachments: msg.attachments,
       })),
     [messages]
   );
@@ -926,6 +976,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     streamingMessageId,
     sendMessage,
     uploadFile,
+    removeUploadedAttachment,
     session,
     loading,
     error,

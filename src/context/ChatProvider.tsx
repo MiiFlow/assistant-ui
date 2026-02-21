@@ -5,7 +5,7 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import type { ChatMessage, ParticipantRole } from "../types";
+import type { ChatMessage, ParticipantRole, VisualizationActionEvent } from "../types";
 
 export interface ChatContextValue {
   /** List of messages in the conversation */
@@ -24,6 +24,8 @@ export interface ChatContextValue {
   retryLastMessage?: () => Promise<void>;
   /** Custom data passed through context */
   customData?: Record<string, unknown>;
+  /** Callback when user interacts with a visualization (form submit, card action, etc.) */
+  onVisualizationAction?: (event: VisualizationActionEvent) => void;
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -38,6 +40,7 @@ export interface ChatProviderProps {
   onStopStreaming?: () => void;
   onRetryLastMessage?: () => Promise<void>;
   customData?: Record<string, unknown>;
+  onVisualizationAction?: (event: VisualizationActionEvent) => void;
 }
 
 export function ChatProvider({
@@ -50,6 +53,7 @@ export function ChatProvider({
   onStopStreaming,
   onRetryLastMessage,
   customData,
+  onVisualizationAction,
 }: ChatProviderProps) {
   const sendMessage = useCallback(
     async (content: string, attachments?: File[]) => {
@@ -68,6 +72,7 @@ export function ChatProvider({
       stopStreaming: onStopStreaming,
       retryLastMessage: onRetryLastMessage,
       customData,
+      onVisualizationAction,
     }),
     [
       messages,
@@ -78,6 +83,7 @@ export function ChatProvider({
       onStopStreaming,
       onRetryLastMessage,
       customData,
+      onVisualizationAction,
     ]
   );
 

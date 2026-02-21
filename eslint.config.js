@@ -1,11 +1,14 @@
+import tsParser from "@typescript-eslint/parser";
+
 /** @type {import('eslint').Linter.Config[]} */
 export default [
   {
     files: ["src/**/*.{ts,tsx}"],
     languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "module",
+      parser: tsParser,
       parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: "module",
         ecmaFeatures: {
           jsx: true,
         },

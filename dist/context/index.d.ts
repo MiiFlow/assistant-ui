@@ -1,8 +1,8 @@
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import * as react from 'react';
 import { ReactNode } from 'react';
-import { C as ChatMessage, P as ParticipantRole } from '../message-SQ4slgBA.js';
-import '../streaming-DsSwtonH.js';
+import { C as ChatMessage, P as ParticipantRole } from '../message-l-rnRAlx.js';
+import { d as VisualizationActionEvent } from '../streaming-CXHkN_Ul.js';
 
 interface ChatContextValue {
     /** List of messages in the conversation */
@@ -21,6 +21,8 @@ interface ChatContextValue {
     retryLastMessage?: () => Promise<void>;
     /** Custom data passed through context */
     customData?: Record<string, unknown>;
+    /** Callback when user interacts with a visualization (form submit, card action, etc.) */
+    onVisualizationAction?: (event: VisualizationActionEvent) => void;
 }
 declare const ChatContext: react.Context<ChatContextValue | null>;
 interface ChatProviderProps {
@@ -33,8 +35,9 @@ interface ChatProviderProps {
     onStopStreaming?: () => void;
     onRetryLastMessage?: () => Promise<void>;
     customData?: Record<string, unknown>;
+    onVisualizationAction?: (event: VisualizationActionEvent) => void;
 }
-declare function ChatProvider({ children, messages, isStreaming, streamingMessageId, viewerRole, onSendMessage, onStopStreaming, onRetryLastMessage, customData, }: ChatProviderProps): react_jsx_runtime.JSX.Element;
+declare function ChatProvider({ children, messages, isStreaming, streamingMessageId, viewerRole, onSendMessage, onStopStreaming, onRetryLastMessage, customData, onVisualizationAction, }: ChatProviderProps): react_jsx_runtime.JSX.Element;
 declare function useChatContext(): ChatContextValue;
 
 export { ChatContext, type ChatContextValue, ChatProvider, type ChatProviderProps, useChatContext };

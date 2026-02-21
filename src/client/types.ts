@@ -89,6 +89,8 @@ export interface MiiflowChatResult {
   sendMessage: (content: string, attachmentIds?: string[]) => Promise<void>;
   /** Upload a file and return its attachment ID */
   uploadFile: (file: File) => Promise<string>;
+  /** Remove uploaded attachment metadata (call when user removes attachment before sending) */
+  removeUploadedAttachment: (attachmentId: string) => void;
 
   /** Current session data */
   session: EmbedSession | null;

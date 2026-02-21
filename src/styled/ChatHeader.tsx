@@ -47,13 +47,15 @@ export function ChatHeader({
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Close menu when clicking outside
+  // Uses composedPath() to work correctly inside Shadow DOM
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      const path = event.composedPath();
       if (
         menuRef.current &&
-        !menuRef.current.contains(event.target as Node) &&
+        !path.includes(menuRef.current) &&
         buttonRef.current &&
-        !buttonRef.current.contains(event.target as Node)
+        !path.includes(buttonRef.current)
       ) {
         setMenuOpen(false);
       }

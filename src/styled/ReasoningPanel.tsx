@@ -488,13 +488,13 @@ export function ReasoningPanel({
       >
         {isStreaming && <div style={beamerBarStyle} />}
         <span className={cn("flex items-center text-gray-500")}>
-          {getIcon()}
+          {isStreaming ? getIcon() : <Sparkle size={14} />}
         </span>
         <span
           className={cn(
             "text-sm font-medium",
             isStreaming
-              ? "bg-gradient-to-r from-gray-400 via-gray-500 to-gray-400 bg-clip-text text-transparent"
+              ? "text-[var(--chat-text)]"
               : "text-[var(--chat-text-subtle)]"
           )}
         >

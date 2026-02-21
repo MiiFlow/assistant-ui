@@ -1,13 +1,14 @@
-export { f as AttachmentPreview, g as AttachmentPreviewProps, A as Avatar, h as AvatarProps, C as ChatContainer, i as ChatContainerProps, a as ChatLayout, q as ChatLayoutProps, e as MarkdownContent, j as MarkdownContentProps, b as Message, c as MessageComposer, l as MessageComposerProps, M as MessageList, m as MessageListProps, k as MessageProps, d as StreamingText, n as StreamingTextProps, S as SuggestedActions, o as SuggestedActionsProps, T as TypingIndicator, p as TypingIndicatorProps, W as WelcomeScreen, r as WelcomeScreenProps } from '../WelcomeScreen-CZi1RQ9a.mjs';
+export { f as AttachmentPreview, g as AttachmentPreviewProps, A as Avatar, h as AvatarProps, C as ChatContainer, i as ChatContainerProps, a as ChatLayout, q as ChatLayoutProps, e as MarkdownContent, j as MarkdownContentProps, b as Message, c as MessageComposer, l as MessageComposerProps, M as MessageList, m as MessageListProps, k as MessageProps, d as StreamingText, n as StreamingTextProps, S as SuggestedActions, o as SuggestedActionsProps, T as TypingIndicator, p as TypingIndicatorProps, W as WelcomeScreen, r as WelcomeScreenProps } from '../WelcomeScreen-C-yM-lC2.mjs';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode } from 'react';
-import { A as Attachment, c as SourceReference } from '../message-CJgyXMDN.mjs';
-export { C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, d as SourceTypeConfig, S as SuggestedAction, b as SuggestedActionType } from '../message-CJgyXMDN.mjs';
-import { S as StreamingChunk, P as PlanData, C as ClarificationData, V as VisualizationChunkData, d as ChartVisualizationData, e as VisualizationConfig, T as TableVisualizationData, f as CardVisualizationData, K as KpiVisualizationData, g as CodePreviewVisualizationData, F as FormVisualizationData, E as Event, h as EventStatus } from '../streaming-DsSwtonH.mjs';
-export { i as ChunkType, z as ClaudeToolChunkData, j as EventType, v as FileOperationChunkData, k as FollowupAction, O as ObservationEvent, s as ParallelSubtaskData, l as PlanningEvent, m as ProgressData, x as SearchResultsChunkData, n as StreamingMessage, o as SubTaskData, u as SubagentChunkData, t as SubagentInfo, p as SubtaskEvent, w as TerminalChunkData, q as ThinkingEvent, r as ToolEvent, A as VisualizationType, W as WaveData, y as WebOperationChunkData } from '../streaming-DsSwtonH.mjs';
+import { A as Attachment, c as SourceReference } from '../message-DcWf8zqK.mjs';
+export { C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, d as SourceTypeConfig, S as SuggestedAction, b as SuggestedActionType } from '../message-DcWf8zqK.mjs';
+import { S as StreamingChunk, P as PlanData, C as ClarificationData, V as VisualizationChunkData, d as VisualizationActionEvent, e as ChartVisualizationData, f as VisualizationConfig, T as TableVisualizationData, g as CardVisualizationData, K as KpiVisualizationData, h as CodePreviewVisualizationData, F as FormVisualizationData, E as Event, i as EventStatus } from '../streaming-CXHkN_Ul.mjs';
+export { j as ChunkType, A as ClaudeToolChunkData, k as EventType, w as FileOperationChunkData, l as FollowupAction, O as ObservationEvent, t as ParallelSubtaskData, m as PlanningEvent, n as ProgressData, y as SearchResultsChunkData, o as StreamingMessage, p as SubTaskData, v as SubagentChunkData, u as SubagentInfo, q as SubtaskEvent, x as TerminalChunkData, r as ThinkingEvent, s as ToolEvent, B as VisualizationType, W as WaveData, z as WebOperationChunkData } from '../streaming-CXHkN_Ul.mjs';
+import { z, ZodSchema } from 'zod';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.mjs';
 export { B as BrandingData } from '../branding-SzYU4ncD.mjs';
-export { g as useComposer, u as useMessage } from '../avatar-DBYeF43O.mjs';
+export { g as useComposer, u as useMessage } from '../avatar-5SGnDzFi.mjs';
 
 interface LoadingDotsProps {
     /** Size variant */
@@ -168,11 +169,157 @@ interface SubagentPanelProps {
 }
 declare function SubagentPanel({ chunk }: SubagentPanelProps): react_jsx_runtime.JSX.Element | null;
 
+declare const chartVisualizationSchema: z.ZodObject<{
+    chartType: z.ZodEnum<{
+        line: "line";
+        bar: "bar";
+        pie: "pie";
+        area: "area";
+        scatter: "scatter";
+        composed: "composed";
+    }>;
+    series: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        data: z.ZodArray<z.ZodUnion<readonly [z.ZodObject<{
+            x: z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>;
+            y: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            name: z.ZodString;
+            value: z.ZodNumber;
+        }, z.core.$strip>]>>;
+        color: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>;
+    xAxis: z.ZodOptional<z.ZodObject<{
+        label: z.ZodOptional<z.ZodString>;
+        type: z.ZodOptional<z.ZodEnum<{
+            number: "number";
+            category: "category";
+            time: "time";
+        }>>;
+        min: z.ZodOptional<z.ZodNumber>;
+        max: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strip>>;
+    yAxis: z.ZodOptional<z.ZodObject<{
+        label: z.ZodOptional<z.ZodString>;
+        type: z.ZodOptional<z.ZodEnum<{
+            number: "number";
+            category: "category";
+            time: "time";
+        }>>;
+        min: z.ZodOptional<z.ZodNumber>;
+        max: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+declare const tableVisualizationSchema: z.ZodObject<{
+    columns: z.ZodArray<z.ZodObject<{
+        key: z.ZodString;
+        label: z.ZodString;
+        type: z.ZodOptional<z.ZodEnum<{
+            string: "string";
+            number: "number";
+            boolean: "boolean";
+            progress: "progress";
+            currency: "currency";
+            date: "date";
+            badge: "badge";
+            link: "link";
+        }>>;
+        align: z.ZodOptional<z.ZodEnum<{
+            left: "left";
+            center: "center";
+            right: "right";
+        }>>;
+        width: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>;
+    rows: z.ZodArray<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+}, z.core.$strip>;
+declare const cardVisualizationSchema: z.ZodObject<{
+    subtitle: z.ZodOptional<z.ZodString>;
+    imageUrl: z.ZodOptional<z.ZodString>;
+    sections: z.ZodArray<z.ZodObject<{
+        title: z.ZodOptional<z.ZodString>;
+        items: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            label: z.ZodString;
+            value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>;
+        }, z.core.$strip>>>;
+        content: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>;
+    actions: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        label: z.ZodString;
+        action: z.ZodString;
+        variant: z.ZodOptional<z.ZodEnum<{
+            primary: "primary";
+            secondary: "secondary";
+            text: "text";
+        }>>;
+    }, z.core.$strip>>>;
+}, z.core.$strip>;
+declare const kpiVisualizationSchema: z.ZodObject<{
+    metrics: z.ZodArray<z.ZodObject<{
+        label: z.ZodString;
+        value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>;
+        unit: z.ZodOptional<z.ZodString>;
+        trend: z.ZodOptional<z.ZodEnum<{
+            up: "up";
+            down: "down";
+            neutral: "neutral";
+        }>>;
+        change: z.ZodOptional<z.ZodString>;
+        changeLabel: z.ZodOptional<z.ZodString>;
+        sparkline: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+        color: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>;
+    layout: z.ZodOptional<z.ZodEnum<{
+        row: "row";
+        grid: "grid";
+    }>>;
+}, z.core.$strip>;
+declare const codePreviewVisualizationSchema: z.ZodObject<{
+    code: z.ZodString;
+    language: z.ZodString;
+    lineNumbers: z.ZodOptional<z.ZodBoolean>;
+    highlightLines: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+    startLine: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>;
+declare const formVisualizationSchema: z.ZodObject<{
+    fields: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        type: z.ZodEnum<{
+            number: "number";
+            date: "date";
+            text: "text";
+            email: "email";
+            select: "select";
+            multiselect: "multiselect";
+            checkbox: "checkbox";
+            radio: "radio";
+            textarea: "textarea";
+            datetime: "datetime";
+        }>;
+        label: z.ZodString;
+        required: z.ZodOptional<z.ZodBoolean>;
+        placeholder: z.ZodOptional<z.ZodString>;
+        options: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            value: z.ZodString;
+            label: z.ZodString;
+        }, z.core.$strip>>>;
+        defaultValue: z.ZodOptional<z.ZodUnknown>;
+        validation: z.ZodOptional<z.ZodObject<{
+            min: z.ZodOptional<z.ZodNumber>;
+            max: z.ZodOptional<z.ZodNumber>;
+            pattern: z.ZodOptional<z.ZodString>;
+            message: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>>;
+    }, z.core.$strip>>;
+    submitAction: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+
 interface VisualizationRendererProps {
     data: VisualizationChunkData;
     isStreaming?: boolean;
+    onAction?: (event: VisualizationActionEvent) => void;
 }
-declare function VisualizationRenderer({ data, isStreaming }: VisualizationRendererProps): react_jsx_runtime.JSX.Element;
+declare function VisualizationRenderer({ data, isStreaming, onAction, }: VisualizationRendererProps): react_jsx_runtime.JSX.Element;
 
 interface ChartVisualizationProps {
     data: ChartVisualizationData;
@@ -192,8 +339,9 @@ interface CardVisualizationProps {
     data: CardVisualizationData;
     config?: VisualizationConfig;
     isStreaming?: boolean;
+    onAction?: (event: VisualizationActionEvent) => void;
 }
-declare function CardVisualization({ data, config }: CardVisualizationProps): react_jsx_runtime.JSX.Element;
+declare function CardVisualization({ data, config, onAction }: CardVisualizationProps): react_jsx_runtime.JSX.Element;
 
 interface KpiVisualizationProps {
     data: KpiVisualizationData;
@@ -213,8 +361,32 @@ interface FormVisualizationProps {
     data: FormVisualizationData;
     config?: VisualizationConfig;
     isStreaming?: boolean;
+    onAction?: (event: VisualizationActionEvent) => void;
 }
-declare function FormVisualization({ data, config, isStreaming }: FormVisualizationProps): react_jsx_runtime.JSX.Element;
+declare function FormVisualization({ data, config, isStreaming, onAction }: FormVisualizationProps): react_jsx_runtime.JSX.Element;
+
+interface VisualizationEntry {
+    component: React.ComponentType<{
+        data: any;
+        config?: VisualizationConfig;
+        isStreaming?: boolean;
+        onAction?: (event: VisualizationActionEvent) => void;
+    }>;
+    schema?: ZodSchema;
+}
+/**
+ * Register a visualization type. Built-in types are registered at module load.
+ * Consumers can call this to add custom visualization types.
+ */
+declare function registerVisualization(type: string, entry: VisualizationEntry): void;
+/**
+ * Look up a registered visualization by type string.
+ */
+declare function getVisualization(type: string): VisualizationEntry | undefined;
+/**
+ * Return all registered visualization type strings.
+ */
+declare function getRegisteredTypes(): string[];
 
 interface EventContentProps {
     event: Event;
@@ -302,4 +474,4 @@ interface TimelineItemProps {
  */
 declare function TimelineItem({ status, isLast, badgeSize, children, className, }: TimelineItemProps): react_jsx_runtime.JSX.Element;
 
-export { Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, ClaudeToolPreview, type ClaudeToolPreviewProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FileOperationPreview, type FileOperationPreviewProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SearchResultsView, type SearchResultsViewProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TerminalOutput, type TerminalOutputProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, VisualizationChunkData, VisualizationConfig, VisualizationRenderer, type VisualizationRendererProps, WebOperationPreview, type WebOperationPreviewProps, convertChunkToEvent, convertTimelineToEvents };
+export { Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, ClaudeToolPreview, type ClaudeToolPreviewProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FileOperationPreview, type FileOperationPreviewProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SearchResultsView, type SearchResultsViewProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TerminalOutput, type TerminalOutputProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, WebOperationPreview, type WebOperationPreviewProps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, formVisualizationSchema, getRegisteredTypes, getVisualization, kpiVisualizationSchema, registerVisualization, tableVisualizationSchema };

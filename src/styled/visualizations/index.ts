@@ -5,3 +5,21 @@ export { CardVisualization, type CardVisualizationProps } from "./CardVisualizat
 export { KpiVisualization, type KpiVisualizationProps } from "./KpiVisualization";
 export { CodePreviewVisualization, type CodePreviewVisualizationProps } from "./CodePreviewVisualization";
 export { FormVisualization, type FormVisualizationProps } from "./FormVisualization";
+
+// Registry
+export {
+  registerVisualization,
+  getVisualization,
+  getRegisteredTypes,
+  type VisualizationEntry,
+} from "./registry";
+
+// Schemas
+export {
+  chartVisualizationSchema,
+  tableVisualizationSchema,
+  cardVisualizationSchema,
+  kpiVisualizationSchema,
+  codePreviewVisualizationSchema,
+  formVisualizationSchema,
+} from "./schemas";

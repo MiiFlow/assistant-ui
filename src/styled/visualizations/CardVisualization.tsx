@@ -2,15 +2,16 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { MarkdownContent } from "../MarkdownContent";
-import type { CardVisualizationData, CardSection, VisualizationConfig } from "../../types";
+import type { CardVisualizationData, CardSection, VisualizationConfig, VisualizationActionEvent } from "../../types";
 
 export interface CardVisualizationProps {
   data: CardVisualizationData;
   config?: VisualizationConfig;
   isStreaming?: boolean;
+  onAction?: (event: VisualizationActionEvent) => void;
 }
 
-export function CardVisualization({ data, config }: CardVisualizationProps) {
+export function CardVisualization({ data, config, onAction }: CardVisualizationProps) {
   const { subtitle, imageUrl, sections, actions } = data;
   const collapsible = config?.collapsible || false;
   const initiallyCollapsed = config?.initiallyCollapsed || false;
@@ -19,6 +20,8 @@ export function CardVisualization({ data, config }: CardVisualizationProps) {
   const handleActionClick = (action: string) => {
     if (action.startsWith("http://") || action.startsWith("https://") || action.startsWith("/")) {
       window.open(action, "_blank", "noopener,noreferrer");
+    } else if (onAction) {
+      onAction({ type: "card_action", action });
     } else {
       window.dispatchEvent(new CustomEvent("visualization-action", { detail: { action } }));
     }

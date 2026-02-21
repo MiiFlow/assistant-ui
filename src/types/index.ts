@@ -66,6 +66,8 @@ export type {
   ObservationEvent,
   SubtaskEvent,
   Event,
+  // Visualization action events
+  VisualizationActionEvent,
 } from "./streaming";
 
 export type { BrandingData } from "./branding";

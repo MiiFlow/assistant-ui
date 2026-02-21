@@ -177,6 +177,7 @@ Wraps children and provides chat context via React context.
 | `onSendMessage` | `(content: string, attachments?: File[]) => Promise<void>` | — | Message send handler |
 | `onStopStreaming` | `() => void` | — | Stop streaming handler |
 | `onRetryLastMessage` | `() => Promise<void>` | — | Retry last message handler |
+| `onVisualizationAction` | `(event: VisualizationActionEvent) => void` | — | Callback for form/card interactions |
 
 ### `ChatLayout`
 
@@ -388,13 +389,175 @@ useMiiflowChat({
 
 The `hmac` and `timestamp` should be generated server-side using your secret key. See the Miiflow dashboard for your HMAC secret.
 
+## Visualizations
+
+Assistant messages can contain rich visualizations (charts, tables, forms, etc.) rendered inline via `[VIZ:id]` markers. The `Message` component handles this automatically when you pass the `visualizations` prop.
+
+### Built-in Types
+
+| Type | Component | Description |
+|------|-----------|-------------|
+| `chart` | `ChartVisualization` | Line, bar, pie, area, scatter charts (Recharts) |
+| `table` | `TableVisualization` | Sortable, paginated data tables |
+| `card` | `CardVisualization` | Structured cards with sections, actions, images |
+| `kpi` | `KpiVisualization` | Key performance indicator metrics with trends |
+| `code_preview` | `CodePreviewVisualization` | Syntax-highlighted code blocks |
+| `form` | `FormVisualization` | Interactive forms with validation |
+
+### Visualization Registry
+
+Instead of a hardcoded switch, visualizations are resolved through a registry. You can register custom visualization types that the `VisualizationRenderer` will render automatically:
+
+```ts
+import {
+  registerVisualization,
+  getVisualization,
+  getRegisteredTypes,
+} from "@miiflow/chat-ui/styled";
+
+// Register a custom visualization type
+registerVisualization("my_widget", {
+  component: MyWidgetComponent,
+  schema: myWidgetZodSchema, // optional — enables data validation
+});
+
+// Check what's registered
+console.log(getRegisteredTypes());
+// ["chart", "table", "card", "kpi", "code_preview", "form", "my_widget"]
+```
+
+Your component receives these props:
+
+```ts
+interface VisualizationComponentProps {
+  data: any;
+  config?: VisualizationConfig;
+  isStreaming?: boolean;
+  onAction?: (event: VisualizationActionEvent) => void;
+}
+```
+
+**Overriding built-ins:** Call `registerVisualization("chart", { component: MyChart })` to replace a built-in type with your own implementation. The last registration wins.
+
+### Schema Validation
+
+Each built-in type has a [Zod](https://zod.dev) schema registered alongside its component. When a schema is present, `VisualizationRenderer` validates the data before rendering. Invalid data shows a descriptive error fallback instead of crashing.
+
+You can import the schemas directly for use in your own code:
+
+```ts
+import {
+  chartVisualizationSchema,
+  tableVisualizationSchema,
+  cardVisualizationSchema,
+  kpiVisualizationSchema,
+  codePreviewVisualizationSchema,
+  formVisualizationSchema,
+} from "@miiflow/chat-ui/styled";
+
+const result = chartVisualizationSchema.safeParse(data);
+if (!result.success) {
+  console.error("Invalid chart data:", result.error.issues);
+}
+```
+
+To add validation to a custom type, pass a `schema` when registering:
+
+```ts
+import { z } from "zod";
+
+const mySchema = z.object({
+  message: z.string(),
+  count: z.number().min(0),
+});
+
+registerVisualization("my_widget", {
+  component: MyWidget,
+  schema: mySchema,
+});
+```
+
+**Note:** `zod` is a peer dependency (`>= 3.0.0`). Install it in your project if you haven't already.
+
+### Interaction Callbacks
+
+Forms and cards can trigger user interactions (submit, cancel, button click). Instead of listening for global `CustomEvent`s, pass a callback through `ChatProvider`:
+
+```tsx
+function handleVisualizationAction(event: VisualizationActionEvent) {
+  switch (event.type) {
+    case "form_submit":
+      console.log("Form submitted:", event.action, event.data);
+      // Send the form data back to the assistant, save to DB, etc.
+      break;
+    case "form_cancel":
+      console.log("Form cancelled:", event.action);
+      break;
+    case "card_action":
+      console.log("Card action clicked:", event.action);
+      break;
+  }
+}
+
+<ChatProvider
+  messages={messages}
+  onSendMessage={sendMessage}
+  onVisualizationAction={handleVisualizationAction}
+>
+  ...
+</ChatProvider>
+```
+
+The `VisualizationActionEvent` type is a discriminated union:
+
+```ts
+type VisualizationActionEvent =
+  | { type: "form_submit"; action: string; data: Record<string, unknown> }
+  | { type: "form_cancel"; action: string }
+  | { type: "card_action"; action: string };
+```
+
+**Backward compatibility:** If no `onVisualizationAction` callback is provided, components fall back to dispatching `CustomEvent`s on `window` (`visualization-form-submit`, `visualization-form-cancel`, `visualization-action`).
+
+### Using `VisualizationRenderer` Standalone
+
+You can render visualizations outside of `Message` by using `VisualizationRenderer` directly:
+
+```tsx
+import { VisualizationRenderer } from "@miiflow/chat-ui/styled";
+
+<VisualizationRenderer
+  data={{
+    id: "viz-1",
+    type: "chart",
+    title: "Monthly Revenue",
+    data: {
+      chartType: "bar",
+      series: [{ name: "Revenue", data: [{ x: "Jan", y: 100 }, { x: "Feb", y: 150 }] }],
+    },
+  }}
+  onAction={(event) => console.log(event)}
+/>
+```
+
 ## Package Exports
 
 | Import | Description |
 |--------|-------------|
 | `@miiflow/chat-ui` | Core types, context, hooks, primitives |
-| `@miiflow/chat-ui/styled` | TailwindCSS-styled components |
+| `@miiflow/chat-ui/styled` | TailwindCSS-styled components, visualization registry, schemas |
 | `@miiflow/chat-ui/client` | `useMiiflowChat` hook, session utilities, types |
 | `@miiflow/chat-ui/primitives` | Headless unstyled component primitives |
 | `@miiflow/chat-ui/styles.css` | Full CSS (includes Tailwind preflight) |
 | `@miiflow/chat-ui/styles-no-preflight.css` | CSS without preflight (for embedding in existing pages) |
+
+### Key Exports from `@miiflow/chat-ui/styled`
+
+**Visualization Registry:**
+`registerVisualization`, `getVisualization`, `getRegisteredTypes`, `VisualizationEntry`
+
+**Visualization Schemas:**
+`chartVisualizationSchema`, `tableVisualizationSchema`, `cardVisualizationSchema`, `kpiVisualizationSchema`, `codePreviewVisualizationSchema`, `formVisualizationSchema`
+
+**Types:**
+`VisualizationActionEvent`, `VisualizationChunkData`, `VisualizationConfig`, `VisualizationType`

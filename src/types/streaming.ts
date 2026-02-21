@@ -387,7 +387,8 @@ export interface VisualizationConfig {
 
 export interface VisualizationData {
   id: string;
-  type: VisualizationType;
+  /** Built-in type or any custom type registered via `registerVisualization()`. */
+  type: VisualizationType | (string & {});
   title?: string;
   description?: string;
   data:
@@ -396,7 +397,8 @@ export interface VisualizationData {
     | CardVisualizationData
     | KpiVisualizationData
     | CodePreviewVisualizationData
-    | FormVisualizationData;
+    | FormVisualizationData
+    | Record<string, unknown>;
   config?: VisualizationConfig;
 }
 
@@ -558,3 +560,12 @@ export interface SubtaskEvent extends BaseEvent {
 }
 
 export type Event = ThinkingEvent | PlanningEvent | ToolEvent | ObservationEvent | SubtaskEvent;
+
+// ============================================================================
+// Visualization Action Event (interaction callbacks)
+// ============================================================================
+
+export type VisualizationActionEvent =
+  | { type: "form_submit"; action: string; data: Record<string, unknown> }
+  | { type: "form_cancel"; action: string }
+  | { type: "card_action"; action: string };
