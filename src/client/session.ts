@@ -13,7 +13,6 @@ export function getBackendBaseUrl(config: MiiflowChatConfig): string {
 	const isDev =
 		config.bundleUrl?.includes("localhost") ||
 		config.bundleUrl?.includes("127.0.0.1") ||
-		config.bundleUrl?.includes("ngrok.app") ||
 		false;
 	return isDev ? "http://localhost:8003" : "https://api.miiflow.ai";
 }
