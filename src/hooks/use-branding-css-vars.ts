@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { BrandingData } from "../types/branding";
+import { getContrastTextColor } from "../utils/color-contrast";
 
 /**
  * Converts BrandingData into CSS custom properties for chat-ui theming.
@@ -19,6 +20,7 @@ export function useBrandingCSSVars(
     if (primaryColor) {
       vars["--chat-primary"] = primaryColor;
       vars["--chat-user-message-bg"] = primaryColor;
+      vars["--chat-user-message-text"] = getContrastTextColor(primaryColor);
     }
 
     if (branding?.headerBackgroundColor) {

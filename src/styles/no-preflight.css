@@ -18,6 +18,7 @@
     /* Message backgrounds */
     --chat-message-bg: rgba(0, 0, 0, 0.03);
     --chat-user-message-bg: var(--chat-primary);
+    --chat-user-message-text: #ffffff;
 
     /* Panel backgrounds */
     --chat-panel-bg: rgba(0, 0, 0, 0.02);
@@ -103,7 +104,7 @@
   }
 
   .chat-prose.prose-invert {
-    color: white;
+    color: var(--chat-user-message-text, #ffffff);
   }
 
   .chat-prose p {

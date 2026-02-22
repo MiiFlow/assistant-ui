@@ -51,6 +51,7 @@ export const chatTokens = {
     // Message backgrounds
     messageBg: "var(--chat-message-bg, rgba(0, 0, 0, 0.03))",
     userMessageBg: "var(--chat-user-message-bg, var(--chat-primary, #106997))",
+    userMessageText: "var(--chat-user-message-text, #ffffff)",
 
     // Panel backgrounds
     panelBg: "var(--chat-panel-bg, rgba(0, 0, 0, 0.02))",

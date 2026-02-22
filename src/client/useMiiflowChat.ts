@@ -479,7 +479,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   const toolDefinitionsRef = useRef(
     new Map<string, Omit<ClientToolDefinition, "handler">>()
   );
-  const [toolCount, setToolCount] = useState(0);
+
 
   // Initialize session on mount
   useEffect(() => {
@@ -588,7 +588,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
 
   // WebSocket connection for client tool invocations
   useEffect(() => {
-    if (!session || toolCount === 0) return;
+    if (!session) return;
 
     const currentSession = session; // capture non-null for closure
 
@@ -667,7 +667,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         ws.close();
       }
     };
-  }, [session, toolCount, handleToolInvocation]);
+  }, [session, handleToolInvocation]);
 
   // Send system event — uses sessionRef for stable reference
   const sendSystemEvent = useCallback(
@@ -928,7 +928,6 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
 
       try {
         await registerToolsOnBackend(configRef.current, currentSession, [serialized]);
-        setToolCount(toolHandlersRef.current.size);
       } catch (err) {
         toolHandlersRef.current.delete(tool.name);
         toolDefinitionsRef.current.delete(tool.name);

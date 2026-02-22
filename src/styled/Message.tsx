@@ -258,10 +258,22 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 				<div
 					className={cn("flex flex-col gap-1 w-full")}
 					data-is-viewer={isViewer}>
-					{/* Loading indicator when waiting */}
+					{/* Loading indicator: avatar + dots in same row */}
 					{isWaitingForContent && (
-						<div className="px-4 py-3">
-							<LoadingDots size="small" />
+						<div className={cn("flex items-start gap-2 w-full")}>
+							{showAvatar && !isViewer && (
+								<div className="flex-shrink-0">
+									<Avatar
+										name={message.participant?.name}
+										src={message.participant?.avatarUrl}
+										role={message.participant?.role}
+										className="w-10 h-10 flex-shrink-0"
+									/>
+								</div>
+							)}
+							<div className="px-4 py-3">
+								<LoadingDots size="small" />
+							</div>
 						</div>
 					)}
 
@@ -303,11 +315,10 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 									className={cn(
 									"rounded-2xl",
 									isViewer || showAvatar ? "px-4 py-3" : "",
-									isViewer ? "text-white" : "",
 								)}
 									style={{
 										backgroundColor: isViewer ? "var(--chat-user-message-bg)" : "transparent",
-										color: !isViewer ? "var(--chat-text)" : "white",
+										color: isViewer ? "var(--chat-user-message-text, #ffffff)" : "var(--chat-text)",
 									}}>
 									<MessageContentPrimitive>{renderContent()}</MessageContentPrimitive>
 
@@ -339,8 +350,8 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 						</div>
 					)}
 
-					{/* Avatar when only reasoning/loading (no text content) */}
-					{!message.textContent && showAvatar && !isViewer && (hasReasoning || isWaitingForContent) && (
+					{/* Standalone avatar: only for reasoning, NOT loading (loading has its own avatar row above) */}
+					{!message.textContent && showAvatar && !isViewer && hasReasoning && !isWaitingForContent && (
 						<div className="flex items-start gap-2 w-full">
 							<div className="flex-shrink-0">
 								<Avatar
