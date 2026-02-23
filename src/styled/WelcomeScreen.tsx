@@ -119,12 +119,12 @@ function DefaultInput({
 		<form
 			className={cn(
 				"w-full relative mx-auto",
-				"bg-white dark:bg-gray-800",
+				"bg-white dark:bg-zinc-800",
 				"rounded-2xl overflow-hidden",
 				"shadow-[0_8px_30px_rgba(0,0,0,0.08)]",
-				"border border-gray-100 dark:border-gray-700/50",
+				"border border-gray-100 dark:border-zinc-700/50",
 				"transition duration-200",
-				"focus-within:shadow-[0_8px_30px_rgba(0,0,0,0.12)] focus-within:border-gray-200 dark:focus-within:border-gray-600",
+				"focus-within:shadow-[0_8px_30px_rgba(0,0,0,0.12)] focus-within:border-gray-200 dark:focus-within:border-zinc-600",
 			)}
 			onSubmit={(e) => {
 				e.preventDefault();
@@ -138,13 +138,13 @@ function DefaultInput({
 							key={`${file.name}-${i}`}
 							className={cn(
 								"flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs",
-								"bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300",
+								"bg-gray-100 dark:bg-zinc-700 text-gray-600 dark:text-zinc-300",
 							)}>
 							<span className="max-w-[120px] truncate">{file.name}</span>
 							<button
 								type="button"
 								onClick={() => removeFile(i)}
-								className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+								className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200">
 								<X size={12} />
 							</button>
 						</div>
@@ -163,9 +163,9 @@ function DefaultInput({
 							"ml-3 flex-shrink-0",
 							"w-8 h-8 rounded-lg",
 							"flex items-center justify-center",
-							"text-gray-400 dark:text-gray-500",
-							"hover:bg-gray-100 dark:hover:bg-gray-700",
-							"hover:text-gray-600 dark:hover:text-gray-300",
+							"text-gray-400 dark:text-zinc-500",
+							"hover:bg-gray-100 dark:hover:bg-zinc-700",
+							"hover:text-gray-600 dark:hover:text-zinc-300",
 							"disabled:opacity-40 disabled:cursor-not-allowed",
 							"transition-colors",
 						)}>
@@ -188,7 +188,7 @@ function DefaultInput({
 						"focus:outline-none focus:ring-0 resize-none",
 						"py-4 sm:py-5",
 						supportsAttachments ? "pl-1" : "pl-4 sm:pl-6",
-						"placeholder:text-gray-400 dark:placeholder:text-gray-500",
+						"placeholder:text-gray-400 dark:placeholder:text-zinc-500",
 						"disabled:opacity-50 disabled:cursor-not-allowed",
 						"max-h-[200px] overflow-y-auto",
 					)}
@@ -200,13 +200,13 @@ function DefaultInput({
 						"mr-3 flex-shrink-0",
 						"w-9 h-9 rounded-lg",
 						"flex items-center justify-center",
-						"bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900",
+						"bg-gray-900 dark:bg-zinc-600 text-white dark:text-zinc-100",
 						"shadow-sm",
-						"hover:bg-gray-700 dark:hover:bg-gray-300",
+						"hover:bg-gray-700 dark:hover:bg-zinc-500",
 						"hover:shadow-md hover:-translate-y-px",
 						"active:translate-y-0 active:shadow-sm",
-						"disabled:bg-gray-300 dark:disabled:bg-gray-600",
-						"disabled:text-gray-500 dark:disabled:text-gray-400",
+						"disabled:bg-gray-300 dark:disabled:bg-zinc-700",
+						"disabled:text-gray-500 dark:disabled:text-zinc-400",
 						"disabled:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed",
 						"transition-all duration-200",
 					)}>
@@ -272,14 +272,14 @@ function SuggestionCard({ text, onClick, index }: { text: string; onClick: () =>
 					"w-full text-left",
 					"p-3",
 					"cursor-pointer",
-					"border border-gray-200 dark:border-gray-700",
+					"border border-gray-200 dark:border-zinc-700",
 					"rounded-lg",
 					"transition-all duration-200 ease-out",
-					"bg-white dark:bg-gray-800",
-					"hover:border-gray-300 dark:hover:border-gray-600",
-					"hover:bg-gray-50 dark:hover:bg-gray-750",
+					"bg-white dark:bg-zinc-800",
+					"hover:border-gray-300 dark:hover:border-zinc-600",
+					"hover:bg-gray-50 dark:hover:bg-zinc-750",
 					"hover:shadow-sm",
-					"active:bg-gray-100 dark:active:bg-gray-700",
+					"active:bg-gray-100 dark:active:bg-zinc-700",
 				)}>
 				{/* Mouse-tracking shimmer overlay */}
 				{mousePos && (
@@ -294,9 +294,9 @@ function SuggestionCard({ text, onClick, index }: { text: string; onClick: () =>
 					<MessageCircleQuestion
 						size={16}
 						strokeWidth={2}
-						className="mt-0.5 text-gray-400 dark:text-gray-500 flex-shrink-0"
+						className="mt-0.5 text-gray-400 dark:text-zinc-500 flex-shrink-0"
 					/>
-					<span className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed flex-1">{text}</span>
+					<span className="text-sm text-gray-600 dark:text-zinc-300 leading-relaxed flex-1">{text}</span>
 				</div>
 			</button>
 		</motion.div>
@@ -371,8 +371,8 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 							"transition-shadow duration-500",
 							"shadow-[0_0_15px_rgba(16,105,151,0.08)]",
 							"focus-within:shadow-[0_0_20px_rgba(16,105,151,0.15),0_0_40px_rgba(86,193,138,0.08)]",
-							"dark:shadow-[0_0_15px_rgba(16,105,151,0.12)]",
-							"dark:focus-within:shadow-[0_0_20px_rgba(16,105,151,0.22),0_0_40px_rgba(86,193,138,0.12)]",
+							"dark:shadow-[0_0_15px_rgba(255,255,255,0.04)]",
+							"dark:focus-within:shadow-[0_0_20px_rgba(255,255,255,0.08),0_0_40px_rgba(255,255,255,0.03)]",
 						)}>
 						{composerSlot ?? (
 							<DefaultInput

@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import type { ChatMessage, ParticipantRole, StreamingChunk } from "../types";
+import type { ChatMessage, ParticipantRole, StreamingChunk, ClarificationData } from "../types";
 import type { BrandingData } from "../types/branding";
 import type {
   MiiflowChatConfig,
@@ -75,6 +75,7 @@ interface InternalMessage {
   suggestedActions?: Array<{ id: string; label: string; value: string }>;
   citations?: import("../types").SourceReference[];
   attachments?: import("../types").Attachment[];
+  pendingClarification?: ClarificationData;
 }
 
 type ChunkType =
@@ -84,7 +85,8 @@ type ChunkType =
   | "observation"
   | "planning"
   | "subtask"
-  | "progress";
+  | "progress"
+  | "clarification_needed";
 
 interface AccumulatedChunk {
   type: string;
@@ -94,6 +96,7 @@ interface AccumulatedChunk {
   status?: string;
   success?: boolean;
   subtaskId?: number;
+  clarificationData?: ClarificationData;
 }
 
 // ============================================================================
@@ -134,7 +137,8 @@ interface StreamParseCallbacks {
     finalId?: string,
     chunks?: StreamingChunk[],
     suggestedActions?: Array<{ id: string; label: string; value: string }>,
-    sources?: any[]
+    sources?: any[],
+    pendingClarification?: ClarificationData
   ) => void;
   onToolInvocation?: (invocation: ToolInvocationRequest) => void;
 }
@@ -152,6 +156,8 @@ async function parseSSEStream(
   let suggestedActions:
     | Array<{ id: string; label: string; value: string }>
     | undefined;
+  let pendingClarification: ClarificationData | undefined;
+  let receivedComplete = false;
 
   // Chunk accumulation state
   let currentChunkType: ChunkType = "answer";
@@ -394,8 +400,40 @@ async function parseSSEStream(
           }
 
           updateStreamingMessage();
+        } else if (parsed.type === "clarification_needed") {
+          // Agent is requesting user clarification
+          finalizeChunk();
+
+          const clarificationData: ClarificationData = {
+            question: parsed.question || "",
+            options: parsed.options || [],
+            context: parsed.context,
+            allowFreeText: parsed.allow_free_text !== false,
+            subtaskId: parsed.subtask_id,
+            subtaskDescription: parsed.subtask_description,
+            subagentName: parsed.subagent_name,
+            subagentRole: parsed.subagent_role,
+          };
+
+          // Add clarification chunk
+          chunks.push({
+            type: "clarification_needed",
+            content: clarificationData.question,
+            clarificationData,
+            subtaskId: parsed.subtask_id,
+          });
+
+          pendingClarification = clarificationData;
+
+          // Set as message body so user sees the question
+          if (!assistantContent) {
+            assistantContent = clarificationData.question;
+          }
+
+          updateStreamingMessage();
         } else if (parsed.type === "assistant_complete") {
           finalizeChunk();
+          receivedComplete = true;
 
           const finalContent =
             parsed.message?.text_content || assistantContent;
@@ -408,7 +446,8 @@ async function parseSSEStream(
             finalId,
             chunks as unknown as StreamingChunk[],
             suggestedActions,
-            sources
+            sources,
+            pendingClarification
           );
           assistantContent = finalContent;
           if (finalId) assistantMsgId = finalId;
@@ -423,13 +462,26 @@ async function parseSSEStream(
         } else if (parsed.type === "error") {
           throw new Error(parsed.error || "Stream error");
         } else if (parsed.type === "done") {
-          if (parsed.message_id && assistantMsgId) {
+          // Fallback: if stream ended without assistant_complete (e.g. clarification early return),
+          // finalize the message so the frontend still shows it properly
+          if (assistantMsgId && !receivedComplete) {
+            finalizeChunk();
+            callbacks.onComplete(
+              assistantMsgId,
+              assistantContent || "",
+              parsed.message_id,
+              chunks as unknown as StreamingChunk[],
+              suggestedActions,
+              undefined,
+              pendingClarification
+            );
+          } else if (parsed.message_id && assistantMsgId) {
             callbacks.onMessageUpdate({
               id: assistantMsgId,
               isStreaming: false,
             });
-            if (parsed.message_id) assistantMsgId = parsed.message_id;
           }
+          if (parsed.message_id) assistantMsgId = parsed.message_id;
           break;
         }
       } catch (e) {
@@ -798,7 +850,8 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
               finalId,
               chunks,
               suggestedActions,
-              sources
+              sources,
+              pendingClarification
             ) => {
               if (assistantMsgId) {
                 setMessages((prev) =>
@@ -812,6 +865,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
                           reasoning: chunks,
                           suggestedActions,
                           citations: sources,
+                          pendingClarification,
                         }
                       : msg
                   )
@@ -960,6 +1014,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         suggestedActions: msg.suggestedActions,
         citations: msg.citations,
         attachments: msg.attachments,
+        pendingClarification: msg.pendingClarification,
       })),
     [messages]
   );

@@ -152,7 +152,7 @@ function AttachmentBar({
               "relative flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs max-w-[200px]",
               isError
                 ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300",
+                : "bg-gray-100 dark:bg-zinc-700 text-gray-600 dark:text-zinc-300",
             )}
           >
             {isUploading ? (
@@ -173,7 +173,7 @@ function AttachmentBar({
               <button
                 type="button"
                 onClick={() => onRemove(att.id)}
-                className="flex-shrink-0 ml-0.5 p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="flex-shrink-0 ml-0.5 p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-600 transition-colors"
               >
                 <X size={12} />
               </button>
@@ -477,8 +477,8 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         ref={ref}
         className={cn(
           "sticky bottom-0 px-3 pt-2 pb-3",
-          "border-t border-gray-200 dark:border-gray-700",
-          "bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm",
+          "border-t border-gray-200 dark:border-zinc-700",
+          "bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm",
           className,
         )}
         onDragEnter={handleDragEnter}
@@ -490,11 +490,11 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
           className={cn(
             "mx-auto max-w-[900px]",
             "rounded-xl",
-            "bg-white dark:bg-gray-800",
-            "border border-gray-200 dark:border-gray-700",
+            "bg-white dark:bg-zinc-800",
+            "border border-gray-200 dark:border-zinc-700",
             "shadow-sm",
             "transition-all duration-200",
-            "focus-within:shadow-md focus-within:border-gray-300 dark:focus-within:border-gray-600",
+            "focus-within:shadow-md focus-within:border-gray-300 dark:focus-within:border-zinc-600",
             isDragOver && "ring-2 ring-blue-400 border-blue-400",
           )}
         >
@@ -527,9 +527,9 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                   "flex-shrink-0",
                   "w-8 h-8 rounded-lg",
                   "flex items-center justify-center",
-                  "border border-gray-200 dark:border-gray-600",
-                  "text-gray-500 dark:text-gray-400",
-                  "hover:bg-gray-50 dark:hover:bg-gray-700",
+                  "border border-gray-200 dark:border-zinc-600",
+                  "text-gray-500 dark:text-zinc-400",
+                  "hover:bg-gray-50 dark:hover:bg-zinc-700",
                   "disabled:opacity-40 disabled:cursor-not-allowed",
                   "transition-colors",
                 )}
@@ -548,7 +548,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                         className={cn(
                           "outline-none resize-none",
                           "min-h-[24px] max-h-[200px] overflow-y-auto",
-                          "text-gray-900 dark:text-gray-100",
+                          "text-gray-900 dark:text-zinc-100",
                           "[&_.editor-paragraph]:my-0",
                           "[&_.editor-quote]:ml-0 [&_.editor-quote]:pl-3 [&_.editor-quote]:border-l-4 [&_.editor-quote]:border-gray-300",
                           "[&_ul]:pl-4 [&_ol]:pl-4",
@@ -556,7 +556,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                       />
                     }
                     placeholder={
-                      <span className="absolute top-0 left-1 text-gray-400 dark:text-gray-500 pointer-events-none select-none">
+                      <span className="absolute top-0 left-1 text-gray-400 dark:text-zinc-500 pointer-events-none select-none">
                         {placeholder}
                       </span>
                     }
@@ -585,7 +585,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                 "shadow-sm",
                 "hover:bg-blue-600 hover:shadow-md hover:-translate-y-px",
                 "active:translate-y-0 active:shadow-sm",
-                "disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed",
+                "disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed",
                 "transition-all duration-200",
               )}
             >

@@ -1,6 +1,7 @@
 import { forwardRef, useContext, useMemo, useRef } from "react";
 import { MessageContent as MessageContentPrimitive, Message as MessagePrimitive } from "../primitives";
 import type {
+	ClarificationData,
 	MessageData,
 	ParticipantRole,
 	SourceReference,
@@ -12,6 +13,7 @@ import { cn } from "../utils/cn";
 import { ChatContext } from "../context/ChatProvider";
 import { Avatar } from "./Avatar";
 import { CitationSources } from "./CitationSources";
+import { ClarificationPanel } from "./ClarificationPanel";
 import { LoadingDots } from "./LoadingDots";
 import { MarkdownContent } from "./MarkdownContent";
 import { MessageAttachments } from "./MessageAttachments";
@@ -91,6 +93,10 @@ export interface MessageProps {
 	visualizations?: VisualizationChunkData[];
 	/** Base font size multiplier for markdown rendering */
 	baselineFontSize?: number;
+	/** Pending clarification data (agent needs user input) */
+	pendingClarification?: ClarificationData;
+	/** Callback when user responds to a clarification */
+	onClarificationSubmit?: (response: string) => void;
 }
 
 /**
@@ -117,6 +123,8 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			citations,
 			visualizations,
 			baselineFontSize,
+			pendingClarification,
+			onClarificationSubmit,
 		},
 		ref,
 	) => {
@@ -361,6 +369,16 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 									className="w-10 h-10 flex-shrink-0"
 								/>
 							</div>
+						</div>
+					)}
+
+					{/* Clarification panel - when agent needs user input */}
+					{pendingClarification && !isStreaming && onClarificationSubmit && (
+						<div className="w-full max-w-[80%]">
+							<ClarificationPanel
+								clarification={pendingClarification}
+								onSubmit={onClarificationSubmit}
+							/>
 						</div>
 					)}
 

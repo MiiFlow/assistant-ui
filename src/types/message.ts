@@ -61,6 +61,7 @@ export interface ChatMessage extends MessageData {
   suggestedActions?: SuggestedAction[];
   reasoning?: StreamingChunk[];
   citations?: import("./citation").SourceReference[];
+  pendingClarification?: import("./streaming").ClarificationData;
 }
 
 // Legacy type - kept for backwards compatibility
