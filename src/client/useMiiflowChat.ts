@@ -1040,7 +1040,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     () =>
       messages.map((msg) => ({
         id: msg.id,
-        textContent: msg.textContent?.replace(/\[ref:[\w]+\]/g, '') || msg.textContent,
+        textContent: msg.textContent?.replace(/\[ref:[^\]]+\]/g, '') || msg.textContent,
         participant: msg.participant,
         createdAt: msg.createdAt,
         isStreaming: msg.isStreaming,
