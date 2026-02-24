@@ -480,7 +480,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       <div
         ref={ref}
         className={cn(
-          "sticky bottom-0 px-3 pt-2 pb-3",
+          "flex-shrink-0 px-3 pt-2 pb-3",
           "border-t border-gray-200 dark:border-zinc-700",
           "bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm",
           className,

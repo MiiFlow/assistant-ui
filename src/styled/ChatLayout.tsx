@@ -29,7 +29,7 @@ export interface ChatLayoutProps {
 export const ChatLayout = forwardRef<HTMLDivElement, ChatLayoutProps>(
 	({ isEmpty, header, welcomeScreen, messageList, composer, footer, className }, ref) => {
 		return (
-			<div ref={ref} className={cn("relative h-full overflow-hidden flex flex-col", className)}>
+			<div ref={ref} className={cn("relative h-full overflow-hidden flex flex-col min-h-0", className)}>
 				<AnimatePresence mode="wait">
 					{isEmpty && welcomeScreen ? (
 						<motion.div
@@ -38,7 +38,7 @@ export const ChatLayout = forwardRef<HTMLDivElement, ChatLayoutProps>(
 							animate={{ opacity: 1 }}
 							exit={{ opacity: 0 }}
 							transition={{ duration: 0.3 }}
-							className="flex-1 flex flex-col overflow-hidden">
+							className="flex-1 flex flex-col overflow-hidden min-h-0">
 							{header}
 							{welcomeScreen}
 						</motion.div>
@@ -49,7 +49,7 @@ export const ChatLayout = forwardRef<HTMLDivElement, ChatLayoutProps>(
 							animate={{ opacity: 1 }}
 							exit={{ opacity: 0 }}
 							transition={{ duration: 0.4 }}
-							className="flex-1 flex flex-col overflow-hidden">
+							className="flex-1 flex flex-col overflow-hidden min-h-0">
 							{header}
 
 							{/* Message list */}
@@ -57,7 +57,7 @@ export const ChatLayout = forwardRef<HTMLDivElement, ChatLayoutProps>(
 								initial={{ opacity: 0, y: -20 }}
 								animate={{ opacity: 1, y: 0 }}
 								transition={{ duration: 0.4, delay: 0.1 }}
-								className="flex-1 overflow-hidden flex flex-col">
+								className="flex-1 overflow-hidden flex flex-col min-h-0">
 								{messageList}
 							</motion.div>
 
