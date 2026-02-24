@@ -60,10 +60,14 @@ const ALLOWED_IMAGE_TYPES = [
 const ALLOWED_DOCUMENT_TYPES = [
   "application/pdf",
   "text/plain",
+  "text/csv",
+  "text/markdown",
   "application/json",
   "text/json",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
 const ALLOWED_VIDEO_TYPES = [
   "video/mp4",
