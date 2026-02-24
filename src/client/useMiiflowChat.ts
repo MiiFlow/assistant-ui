@@ -949,6 +949,12 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
       config: { ...currentSession.config, thread_id: result.threadId },
       token: result.token || currentSession.token,
     };
+    // Update ref synchronously so that any calls made immediately after
+    // startNewThread (e.g. registerTools) use the new session/token.
+    // setSession alone is async (React batches state updates) and won't
+    // update sessionRef until the next render, causing a race condition
+    // where tools get registered on the OLD thread.
+    sessionRef.current = updatedSession;
     setSession(updatedSession);
     setMessages([]);
 
@@ -991,14 +997,42 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     [] // stable — reads sessionRef
   );
 
-  // Register multiple tools
+  // Register multiple tools — sends all definitions in a single batch request
+  // (matching old MUI implementation behavior). Falls back to one-by-one if
+  // only one tool is provided.
   const registerTools = useCallback(
     async (tools: ClientToolDefinition[]): Promise<void> => {
+      const currentSession = sessionRef.current;
+      if (!currentSession) throw new Error("Not initialized");
+
+      // Validate all tools first before making any changes
       for (const tool of tools) {
-        await registerTool(tool);
+        validateToolDefinition(tool);
+      }
+
+      // Store handlers and definitions locally
+      const previousHandlers = new Map(toolHandlersRef.current);
+      const previousDefinitions = new Map(toolDefinitionsRef.current);
+
+      const serializedTools: Array<Omit<ClientToolDefinition, "handler">> = [];
+      for (const tool of tools) {
+        toolHandlersRef.current.set(tool.name, tool.handler);
+        const serialized = serializeToolDefinition(tool);
+        toolDefinitionsRef.current.set(tool.name, serialized);
+        serializedTools.push(serialized);
+      }
+
+      try {
+        // Send all tool definitions in one batch request
+        await registerToolsOnBackend(configRef.current, currentSession, serializedTools);
+      } catch (err) {
+        // Rollback all handlers and definitions on failure
+        toolHandlersRef.current = previousHandlers;
+        toolDefinitionsRef.current = previousDefinitions;
+        throw err;
       }
     },
-    [registerTool]
+    [] // stable — reads sessionRef
   );
 
   // Convert internal messages to ChatMessage format
