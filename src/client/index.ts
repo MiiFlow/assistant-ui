@@ -1,4 +1,4 @@
-// @miiflow/chat-ui/client - Transport layer for Miiflow embedded chat
+// @miiflow/assistant-ui/client - Transport layer for Miiflow embedded chat
 
 // Main hook
 export { useMiiflowChat } from "./useMiiflowChat";
