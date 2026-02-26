@@ -117,7 +117,7 @@ export function MarkdownContent({
           const text = String(children);
           const id = slugify(text);
           return (
-            <h1 id={id} className="group text-2xl font-semibold mt-4 mb-2 first:mt-0" style={fontStyle}>
+            <h1 id={id} className="group text-xl font-semibold mt-4 mb-2 first:mt-0" style={fontStyle}>
               {children}
               <a href={`#${id}`} className="ml-2 opacity-0 group-hover:opacity-50 transition-opacity" aria-label="Link to heading">
                 <LinkIcon size={16} className="inline" />
@@ -129,7 +129,7 @@ export function MarkdownContent({
           const text = String(children);
           const id = slugify(text);
           return (
-            <h2 id={id} className="group text-xl font-semibold mt-3 mb-2 first:mt-0" style={fontStyle}>
+            <h2 id={id} className="group text-lg font-semibold mt-3 mb-2 first:mt-0" style={fontStyle}>
               {children}
               <a href={`#${id}`} className="ml-2 opacity-0 group-hover:opacity-50 transition-opacity" aria-label="Link to heading">
                 <LinkIcon size={14} className="inline" />
@@ -141,7 +141,7 @@ export function MarkdownContent({
           const text = String(children);
           const id = slugify(text);
           return (
-            <h3 id={id} className="group text-lg font-medium mt-2 mb-1 first:mt-0" style={fontStyle}>
+            <h3 id={id} className="group text-base font-medium mt-2 mb-1 first:mt-0" style={fontStyle}>
               {children}
               <a href={`#${id}`} className="ml-2 opacity-0 group-hover:opacity-50 transition-opacity" aria-label="Link to heading">
                 <LinkIcon size={12} className="inline" />

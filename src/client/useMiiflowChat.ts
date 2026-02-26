@@ -6,7 +6,19 @@
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import type { ChatMessage, ParticipantRole, StreamingChunk, ClarificationData } from "../types";
+import type {
+  ChatMessage,
+  ParticipantRole,
+  StreamingChunk,
+  ClarificationData,
+  ProgressData,
+  FileOperationChunkData,
+  TerminalChunkData,
+  SearchResultsChunkData,
+  WebOperationChunkData,
+  SubagentChunkData,
+  ClaudeToolChunkData,
+} from "../types";
 import type { BrandingData } from "../types/branding";
 import type {
   MiiflowChatConfig,
@@ -86,7 +98,21 @@ type ChunkType =
   | "planning"
   | "subtask"
   | "progress"
-  | "clarification_needed";
+  | "clarification_needed"
+  // Multi-Agent
+  | "multi_agent_planning"
+  | "subagent_start"
+  | "subagent_complete"
+  | "subagent_failed"
+  | "synthesis"
+  // Claude SDK
+  | "claude_text"
+  | "claude_thinking"
+  | "subagent"
+  | "file_operation"
+  | "terminal"
+  | "search_results"
+  | "web_operation";
 
 interface AccumulatedChunk {
   type: string;
@@ -97,6 +123,35 @@ interface AccumulatedChunk {
   success?: boolean;
   subtaskId?: number;
   clarificationData?: ClarificationData;
+  // Plan & Execute metadata
+  planData?: import("../types").PlanData;
+  subtaskData?: import("../types").SubTaskData;
+  isSynthesis?: boolean;
+  isReplan?: boolean;
+  // Parallel plan fields
+  waveData?: import("../types").WaveData;
+  parallelSubtaskData?: import("../types").ParallelSubtaskData;
+  waveNumber?: number;
+  isParallel?: boolean;
+  // Multi-Agent fields
+  isMultiAgent?: boolean;
+  subagentInfo?: import("../types").SubagentInfo;
+  subagentAllocations?: { name: string; focus: string; query?: string }[];
+  // Missing data fields (Gap C)
+  toolArgs?: Record<string, unknown>;
+  replanAttempt?: number;
+  maxReplans?: number;
+  failureReason?: string;
+  progress?: ProgressData;
+  // Claude SDK fields
+  orchestrator?: string;
+  toolUseId?: string;
+  subagentData?: SubagentChunkData;
+  fileOperationData?: FileOperationChunkData;
+  terminalData?: TerminalChunkData;
+  searchResultsData?: SearchResultsChunkData;
+  webOperationData?: WebOperationChunkData;
+  claudeToolData?: ClaudeToolChunkData;
 }
 
 // ============================================================================
@@ -167,6 +222,19 @@ async function parseSSEStream(
   let currentSuccess: boolean | undefined;
   let currentToolStatus: "planned" | "executing" | "completed" | undefined;
   let currentSubtaskId: number | undefined;
+  // Plan & Execute metadata (preserved through finalizeChunk)
+  let currentPlanData: import("../types").PlanData | undefined;
+  let currentSubtaskData: import("../types").SubTaskData | undefined;
+  let currentIsSynthesis: boolean | undefined;
+  let currentIsReplan: boolean | undefined;
+  // Missing data fields (Gap C)
+  let currentToolArgs: Record<string, unknown> | undefined;
+  let currentReplanAttempt: number | undefined;
+  let currentMaxReplans: number | undefined;
+  let currentFailureReason: string | undefined;
+  let currentProgress: ProgressData | undefined;
+  // Multi-agent tracking
+  let isMultiAgentMode = false;
 
   let lineBuffer = "";
 
@@ -182,6 +250,15 @@ async function parseSSEStream(
         success: currentSuccess,
         status: currentToolStatus,
         subtaskId: currentSubtaskId,
+        planData: currentPlanData,
+        subtaskData: currentSubtaskData,
+        isSynthesis: currentIsSynthesis,
+        isReplan: currentIsReplan,
+        toolArgs: currentToolArgs,
+        replanAttempt: currentReplanAttempt,
+        maxReplans: currentMaxReplans,
+        failureReason: currentFailureReason,
+        progress: currentProgress,
       });
       currentChunkContent = "";
       currentToolName = undefined;
@@ -189,6 +266,15 @@ async function parseSSEStream(
       currentSuccess = undefined;
       currentToolStatus = undefined;
       currentSubtaskId = undefined;
+      currentPlanData = undefined;
+      currentSubtaskData = undefined;
+      currentIsSynthesis = undefined;
+      currentIsReplan = undefined;
+      currentToolArgs = undefined;
+      currentReplanAttempt = undefined;
+      currentMaxReplans = undefined;
+      currentFailureReason = undefined;
+      currentProgress = undefined;
     }
   };
 
@@ -203,6 +289,15 @@ async function parseSSEStream(
         success: currentSuccess,
         status: currentToolStatus as StreamingChunk["status"],
         subtaskId: currentSubtaskId,
+        planData: currentPlanData,
+        subtaskData: currentSubtaskData,
+        isSynthesis: currentIsSynthesis,
+        isReplan: currentIsReplan,
+        toolArgs: currentToolArgs,
+        replanAttempt: currentReplanAttempt,
+        maxReplans: currentMaxReplans,
+        failureReason: currentFailureReason,
+        progress: currentProgress,
       });
     }
     return display;
@@ -331,6 +426,271 @@ async function parseSSEStream(
             continue;
           }
 
+          // Handle wave/parallel execution events
+          if (parsed.is_wave_start) {
+            if (currentChunkContent || currentChunkType !== "answer") {
+              finalizeChunk();
+              currentChunkType = "answer";
+            }
+            chunks.push({
+              type: "wave_start",
+              content: "",
+              waveNumber: parsed.wave_number,
+              isParallel: true,
+              waveData: {
+                waveNumber: parsed.wave_number,
+                subtaskIds: parsed.subtask_ids || [],
+                parallelCount: parsed.parallel_count || 0,
+                totalWaves: parsed.total_waves || 1,
+              },
+            } as unknown as AccumulatedChunk);
+            updateStreamingMessage();
+            continue;
+          }
+
+          if (parsed.is_wave_complete) {
+            chunks.push({
+              type: "wave_complete",
+              content: "",
+              waveNumber: parsed.wave_number,
+              isParallel: true,
+              waveData: {
+                waveNumber: parsed.wave_number,
+                subtaskIds: [],
+                parallelCount: 0,
+                totalWaves: 0,
+                completedIds: parsed.completed_ids || [],
+                success: parsed.success,
+                executionTime: parsed.execution_time,
+              },
+            } as unknown as AccumulatedChunk);
+            updateStreamingMessage();
+            continue;
+          }
+
+          if (parsed.is_parallel_subtask_start) {
+            chunks.push({
+              type: "parallel_subtask_start",
+              content: "",
+              subtaskId: parsed.subtask_id,
+              waveNumber: parsed.wave_number,
+              isParallel: true,
+              parallelSubtaskData: {
+                subtaskId: parsed.subtask_id,
+                waveNumber: parsed.wave_number,
+                description: parsed.description,
+              },
+            } as unknown as AccumulatedChunk);
+            updateStreamingMessage();
+            continue;
+          }
+
+          if (parsed.is_parallel_subtask_complete) {
+            chunks.push({
+              type: "parallel_subtask_complete",
+              content: "",
+              subtaskId: parsed.subtask_id,
+              waveNumber: parsed.wave_number,
+              isParallel: true,
+              success: parsed.success,
+              parallelSubtaskData: {
+                subtaskId: parsed.subtask_id,
+                waveNumber: parsed.wave_number,
+                success: parsed.success,
+                result: parsed.result,
+                error: parsed.error,
+                executionTime: parsed.execution_time,
+              },
+            } as unknown as AccumulatedChunk);
+            updateStreamingMessage();
+            continue;
+          }
+
+          // ============================================
+          // Multi-Agent Event Handlers (miiflow-llm orchestrator)
+          // ============================================
+
+          if (parsed.is_multi_agent_planning) {
+            isMultiAgentMode = true;
+            if (currentChunkContent || currentChunkType !== "answer") {
+              finalizeChunk();
+              currentChunkType = "answer";
+            }
+            chunks.push({
+              type: "multi_agent_planning",
+              content: "",
+              isMultiAgent: true,
+            } as AccumulatedChunk);
+            updateStreamingMessage();
+            continue;
+          }
+
+          if (parsed.is_reasoning && parsed.reasoning_delta) {
+            // Multi-agent planning reasoning — accumulate into a thinking chunk
+            const existingIdx = chunks.findIndex(
+              (c) => c.type === "thinking" && c.isMultiAgent
+            );
+            if (existingIdx >= 0) {
+              chunks[existingIdx] = {
+                ...chunks[existingIdx],
+                content: (chunks[existingIdx].content || "") + parsed.reasoning_delta,
+              };
+            } else {
+              chunks.push({
+                type: "thinking",
+                content: parsed.reasoning_delta,
+                isMultiAgent: true,
+              } as AccumulatedChunk);
+            }
+            updateStreamingMessage();
+            continue;
+          }
+
+          if (parsed.is_multi_agent_planning_complete) {
+            // Update existing multi_agent_planning chunk with subagent allocations
+            const planningIdx = chunks.findIndex(
+              (c) => c.type === "multi_agent_planning" && c.isMultiAgent
+            );
+            if (planningIdx >= 0) {
+              chunks[planningIdx] = {
+                ...chunks[planningIdx],
+                subagentAllocations: parsed.subagents || [],
+              };
+            } else {
+              chunks.push({
+                type: "multi_agent_planning",
+                content: "",
+                isMultiAgent: true,
+                subagentAllocations: parsed.subagents || [],
+              } as AccumulatedChunk);
+            }
+            updateStreamingMessage();
+            continue;
+          }
+
+          if (parsed.is_multi_agent_execution_start) {
+            // No UI update needed — subagent_start events follow
+            continue;
+          }
+
+          if (parsed.is_subagent_start) {
+            chunks.push({
+              type: "subagent_start",
+              content: "",
+              isMultiAgent: true,
+              subagentInfo: {
+                id: parsed.subagent_id,
+                name: parsed.subagent_name,
+                task: parsed.task,
+                status: "running",
+              },
+            } as AccumulatedChunk);
+            updateStreamingMessage();
+            continue;
+          }
+
+          if (parsed.is_subagent_progress) {
+            // Update existing subagent chunk with progress
+            const subagentIndex = chunks.findIndex(
+              (c) =>
+                c.type === "subagent_start" &&
+                c.subagentInfo?.id === parsed.subagent_id
+            );
+            if (subagentIndex !== -1 && chunks[subagentIndex].subagentInfo) {
+              chunks[subagentIndex] = {
+                ...chunks[subagentIndex],
+                content: parsed.progress || "",
+              };
+            }
+            updateStreamingMessage();
+            continue;
+          }
+
+          if (parsed.is_subagent_complete) {
+            chunks.push({
+              type: "subagent_complete",
+              content: "",
+              isMultiAgent: true,
+              subagentInfo: {
+                id: parsed.subagent_id,
+                name: parsed.subagent_name,
+                status: "completed",
+                result: parsed.result,
+                executionTime: parsed.execution_time,
+              },
+            } as AccumulatedChunk);
+            updateStreamingMessage();
+            continue;
+          }
+
+          if (parsed.is_subagent_failed) {
+            chunks.push({
+              type: "subagent_failed",
+              content: "",
+              isMultiAgent: true,
+              subagentInfo: {
+                id: parsed.subagent_id,
+                name: parsed.subagent_name,
+                status: "failed",
+                error: parsed.error,
+              },
+            } as AccumulatedChunk);
+            updateStreamingMessage();
+            continue;
+          }
+
+          // Multi-agent synthesis (standalone) — creates synthesis chunk
+          if (parsed.is_synthesis_start && isMultiAgentMode) {
+            chunks.push({
+              type: "synthesis",
+              content: "",
+              isMultiAgent: true,
+              isSynthesis: true,
+            } as AccumulatedChunk);
+            updateStreamingMessage();
+            continue;
+          }
+
+          // Extract plan_data metadata when present
+          if (parsed.plan_data) {
+            const backendPlan = parsed.plan_data;
+            currentPlanData = {
+              goal: backendPlan.goal || "",
+              reasoning: backendPlan.reasoning || "",
+              subtasks: (backendPlan.subtasks || []).map((st: any) => ({
+                id: Number(st.id),
+                description: st.description,
+                required_tools: st.required_tools,
+                dependencies: st.dependencies,
+                status: "pending" as const,
+              })),
+              total_subtasks: backendPlan.subtasks?.length || 0,
+              completed_subtasks: 0,
+              failed_subtasks: 0,
+              progress_percentage: 0,
+            };
+          }
+
+          // Extract subtask_data metadata when present
+          if (parsed.subtask_data) {
+            currentSubtaskData = parsed.subtask_data;
+          }
+
+          // Track synthesis and replan flags
+          if (parsed.is_synthesis_start) {
+            currentIsSynthesis = true;
+          }
+          if (parsed.is_replan) {
+            currentIsReplan = true;
+          }
+
+          // Track missing data fields (Gap C)
+          if (parsed.tool_args) currentToolArgs = parsed.tool_args;
+          if (parsed.replan_attempt !== undefined) currentReplanAttempt = parsed.replan_attempt;
+          if (parsed.max_replans !== undefined) currentMaxReplans = parsed.max_replans;
+          if (parsed.failure_reason) currentFailureReason = parsed.failure_reason;
+          if (parsed.progress) currentProgress = parsed.progress;
+
           // Determine chunk type
           let newChunkType: ChunkType = "answer";
           if (parsed.is_thinking) {
@@ -338,8 +698,7 @@ async function parseSSEStream(
           } else if (
             parsed.is_planning ||
             parsed.is_plan_complete ||
-            parsed.is_replanning ||
-            parsed.is_synthesis_start
+            parsed.is_replanning
           ) {
             newChunkType = "planning";
           } else if (
@@ -399,6 +758,297 @@ async function parseSSEStream(
             );
           }
 
+          updateStreamingMessage();
+        }
+        // ============================================
+        // Claude SDK Native Event Handlers (Gap B)
+        // ============================================
+        else if (parsed.type === "claude_text") {
+          // Claude SDK text chunk — accumulate into assistant content
+          assistantContent += parsed.chunk || "";
+
+          const existingTextChunk = chunks.find(
+            (c) => c.type === "claude_text"
+          );
+          if (existingTextChunk) {
+            existingTextChunk.content += parsed.chunk || "";
+          } else {
+            chunks.push({
+              type: "claude_text",
+              content: parsed.chunk || "",
+              orchestrator: "claude_agent_sdk",
+            } as AccumulatedChunk);
+          }
+          updateStreamingMessage();
+        } else if (parsed.type === "claude_thinking") {
+          // Claude SDK extended thinking
+          chunks.push({
+            type: "claude_thinking",
+            content: parsed.content || "",
+            orchestrator: "claude_agent_sdk",
+          } as AccumulatedChunk);
+          updateStreamingMessage();
+        } else if (parsed.type === "claude_file_read") {
+          const fileOpData: FileOperationChunkData = {
+            toolUseId: parsed.tool_use_id,
+            operation: "read",
+            filePath: parsed.file_path,
+            status: parsed.status,
+            content: parsed.content,
+            totalLines: parsed.total_lines,
+            language: parsed.language,
+            error: parsed.error,
+            durationMs: parsed.duration_ms,
+          };
+          const existingIdx = chunks.findIndex(
+            (c) =>
+              c.type === "file_operation" &&
+              c.toolUseId === parsed.tool_use_id
+          );
+          if (existingIdx >= 0) {
+            chunks[existingIdx].fileOperationData = fileOpData;
+          } else {
+            chunks.push({
+              type: "file_operation",
+              content: "",
+              toolUseId: parsed.tool_use_id,
+              fileOperationData: fileOpData,
+              orchestrator: "claude_agent_sdk",
+            } as AccumulatedChunk);
+          }
+          updateStreamingMessage();
+        } else if (parsed.type === "claude_file_edit") {
+          const fileEditData: FileOperationChunkData = {
+            toolUseId: parsed.tool_use_id,
+            operation: "edit",
+            filePath: parsed.file_path,
+            status: parsed.status,
+            oldString: parsed.old_string,
+            newString: parsed.new_string,
+            error: parsed.error,
+            durationMs: parsed.duration_ms,
+          };
+          const existingIdx = chunks.findIndex(
+            (c) =>
+              c.type === "file_operation" &&
+              c.toolUseId === parsed.tool_use_id
+          );
+          if (existingIdx >= 0) {
+            chunks[existingIdx].fileOperationData = fileEditData;
+          } else {
+            chunks.push({
+              type: "file_operation",
+              content: "",
+              toolUseId: parsed.tool_use_id,
+              fileOperationData: fileEditData,
+              orchestrator: "claude_agent_sdk",
+            } as AccumulatedChunk);
+          }
+          updateStreamingMessage();
+        } else if (parsed.type === "claude_file_write") {
+          const fileWriteData: FileOperationChunkData = {
+            toolUseId: parsed.tool_use_id,
+            operation: "write",
+            filePath: parsed.file_path,
+            status: parsed.status,
+            error: parsed.error,
+            durationMs: parsed.duration_ms,
+          };
+          const existingIdx = chunks.findIndex(
+            (c) =>
+              c.type === "file_operation" &&
+              c.toolUseId === parsed.tool_use_id
+          );
+          if (existingIdx >= 0) {
+            chunks[existingIdx].fileOperationData = fileWriteData;
+          } else {
+            chunks.push({
+              type: "file_operation",
+              content: "",
+              toolUseId: parsed.tool_use_id,
+              fileOperationData: fileWriteData,
+              orchestrator: "claude_agent_sdk",
+            } as AccumulatedChunk);
+          }
+          updateStreamingMessage();
+        } else if (parsed.type === "claude_bash") {
+          const termData: TerminalChunkData = {
+            toolUseId: parsed.tool_use_id,
+            command: parsed.command,
+            description: parsed.description,
+            status: parsed.status,
+            stdout: parsed.stdout,
+            stderr: parsed.stderr,
+            exitCode: parsed.exit_code,
+            durationMs: parsed.duration_ms,
+          };
+          const existingIdx = chunks.findIndex(
+            (c) =>
+              c.type === "terminal" && c.toolUseId === parsed.tool_use_id
+          );
+          if (existingIdx >= 0) {
+            chunks[existingIdx].terminalData = termData;
+          } else {
+            chunks.push({
+              type: "terminal",
+              content: "",
+              toolUseId: parsed.tool_use_id,
+              terminalData: termData,
+              orchestrator: "claude_agent_sdk",
+            } as AccumulatedChunk);
+          }
+          updateStreamingMessage();
+        } else if (parsed.type === "claude_search") {
+          const searchData: SearchResultsChunkData = {
+            toolUseId: parsed.tool_use_id,
+            tool: parsed.tool,
+            pattern: parsed.pattern,
+            path: parsed.path,
+            status: parsed.status,
+            results: (parsed.results || []).map((r: any) => ({
+              filePath: r.file_path,
+              lineNumber: r.line_number,
+              snippet: r.snippet,
+            })),
+            totalCount: parsed.total_count || 0,
+            error: parsed.error,
+            durationMs: parsed.duration_ms,
+          };
+          const existingIdx = chunks.findIndex(
+            (c) =>
+              c.type === "search_results" &&
+              c.toolUseId === parsed.tool_use_id
+          );
+          if (existingIdx >= 0) {
+            chunks[existingIdx].searchResultsData = searchData;
+          } else {
+            chunks.push({
+              type: "search_results",
+              content: "",
+              toolUseId: parsed.tool_use_id,
+              searchResultsData: searchData,
+              orchestrator: "claude_agent_sdk",
+            } as AccumulatedChunk);
+          }
+          updateStreamingMessage();
+        } else if (
+          parsed.type === "claude_web_search" ||
+          parsed.type === "claude_web_fetch"
+        ) {
+          const webOpData: WebOperationChunkData = {
+            toolUseId: parsed.tool_use_id,
+            operation:
+              parsed.type === "claude_web_search" ? "search" : "fetch",
+            query: parsed.query,
+            url: parsed.url,
+            status: parsed.status,
+            results: parsed.results,
+            content: parsed.content,
+            error: parsed.error,
+            durationMs: parsed.duration_ms,
+          };
+          const existingIdx = chunks.findIndex(
+            (c) =>
+              c.type === "web_operation" &&
+              c.toolUseId === parsed.tool_use_id
+          );
+          if (existingIdx >= 0) {
+            chunks[existingIdx].webOperationData = webOpData;
+          } else {
+            chunks.push({
+              type: "web_operation",
+              content: "",
+              toolUseId: parsed.tool_use_id,
+              webOperationData: webOpData,
+              orchestrator: "claude_agent_sdk",
+            } as AccumulatedChunk);
+          }
+          updateStreamingMessage();
+        } else if (parsed.type === "claude_subagent_start") {
+          const subData: SubagentChunkData = {
+            subagentId: parsed.subagent_id,
+            subagentType: parsed.subagent_type,
+            description: parsed.description,
+            prompt: parsed.prompt,
+            status: "running",
+            nestedChunks: [],
+          };
+          chunks.push({
+            type: "subagent",
+            content: "",
+            toolUseId: parsed.parent_tool_use_id,
+            subagentData: subData,
+            orchestrator: "claude_agent_sdk",
+          } as AccumulatedChunk);
+          updateStreamingMessage();
+        } else if (parsed.type === "claude_subagent_chunk") {
+          // Append to existing subagent's nested chunks
+          const subagentIdx = chunks.findIndex(
+            (c) =>
+              c.type === "subagent" &&
+              c.subagentData?.subagentId === parsed.subagent_id
+          );
+          if (subagentIdx >= 0 && chunks[subagentIdx].subagentData) {
+            chunks[subagentIdx].subagentData!.nestedChunks.push({
+              type: parsed.is_tool ? "tool" : "answer",
+              content: parsed.chunk || "",
+              toolName: parsed.tool_name,
+              orchestrator: "claude_agent_sdk",
+            } as unknown as StreamingChunk);
+          }
+          updateStreamingMessage();
+        } else if (parsed.type === "claude_subagent_complete") {
+          // Update existing subagent chunk with completion info
+          const subagentIdx = chunks.findIndex(
+            (c) =>
+              c.type === "subagent" &&
+              c.subagentData?.subagentId === parsed.subagent_id
+          );
+          if (subagentIdx >= 0 && chunks[subagentIdx].subagentData) {
+            chunks[subagentIdx].subagentData!.status = "completed";
+            chunks[subagentIdx].subagentData!.result = parsed.result;
+            chunks[subagentIdx].subagentData!.durationMs =
+              parsed.duration_ms;
+          }
+          updateStreamingMessage();
+        } else if (
+          parsed.type === "claude_tool_use" ||
+          parsed.type === "claude_tool_result"
+        ) {
+          // Generic Claude tool (MCP tools, etc.)
+          const claudeToolData: ClaudeToolChunkData = {
+            toolUseId: parsed.tool_use_id,
+            toolName: parsed.tool_name,
+            toolDescription: parsed.tool_description,
+            toolInput: parsed.tool_input,
+            status:
+              parsed.type === "claude_tool_use"
+                ? "pending"
+                : parsed.is_error
+                  ? "error"
+                  : "completed",
+            content: parsed.content,
+            isError: parsed.is_error,
+            durationMs: parsed.duration_ms,
+          };
+          const existingIdx = chunks.findIndex(
+            (c) => c.claudeToolData?.toolUseId === parsed.tool_use_id
+          );
+          if (existingIdx >= 0) {
+            chunks[existingIdx].claudeToolData = claudeToolData;
+          } else {
+            chunks.push({
+              type: "tool",
+              content: parsed.content || "",
+              toolUseId: parsed.tool_use_id,
+              toolName: parsed.tool_name,
+              toolDescription: parsed.tool_description,
+              status:
+                claudeToolData.status === "pending" ? "planned" : "completed",
+              claudeToolData,
+              orchestrator: "claude_agent_sdk",
+            } as AccumulatedChunk);
+          }
           updateStreamingMessage();
         } else if (parsed.type === "clarification_needed") {
           // Agent is requesting user clarification
@@ -600,6 +1250,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
       if (!currentSession) throw new Error("Not initialized");
 
       const { invocation_id, tool_name, parameters } = invocation;
+      console.log(`[Miiflow] Tool invocation received: "${tool_name}" (id: ${invocation_id})`);
       const handler = toolHandlersRef.current.get(tool_name);
 
       if (!handler) {
@@ -618,10 +1269,12 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           ),
         ]);
 
+        console.log(`[Miiflow] Tool "${tool_name}" executed successfully (id: ${invocation_id})`);
         await sendToolResult(configRef.current, currentSession, {
           invocation_id,
           result,
         });
+        console.log(`[Miiflow] Tool result sent for "${tool_name}" (id: ${invocation_id})`);
         return true;
       } catch (error) {
         console.error(
@@ -672,11 +1325,16 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         try {
           const data = JSON.parse(event.data);
           if (data.type === "client_tool_invocation" && data.invocation) {
-            handleToolInvocation(data.invocation).then((handled) => {
+            handleToolInvocation(data.invocation).then(async (handled) => {
               if (!handled) {
                 const fallback = configRef.current.onToolInvocationFallback;
-                if (fallback) {
-                  fallback(data.invocation).catch(console.error);
+                const fallbackHandled = fallback ? await fallback(data.invocation) : false;
+                if (!fallbackHandled) {
+                  // Send error back to backend so it doesn't hang waiting for result
+                  sendToolResult(configRef.current, currentSession, {
+                    invocation_id: data.invocation.invocation_id,
+                    error: `No handler found for tool '${data.invocation.tool_name}'`,
+                  }).catch(console.error);
                 }
               }
             }).catch(console.error);
@@ -944,6 +1602,9 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     if (!currentSession) throw new Error("Not initialized");
 
     const result = await createThread(configRef.current, currentSession);
+    if (!result.token) {
+      console.warn("[Miiflow] CreateThread did not return new token — tools may register to wrong thread");
+    }
     const updatedSession: EmbedSession = {
       ...currentSession,
       config: { ...currentSession.config, thread_id: result.threadId },
@@ -960,6 +1621,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
 
     // Re-register tools on new thread
     if (toolDefinitionsRef.current.size > 0) {
+      console.log(`[Miiflow] Re-registering ${toolDefinitionsRef.current.size} tools on new thread`);
       try {
         await registerToolsOnBackend(
           configRef.current,
@@ -988,6 +1650,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
 
       try {
         await registerToolsOnBackend(configRef.current, currentSession, [serialized]);
+        console.log(`[Miiflow] Tool registered: "${tool.name}"`);
       } catch (err) {
         toolHandlersRef.current.delete(tool.name);
         toolDefinitionsRef.current.delete(tool.name);
@@ -1025,6 +1688,8 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
       try {
         // Send all tool definitions in one batch request
         await registerToolsOnBackend(configRef.current, currentSession, serializedTools);
+        const toolNames = tools.map(t => t.name);
+        console.log(`[Miiflow] Tools registered: ${JSON.stringify(toolNames)} (${tools.length} tools)`);
       } catch (err) {
         // Rollback all handlers and definitions on failure
         toolHandlersRef.current = previousHandlers;

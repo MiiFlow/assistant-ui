@@ -17,24 +17,31 @@ import type { StreamingChunk, PlanData, Event, SubagentInfo } from "../types";
 /**
  * Hook for live duration counter
  */
-function useLiveStreamDuration(isStreaming: boolean): string {
+function useLiveStreamDuration(isStreaming: boolean): { display: string; finalSeconds: number } {
   const startTimeRef = useRef<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const finalSecondsRef = useRef(0);
 
   useEffect(() => {
     if (isStreaming) {
       if (startTimeRef.current === null) startTimeRef.current = Date.now();
       const interval = setInterval(() => {
-        if (startTimeRef.current !== null) setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+        if (startTimeRef.current !== null) {
+          const secs = Math.floor((Date.now() - startTimeRef.current) / 1000);
+          setElapsed(secs);
+          finalSecondsRef.current = secs;
+        }
       }, 1000);
       return () => clearInterval(interval);
-    } else {
+    } else if (startTimeRef.current !== null) {
+      // Streaming just ended — capture final elapsed time
+      finalSecondsRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      setElapsed(finalSecondsRef.current);
       startTimeRef.current = null;
-      setElapsed(0);
     }
   }, [isStreaming]);
 
-  return `${elapsed}`;
+  return { display: `${elapsed}`, finalSeconds: finalSecondsRef.current };
 }
 
 function hasClaudeSdkChunks(chunks: StreamingChunk[]): boolean {
@@ -255,7 +262,7 @@ export function ReasoningPanel({
   className,
 }: ReasoningPanelProps) {
   const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
-  const liveElapsed = useLiveStreamDuration(isStreaming);
+  const { display: liveElapsed, finalSeconds: wallClockSeconds } = useLiveStreamDuration(isStreaming);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { injectBeamerKeyframes(containerRef.current); }, []);
@@ -383,7 +390,13 @@ export function ReasoningPanel({
 
   // Mode-specific label
   const getLabel = () => {
-    if (!isStreaming && totalExecutionTime > 0) return `Thought for ${formatDuration(totalExecutionTime)}`;
+    if (!isStreaming) {
+      if (totalExecutionTime > 0) return `Thought for ${formatDuration(totalExecutionTime)}`;
+      // Fallback: use wall-clock elapsed time tracked by the component
+      if (wallClockSeconds > 0) return `Thought for ${formatDuration(wallClockSeconds)}`;
+      if (chunks.length > 0) return "Thought for a few seconds";
+      return "Thought for a few seconds";
+    }
 
     // Multi-agent mode
     if (isMultiAgentMode && multiAgentStatus) {
@@ -439,7 +452,13 @@ export function ReasoningPanel({
       case "thinking": return "Thinking...";
       case "tool": return lastChunk.toolName || "Using tool...";
       case "subtask": return `Executing subtask ${lastChunk.subtaskId || ""}...`;
-      default: return "Processing...";
+      case "observation": return "Analyzing results...";
+      case "progress": return "Working...";
+      case "wave_start": return `Starting parallel execution...`;
+      case "wave_complete": return "Parallel wave complete";
+      case "parallel_subtask_start": return `Running parallel subtask...`;
+      case "parallel_subtask_complete": return "Parallel subtask complete";
+      default: return "Thinking...";
     }
   };
 

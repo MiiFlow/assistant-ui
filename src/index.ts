@@ -84,6 +84,7 @@ export {
 // Utilities
 export { cn } from "./utils/cn";
 export { formatMessageTime, formatRelativeTime } from "./utils/format-date";
+export { getContrastTextColor } from "./utils/color-contrast";
 
 // Design tokens
 export { chatTokens, type ChatTokens } from "./styles/tokens";

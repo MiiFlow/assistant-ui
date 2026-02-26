@@ -293,6 +293,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 								chunks={reasoningChunks}
 								plan={executionPlan as any}
 								executionTimeline={executionTimeline as any[]}
+								userMessageTimestamp={message.createdAt ? new Date(typeof message.createdAt === "string" ? message.createdAt : message.createdAt).getTime() / 1000 : undefined}
 								expanded={reasoningExpanded}
 								onExpandedChange={onReasoningExpandedChange}
 							/>
