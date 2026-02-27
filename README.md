@@ -49,6 +49,7 @@ function Chat() {
     brandingCSSVars,
     loading,
   } = useMiiflowChat({
+    // Find these in your Miiflow dashboard under Settings > Embed
     publicKey: "pk_live_...",
     assistantId: "ast_...",
   });
@@ -128,7 +129,24 @@ Pass a `MiiflowChatConfig` object to `useMiiflowChat`:
 | `hmac` | `string` | No | HMAC for identity verification |
 | `timestamp` | `string` | No | Timestamp for HMAC verification |
 | `baseUrl` | `string` | No | Override API endpoint (default: `https://api.miiflow.ai/api`) |
+| `webSocketUrl` | `string` | No | WebSocket URL for tool invocations (auto-derived from `baseUrl` if not set) |
 | `responseTimeout` | `number` | No | SSE stream timeout in ms (default: `60000`) |
+
+## Connecting to a Custom Backend
+
+By default, the hook connects to `https://api.miiflow.ai`. To point to your own backend, pass a `baseUrl`:
+
+```tsx
+useMiiflowChat({
+  publicKey: "pk_live_...",
+  assistantId: "ast_...",
+  baseUrl: "https://your-server.example.com/api",
+  // webSocketUrl is auto-derived from baseUrl; override if needed:
+  // webSocketUrl: "wss://your-server.example.com/ws",
+});
+```
+
+Your backend must implement the same API contract as the Miiflow platform (session init, SSE streaming, file upload, and tool-result endpoints).
 
 ## Hook API — `useMiiflowChat`
 
