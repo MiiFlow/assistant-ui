@@ -1,9 +1,13 @@
 import tsParser from "@typescript-eslint/parser";
+import reactHooks from "eslint-plugin-react-hooks";
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
   {
     files: ["src/**/*.{ts,tsx}"],
+    plugins: {
+      "react-hooks": reactHooks,
+    },
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -15,6 +19,7 @@ export default [
       },
     },
     rules: {
+      ...reactHooks.configs.recommended.rules,
       // Block MUI and Emotion imports - the core prevention mechanism
       "no-restricted-imports": [
         "error",
