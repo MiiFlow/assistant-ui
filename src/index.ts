@@ -1,4 +1,4 @@
-// @miiflow/chat-ui - Headless chat UI primitives with TailwindCSS styling
+// @miiflow/assistant-ui - Headless chat UI primitives with TailwindCSS styling
 
 // Types
 export type {

@@ -1,5 +1,5 @@
 {
-  "name": "@miiflow/chat-ui",
+  "name": "@miiflow/assistant-ui",
   "version": "0.1.0",
   "description": "Headless chat UI primitives with TailwindCSS styling",
   "main": "./dist/index.js",
@@ -34,7 +34,8 @@
   ],
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup && yarn build:css && yarn build:css-no-preflight",
@@ -90,6 +91,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/miiflow/chat-ui"
+    "url": "https://github.com/MiiFlow/assistant-ui"
+  },
+  "homepage": "https://github.com/MiiFlow/assistant-ui#readme",
+  "bugs": {
+    "url": "https://github.com/MiiFlow/assistant-ui/issues"
   }
 }

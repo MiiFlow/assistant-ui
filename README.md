@@ -1,11 +1,11 @@
-# @miiflow/chat-ui
+# @miiflow/assistant-ui
 
 React components and hooks for building custom Miiflow chat interfaces. Install as an npm package for full control over layout, styling, and behavior.
 
 ## Installation
 
 ```bash
-npm install @miiflow/chat-ui
+npm install @miiflow/assistant-ui
 ```
 
 **Peer dependencies:** `react >= 18`, `react-dom >= 18`
@@ -13,19 +13,19 @@ npm install @miiflow/chat-ui
 The styled components use [TailwindCSS](https://tailwindcss.com/). If your project doesn't use Tailwind, import the pre-built CSS instead:
 
 ```ts
-import "@miiflow/chat-ui/styles.css";
+import "@miiflow/assistant-ui/styles.css";
 ```
 
 If you're embedding inside an existing page and want to avoid Tailwind's preflight (CSS reset) affecting the host page:
 
 ```ts
-import "@miiflow/chat-ui/styles-no-preflight.css";
+import "@miiflow/assistant-ui/styles-no-preflight.css";
 ```
 
 ## Quick Start
 
 ```tsx
-import { useMiiflowChat } from "@miiflow/chat-ui/client";
+import { useMiiflowChat } from "@miiflow/assistant-ui/client";
 import {
   ChatProvider,
   ChatLayout,
@@ -34,8 +34,8 @@ import {
   Message,
   MessageComposer,
   WelcomeScreen,
-} from "@miiflow/chat-ui/styled";
-import "@miiflow/chat-ui/styles.css";
+} from "@miiflow/assistant-ui/styled";
+import "@miiflow/assistant-ui/styles.css";
 
 function Chat() {
   const {
@@ -133,7 +133,7 @@ Pass a `MiiflowChatConfig` object to `useMiiflowChat`:
 ## Hook API — `useMiiflowChat`
 
 ```ts
-import { useMiiflowChat } from "@miiflow/chat-ui/client";
+import { useMiiflowChat } from "@miiflow/assistant-ui/client";
 
 const result = useMiiflowChat(config);
 ```
@@ -276,7 +276,7 @@ Title bar with logo, subtitle, action menu, and close button.
 Import the stylesheet to get default styles for all components:
 
 ```ts
-import "@miiflow/chat-ui/styles.css";
+import "@miiflow/assistant-ui/styles.css";
 ```
 
 ### Branding via CSS Variables
@@ -413,7 +413,7 @@ import {
   registerVisualization,
   getVisualization,
   getRegisteredTypes,
-} from "@miiflow/chat-ui/styled";
+} from "@miiflow/assistant-ui/styled";
 
 // Register a custom visualization type
 registerVisualization("my_widget", {
@@ -453,7 +453,7 @@ import {
   kpiVisualizationSchema,
   codePreviewVisualizationSchema,
   formVisualizationSchema,
-} from "@miiflow/chat-ui/styled";
+} from "@miiflow/assistant-ui/styled";
 
 const result = chartVisualizationSchema.safeParse(data);
 if (!result.success) {
@@ -524,7 +524,7 @@ type VisualizationActionEvent =
 You can render visualizations outside of `Message` by using `VisualizationRenderer` directly:
 
 ```tsx
-import { VisualizationRenderer } from "@miiflow/chat-ui/styled";
+import { VisualizationRenderer } from "@miiflow/assistant-ui/styled";
 
 <VisualizationRenderer
   data={{
@@ -544,14 +544,14 @@ import { VisualizationRenderer } from "@miiflow/chat-ui/styled";
 
 | Import | Description |
 |--------|-------------|
-| `@miiflow/chat-ui` | Core types, context, hooks, primitives |
-| `@miiflow/chat-ui/styled` | TailwindCSS-styled components, visualization registry, schemas |
-| `@miiflow/chat-ui/client` | `useMiiflowChat` hook, session utilities, types |
-| `@miiflow/chat-ui/primitives` | Headless unstyled component primitives |
-| `@miiflow/chat-ui/styles.css` | Full CSS (includes Tailwind preflight) |
-| `@miiflow/chat-ui/styles-no-preflight.css` | CSS without preflight (for embedding in existing pages) |
+| `@miiflow/assistant-ui` | Core types, context, hooks, primitives |
+| `@miiflow/assistant-ui/styled` | TailwindCSS-styled components, visualization registry, schemas |
+| `@miiflow/assistant-ui/client` | `useMiiflowChat` hook, session utilities, types |
+| `@miiflow/assistant-ui/primitives` | Headless unstyled component primitives |
+| `@miiflow/assistant-ui/styles.css` | Full CSS (includes Tailwind preflight) |
+| `@miiflow/assistant-ui/styles-no-preflight.css` | CSS without preflight (for embedding in existing pages) |
 
-### Key Exports from `@miiflow/chat-ui/styled`
+### Key Exports from `@miiflow/assistant-ui/styled`
 
 **Visualization Registry:**
 `registerVisualization`, `getVisualization`, `getRegisteredTypes`, `VisualizationEntry`

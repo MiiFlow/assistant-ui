@@ -23,7 +23,7 @@ export default [
             {
               group: ["@mui/*", "@mui/**"],
               message:
-                "MUI imports are forbidden in @miiflow/chat-ui. Use headless primitives with Tailwind styling instead.",
+                "MUI imports are forbidden in @miiflow/assistant-ui. Use headless primitives with Tailwind styling instead.",
             },
             {
               group: ["@emotion/*", "@emotion/**"],
