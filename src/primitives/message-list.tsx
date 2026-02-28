@@ -6,20 +6,33 @@ export interface MessageListProps extends HTMLAttributes<HTMLDivElement> {
 	children: ReactNode;
 	/** Whether to auto-scroll to bottom on new messages */
 	autoScroll?: boolean;
-	/** Threshold from bottom to trigger auto-scroll (pixels) */
-	scrollThreshold?: number;
+	/** Whether the viewport is currently at the bottom (exposed for scroll-to-bottom button) */
+	isAtBottom?: boolean;
+	/** Callback to receive scroll state updates */
+	onIsAtBottomChange?: (isAtBottom: boolean) => void;
+	/** Callback to receive scrollToBottom function */
+	onScrollToBottomRef?: (scrollToBottom: (behavior?: ScrollBehavior) => void) => void;
 }
 
 /**
  * Headless MessageList primitive.
  * Provides a scrollable container with auto-scroll behavior.
+ * Exposes isAtBottom and scrollToBottom for scroll-to-bottom button integration.
  */
 export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(
-	({ children, autoScroll = true, scrollThreshold = 100, ...props }, ref) => {
-		const { containerRef, scrollToBottom } = useAutoScroll<HTMLDivElement>({
+	({ children, autoScroll = true, onIsAtBottomChange, onScrollToBottomRef, ...props }, ref) => {
+		const { containerRef, scrollToBottom, isAtBottom } = useAutoScroll<HTMLDivElement>({
 			enabled: autoScroll,
-			threshold: scrollThreshold,
 		});
+
+		// Notify parent of scroll state changes
+		const prevIsAtBottomRef = { current: isAtBottom };
+		if (prevIsAtBottomRef.current !== isAtBottom) {
+			onIsAtBottomChange?.(isAtBottom);
+		}
+
+		// Expose scrollToBottom to parent
+		onScrollToBottomRef?.(scrollToBottom);
 
 		// Merge refs
 		const mergedRef = (node: HTMLDivElement | null) => {
@@ -32,7 +45,7 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(
 		};
 
 		return (
-			<div ref={mergedRef} data-scroll-to-bottom={scrollToBottom} {...props}>
+			<div ref={mergedRef} {...props}>
 				{children}
 			</div>
 		);

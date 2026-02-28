@@ -1,25 +1,62 @@
 import * as react from 'react';
-import { KeyboardEvent } from 'react';
+import { RefObject, KeyboardEvent } from 'react';
 import { c as StreamingOptions, b as StreamChunk } from '../streaming-CXHkN_Ul.js';
 import { B as BrandingData } from '../branding-SzYU4ncD.js';
 
 interface UseAutoScrollOptions {
     /** Whether auto-scroll is enabled */
     enabled?: boolean;
-    /** Threshold from bottom to trigger auto-scroll (pixels) */
-    threshold?: number;
     /** Smooth scroll behavior */
     smooth?: boolean;
+    /** Scroll to bottom when component mounts */
+    scrollToBottomOnMount?: boolean;
+}
+interface UseAutoScrollReturn<T extends HTMLElement> {
+    /** Ref to attach to the scrollable container */
+    containerRef: React.RefObject<T | null>;
+    /** Scroll to bottom programmatically (always forces scroll) */
+    scrollToBottom: (behavior?: ScrollBehavior) => void;
+    /** Whether the viewport is currently at the bottom */
+    isAtBottom: boolean;
 }
 /**
  * Hook to automatically scroll to the bottom of a container
  * when new content is added, unless the user has scrolled up.
+ *
+ * Combines ResizeObserver + MutationObserver to catch all height changes
+ * (image loads, panel expansion, streaming text, new messages).
+ *
+ * Uses a 1px tolerance for isAtBottom (matches assistant-ui) and
+ * persists scroll behavior across content resize to prevent
+ * the "content outraces scroll" bug.
  */
-declare function useAutoScroll<T extends HTMLElement>({ enabled, threshold, smooth, }?: UseAutoScrollOptions): {
-    containerRef: react.RefObject<T | null>;
-    scrollToBottom: (force?: boolean) => void;
-    isAtBottom: boolean;
-};
+declare function useAutoScroll<T extends HTMLElement>({ enabled, smooth, scrollToBottomOnMount, }?: UseAutoScrollOptions): UseAutoScrollReturn<T>;
+
+/**
+ * Locks scroll position during collapsible/height animations.
+ *
+ * Prevents viewport jumps when content height changes during animations
+ * (e.g. ReasoningPanel expand/collapse). Finds the nearest scrollable
+ * ancestor and temporarily locks its scroll position for the animation duration.
+ *
+ * Adapted from assistant-ui's useScrollLock.
+ *
+ * @param animatedElementRef - Ref to the animated element
+ * @param animationDuration - Lock duration in milliseconds
+ * @returns Function to activate the scroll lock (call before toggling)
+ *
+ * @example
+ * ```tsx
+ * const panelRef = useRef<HTMLDivElement>(null);
+ * const lockScroll = useScrollLock(panelRef, 200);
+ *
+ * const handleToggle = () => {
+ *   lockScroll();
+ *   setIsExpanded(!isExpanded);
+ * };
+ * ```
+ */
+declare function useScrollLock<T extends HTMLElement = HTMLElement>(animatedElementRef: RefObject<T | null>, animationDuration: number): () => void;
 
 /**
  * Hook to manage streaming message state.
@@ -106,4 +143,4 @@ declare function useBrandingCSSVars(branding: BrandingData | null | undefined, o
     iconColor?: string;
 }): React.CSSProperties;
 
-export { useAttachments, useAutoScroll, useBrandingCSSVars, useMessageComposer, useStreaming };
+export { type UseAutoScrollOptions, type UseAutoScrollReturn, useAttachments, useAutoScroll, useBrandingCSSVars, useMessageComposer, useScrollLock, useStreaming };

@@ -88,6 +88,8 @@ interface InternalMessage {
   citations?: import("../types").SourceReference[];
   attachments?: import("../types").Attachment[];
   pendingClarification?: ClarificationData;
+  /** Wall-clock execution time in seconds, persisted after streaming completes */
+  executionTime?: number;
 }
 
 type ChunkType =
@@ -193,7 +195,8 @@ interface StreamParseCallbacks {
     chunks?: StreamingChunk[],
     suggestedActions?: Array<{ id: string; label: string; value: string }>,
     sources?: any[],
-    pendingClarification?: ClarificationData
+    pendingClarification?: ClarificationData,
+    executionTime?: number
   ) => void;
   onToolInvocation?: (invocation: ToolInvocationRequest) => void;
 }
@@ -205,6 +208,7 @@ async function parseSSEStream(
   callbacks: StreamParseCallbacks
 ): Promise<{ assistantMsgId: string | null; assistantContent: string }> {
   const decoder = new TextDecoder();
+  const streamStartTime = Date.now();
   let assistantContent = "";
   let assistantMsgId: string | null = null;
   const chunks: AccumulatedChunk[] = [];
@@ -1090,6 +1094,7 @@ async function parseSSEStream(
           const finalId = parsed.message?.id;
           const sources = parsed.message?.metadata?.sources;
 
+          const elapsedSeconds = (Date.now() - streamStartTime) / 1000;
           callbacks.onComplete(
             assistantMsgId,
             finalContent,
@@ -1097,7 +1102,8 @@ async function parseSSEStream(
             chunks as unknown as StreamingChunk[],
             suggestedActions,
             sources,
-            pendingClarification
+            pendingClarification,
+            elapsedSeconds
           );
           assistantContent = finalContent;
           if (finalId) assistantMsgId = finalId;
@@ -1116,6 +1122,7 @@ async function parseSSEStream(
           // finalize the message so the frontend still shows it properly
           if (assistantMsgId && !receivedComplete) {
             finalizeChunk();
+            const elapsedSecondsDone = (Date.now() - streamStartTime) / 1000;
             callbacks.onComplete(
               assistantMsgId,
               assistantContent || "",
@@ -1123,7 +1130,8 @@ async function parseSSEStream(
               chunks as unknown as StreamingChunk[],
               suggestedActions,
               undefined,
-              pendingClarification
+              pendingClarification,
+              elapsedSecondsDone
             );
           } else if (parsed.message_id && assistantMsgId) {
             callbacks.onMessageUpdate({
@@ -1509,7 +1517,8 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
               chunks,
               suggestedActions,
               sources,
-              pendingClarification
+              pendingClarification,
+              executionTime
             ) => {
               if (assistantMsgId) {
                 setMessages((prev) =>
@@ -1524,6 +1533,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
                           suggestedActions,
                           citations: sources,
                           pendingClarification,
+                          executionTime,
                         }
                       : msg
                   )
@@ -1714,6 +1724,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         citations: msg.citations,
         attachments: msg.attachments,
         pendingClarification: msg.pendingClarification,
+        executionTime: msg.executionTime,
       })),
     [messages]
   );

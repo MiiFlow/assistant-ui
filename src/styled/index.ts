@@ -17,6 +17,15 @@ export { ChatHeader, type ChatHeaderAction, type ChatHeaderProps } from "./ChatH
 export { MessageAttachments, type MessageAttachmentsProps } from "./MessageAttachments";
 export { ReasoningPanel, type ReasoningPanelProps } from "./ReasoningPanel";
 
+// Action bar
+export { MessageActionBar, type MessageActionBarProps } from "./MessageActionBar";
+
+// Scroll-to-bottom button
+export { ScrollToBottomButton, type ScrollToBottomButtonProps } from "./ScrollToBottomButton";
+
+// Tool status indicator
+export { ToolStatusIndicator, type ToolStatusIndicatorProps, type ToolStatus } from "./ToolStatusIndicator";
+
 // Layout components
 export { ChatLayout, type ChatLayoutProps } from "./ChatLayout";
 export { WelcomeScreen, type WelcomeScreenProps } from "./WelcomeScreen";
@@ -84,7 +93,7 @@ export { Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, 
 export { ChatProvider, useChatContext, type ChatContextValue, type ChatProviderProps } from "../context";
 
 // Re-export types for convenience
-export type { Attachment, BrandingData, ChatMessage, MessageData, Participant, ParticipantRole, SuggestedAction, SuggestedActionType } from "../types";
+export type { Attachment, BrandingData, ChatMessage, MessageData, MessageError, Participant, ParticipantRole, SuggestedAction, SuggestedActionType } from "../types";
 
 // Re-export advanced streaming types
 export type {

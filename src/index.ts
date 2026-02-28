@@ -6,6 +6,7 @@ export type {
   Participant,
   Attachment,
   MessageData,
+  MessageError,
   SuggestedAction,
   SuggestedActionType,
   ChatMessage,
@@ -30,6 +31,7 @@ export {
 // Hooks
 export {
   useAutoScroll,
+  useScrollLock,
   useStreaming,
   useMessageComposer,
   useAttachments,
@@ -71,6 +73,7 @@ export {
   ChatLayout,
   MessageList,
   Message,
+  MessageActionBar,
   MessageComposer,
   Avatar,
   TypingIndicator,
@@ -79,6 +82,8 @@ export {
   MarkdownContent,
   AttachmentPreview,
   WelcomeScreen,
+  ScrollToBottomButton,
+  ToolStatusIndicator,
 } from "./styled";
 
 // Utilities

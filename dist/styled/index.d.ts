@@ -1,14 +1,14 @@
-export { f as AttachmentPreview, g as AttachmentPreviewProps, A as Avatar, h as AvatarProps, C as ChatContainer, i as ChatContainerProps, a as ChatLayout, q as ChatLayoutProps, e as MarkdownContent, j as MarkdownContentProps, b as Message, c as MessageComposer, l as MessageComposerProps, M as MessageList, m as MessageListProps, k as MessageProps, d as StreamingText, n as StreamingTextProps, S as SuggestedActions, o as SuggestedActionsProps, T as TypingIndicator, p as TypingIndicatorProps, W as WelcomeScreen, r as WelcomeScreenProps } from '../WelcomeScreen-Bmu8HfJu.js';
+export { g as AttachmentPreview, j as AttachmentPreviewProps, A as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, a as ChatLayout, x as ChatLayoutProps, f as MarkdownContent, m as MarkdownContentProps, b as Message, c as MessageActionBar, t as MessageActionBarProps, d as MessageComposer, o as MessageComposerProps, M as MessageList, p as MessageListProps, n as MessageProps, h as ScrollToBottomButton, u as ScrollToBottomButtonProps, e as StreamingText, q as StreamingTextProps, S as SuggestedActions, r as SuggestedActionsProps, w as ToolStatus, i as ToolStatusIndicator, v as ToolStatusIndicatorProps, T as TypingIndicator, s as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-BNHzYP_O.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode } from 'react';
-import { A as Attachment, c as SourceReference } from '../message-Bubb-K2d.js';
-export { C as ChatMessage, M as MessageData, a as Participant, P as ParticipantRole, d as SourceTypeConfig, S as SuggestedAction, b as SuggestedActionType } from '../message-Bubb-K2d.js';
+import { A as Attachment, d as SourceReference } from '../message-D3U71RE-.js';
+export { C as ChatMessage, M as MessageData, b as MessageError, a as Participant, P as ParticipantRole, e as SourceTypeConfig, S as SuggestedAction, c as SuggestedActionType } from '../message-D3U71RE-.js';
 import { S as StreamingChunk, P as PlanData, C as ClarificationData, V as VisualizationChunkData, d as VisualizationActionEvent, e as ChartVisualizationData, f as VisualizationConfig, T as TableVisualizationData, g as CardVisualizationData, K as KpiVisualizationData, h as CodePreviewVisualizationData, F as FormVisualizationData, E as Event, i as EventStatus } from '../streaming-CXHkN_Ul.js';
 export { j as ChunkType, A as ClaudeToolChunkData, k as EventType, w as FileOperationChunkData, l as FollowupAction, O as ObservationEvent, t as ParallelSubtaskData, m as PlanningEvent, n as ProgressData, y as SearchResultsChunkData, o as StreamingMessage, p as SubTaskData, v as SubagentChunkData, u as SubagentInfo, q as SubtaskEvent, x as TerminalChunkData, r as ThinkingEvent, s as ToolEvent, B as VisualizationType, W as WaveData, z as WebOperationChunkData } from '../streaming-CXHkN_Ul.js';
 import { z, ZodSchema } from 'zod';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
 export { B as BrandingData } from '../branding-SzYU4ncD.js';
-export { g as useComposer, u as useMessage } from '../avatar-DQSC--Fu.js';
+export { g as useComposer, u as useMessage } from '../avatar-BWmQERQw.js';
 
 interface LoadingDotsProps {
     /** Size variant */

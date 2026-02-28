@@ -16,6 +16,7 @@ import { CitationSources } from "./CitationSources";
 import { ClarificationPanel } from "./ClarificationPanel";
 import { LoadingDots } from "./LoadingDots";
 import { MarkdownContent } from "./MarkdownContent";
+import { MessageActionBar } from "./MessageActionBar";
 import { MessageAttachments } from "./MessageAttachments";
 import { ReasoningPanel } from "./ReasoningPanel";
 import { StreamingText } from "./StreamingText";
@@ -93,6 +94,8 @@ export interface MessageProps {
 	visualizations?: VisualizationChunkData[];
 	/** Base font size multiplier for markdown rendering */
 	baselineFontSize?: number;
+	/** Total execution time in seconds (persisted from streaming wall-clock) */
+	executionTime?: number;
 	/** Pending clarification data (agent needs user input) */
 	pendingClarification?: ClarificationData;
 	/** Callback when user responds to a clarification */
@@ -123,6 +126,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			citations,
 			visualizations,
 			baselineFontSize,
+			executionTime,
 			pendingClarification,
 			onClarificationSubmit,
 		},
@@ -262,7 +266,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 				ref={ref}
 				message={message}
 				viewerRole={viewerRole}
-				className={cn("w-full", showFadeIn && "animate-fade-in", className)}>
+				className={cn("w-full", showFadeIn && "animate-message-in", className)}>
 				<div
 					className={cn("flex flex-col gap-1 w-full")}
 					data-is-viewer={isViewer}>
@@ -288,12 +292,13 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 					{/* Reasoning Panel - before content for assistant */}
 					{hasReasoning && isAssistant && (
 						<div className="w-full max-w-[80%]">
-							<ReasoningPanel
+									<ReasoningPanel
 								isStreaming={isStreaming}
 								chunks={reasoningChunks}
 								plan={executionPlan as any}
 								executionTimeline={executionTimeline as any[]}
 								userMessageTimestamp={message.createdAt ? new Date(typeof message.createdAt === "string" ? message.createdAt : message.createdAt).getTime() / 1000 : undefined}
+								executionTime={executionTime}
 								expanded={reasoningExpanded}
 								onExpandedChange={onReasoningExpandedChange}
 							/>
@@ -303,7 +308,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 					{/* Content row: avatar + message bubble */}
 					{message.textContent && (
 						<div className={cn(
-							"flex items-start gap-2 w-full",
+							"group flex items-start gap-2 w-full",
 							isViewer ? "flex-row-reverse" : "flex-row"
 						)}>
 							{/* Avatar - shown for non-viewer messages */}
@@ -346,16 +351,56 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 									</div>
 								)}
 
-								{/* Timestamp — outside bubble */}
-								{showTimestamp && !isStreaming && message.createdAt && (
-									<MessageTimestamp
-										createdAt={
-											typeof message.createdAt === "string" ? message.createdAt : message.createdAt.toISOString()
-										}
-										isViewer={isViewer}
-									/>
+								{/* Timestamp + action bar row */}
+								{!isStreaming && (showTimestamp && message.createdAt || (isAssistant && message.textContent)) && (
+									<div className={cn("flex items-center gap-2 mt-1", isViewer && "flex-row-reverse")}>
+										{showTimestamp && message.createdAt && (
+											<MessageTimestamp
+												createdAt={
+													typeof message.createdAt === "string" ? message.createdAt : message.createdAt.toISOString()
+												}
+												isViewer={isViewer}
+											/>
+										)}
+										{isAssistant && message.textContent && (
+											<MessageActionBar textContent={message.textContent} />
+										)}
+									</div>
 								)}
 							</div>
+						</div>
+					)}
+
+					{/* Message error display */}
+					{message.error && (
+						<div
+							className={cn(
+								"flex items-start gap-2 w-full max-w-[85%]",
+								"rounded-lg border px-3 py-2 mt-1",
+							)}
+							style={{
+								borderColor: "var(--chat-error, #B1001B)",
+								backgroundColor: "color-mix(in srgb, var(--chat-error, #B1001B) 6%, transparent)",
+								color: "var(--chat-error, #B1001B)",
+							}}
+						>
+							{/* Alert triangle icon */}
+							<svg
+								width="16"
+								height="16"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								className="flex-shrink-0 mt-0.5"
+							>
+								<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+								<line x1="12" y1="9" x2="12" y2="13" />
+								<line x1="12" y1="17" x2="12.01" y2="17" />
+							</svg>
+							<span className="text-sm">{message.error.message}</span>
 						</div>
 					)}
 
@@ -397,7 +442,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 
 Message.displayName = "Message";
 
-function MessageTimestamp({ createdAt, isViewer }: { createdAt: string; isViewer: boolean }) {
+function MessageTimestamp({ createdAt }: { createdAt: string; isViewer?: boolean }) {
 	const formatTime = (dateString: string) => {
 		try {
 			const date = new Date(dateString);
@@ -408,7 +453,7 @@ function MessageTimestamp({ createdAt, isViewer }: { createdAt: string; isViewer
 	};
 
 	return (
-		<span className={cn("text-xs mt-1 block text-[var(--chat-text-subtle)]", isViewer && "text-right")}>
+		<span className="text-xs text-[var(--chat-text-subtle)]">
 			{formatTime(createdAt)}
 		</span>
 	);

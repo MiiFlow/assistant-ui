@@ -1,7 +1,7 @@
-export { A as Avatar, h as AvatarProps, f as ComposerContext, C as ComposerInput, m as ComposerInputProps, e as ComposerSubmit, n as ComposerSubmitProps, M as Message, d as MessageComposer, l as MessageComposerProps, a as MessageContent, j as MessageContentProps, c as MessageContext, i as MessageProps, b as MessageTimestamp, k as MessageTimestampProps, g as useComposer, u as useMessage } from '../avatar-DQSC--Fu.js';
+export { A as Avatar, h as AvatarProps, f as ComposerContext, C as ComposerInput, m as ComposerInputProps, e as ComposerSubmit, n as ComposerSubmitProps, M as Message, d as MessageComposer, l as MessageComposerProps, a as MessageContent, j as MessageContentProps, c as MessageContext, i as MessageProps, b as MessageTimestamp, k as MessageTimestampProps, g as useComposer, u as useMessage } from '../avatar-BWmQERQw.js';
 import * as react from 'react';
 import { HTMLAttributes, ReactNode, ButtonHTMLAttributes } from 'react';
-import { S as SuggestedAction } from '../message-Bubb-K2d.js';
+import { S as SuggestedAction } from '../message-D3U71RE-.js';
 import '../streaming-CXHkN_Ul.js';
 
 interface MessageListProps extends HTMLAttributes<HTMLDivElement> {
@@ -9,12 +9,17 @@ interface MessageListProps extends HTMLAttributes<HTMLDivElement> {
     children: ReactNode;
     /** Whether to auto-scroll to bottom on new messages */
     autoScroll?: boolean;
-    /** Threshold from bottom to trigger auto-scroll (pixels) */
-    scrollThreshold?: number;
+    /** Whether the viewport is currently at the bottom (exposed for scroll-to-bottom button) */
+    isAtBottom?: boolean;
+    /** Callback to receive scroll state updates */
+    onIsAtBottomChange?: (isAtBottom: boolean) => void;
+    /** Callback to receive scrollToBottom function */
+    onScrollToBottomRef?: (scrollToBottom: (behavior?: ScrollBehavior) => void) => void;
 }
 /**
  * Headless MessageList primitive.
  * Provides a scrollable container with auto-scroll behavior.
+ * Exposes isAtBottom and scrollToBottom for scroll-to-bottom button integration.
  */
 declare const MessageList: react.ForwardRefExoticComponent<MessageListProps & react.RefAttributes<HTMLDivElement>>;
 

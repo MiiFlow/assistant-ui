@@ -1,2 +1,2 @@
-'use strict';var chunkOCKHJ4WO_js=require('../chunk-OCKHJ4WO.js');Object.defineProperty(exports,"ChatContext",{enumerable:true,get:function(){return chunkOCKHJ4WO_js.a}});Object.defineProperty(exports,"ChatProvider",{enumerable:true,get:function(){return chunkOCKHJ4WO_js.b}});Object.defineProperty(exports,"useChatContext",{enumerable:true,get:function(){return chunkOCKHJ4WO_js.c}});//# sourceMappingURL=index.js.map
+export{a as ChatContext,b as ChatProvider,c as useChatContext}from'../chunk-OCKHJ4WO.js';//# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map

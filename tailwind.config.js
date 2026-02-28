@@ -29,9 +29,11 @@ module.exports = {
       animation: {
         "fade-in": "fadeIn 0.2s ease-out",
         "slide-up": "slideUp 0.3s ease-out",
+        "message-in": "messageIn 0.3s ease-out",
         "pulse-subtle": "pulseSubtle 2s infinite",
         typing: "typing 1.4s infinite ease-in-out",
         blink: "blink 1s step-end infinite",
+        shimmer: "shimmer 2s infinite linear",
       },
       keyframes: {
         fadeIn: {
@@ -39,6 +41,10 @@ module.exports = {
           "100%": { opacity: "1" },
         },
         slideUp: {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        messageIn: {
           "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
@@ -54,6 +60,17 @@ module.exports = {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0" },
         },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+      },
+      backgroundImage: {
+        shimmer:
+          "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.03) 40%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.03) 60%, transparent 100%)",
+      },
+      backgroundSize: {
+        shimmer: "200% 100%",
       },
       boxShadow: {
         subtle: "0 1px 2px rgba(0, 0, 0, 0.04)",

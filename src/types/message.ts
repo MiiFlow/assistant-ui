@@ -28,6 +28,13 @@ export interface Attachment {
   fileExtension?: string;
 }
 
+export interface MessageError {
+  /** Error message to display */
+  message: string;
+  /** Whether the error is recoverable (e.g. can retry) */
+  recoverable?: boolean;
+}
+
 export interface MessageData {
   id: string;
   textContent: string;
@@ -37,6 +44,8 @@ export interface MessageData {
   attachments?: Attachment[];
   isStreaming?: boolean;
   metadata?: Record<string, unknown>;
+  /** Error associated with this message (e.g. generation failed) */
+  error?: MessageError;
 }
 
 export type SuggestedActionType =
@@ -62,6 +71,8 @@ export interface ChatMessage extends MessageData {
   reasoning?: StreamingChunk[];
   citations?: import("./citation").SourceReference[];
   pendingClarification?: import("./streaming").ClarificationData;
+  /** Wall-clock execution time in seconds (persisted after streaming completes) */
+  executionTime?: number;
 }
 
 // Legacy type - kept for backwards compatibility

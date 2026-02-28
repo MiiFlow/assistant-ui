@@ -3,6 +3,7 @@ export type {
   Participant,
   Attachment,
   MessageData,
+  MessageError,
   SuggestedAction,
   SuggestedActionType,
   ChatMessage,
