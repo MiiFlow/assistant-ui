@@ -460,7 +460,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
             )}
 
             {/* Textarea */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 flex items-center">
               <textarea
                 ref={textareaRef}
                 value={inputText}
@@ -471,6 +471,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                 rows={1}
                 className={cn(
                   "w-full resize-none outline-none",
+                  "p-0 border-0 shadow-none",
                   "min-h-[24px] max-h-[200px]",
                   "text-sm leading-relaxed",
                   "text-gray-900 dark:text-zinc-100",
