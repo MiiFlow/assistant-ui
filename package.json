@@ -1,6 +1,6 @@
 {
   "name": "@miiflow/assistant-ui",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "description": "Headless chat UI primitives with TailwindCSS styling",
   "main": "./dist/index.js",
