@@ -5,7 +5,7 @@ export { ChatContext, ChatContextValue, ChatProvider, ChatProviderProps, useChat
 export { useAttachments, useAutoScroll, useBrandingCSSVars, useMessageComposer, useScrollLock, useStreaming } from './hooks/index.js';
 export { A as AvatarPrimitive, f as ComposerContext, C as ComposerInput, e as ComposerSubmit, d as MessageComposerPrimitive, a as MessageContentPrimitive, c as MessageContext, M as MessagePrimitive, b as MessageTimestampPrimitive, g as useComposer, u as useMessage } from './avatar-BWmQERQw.js';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.js';
-export { g as AttachmentPreview, A as Avatar, C as ChatContainer, a as ChatLayout, f as MarkdownContent, b as Message, c as MessageActionBar, d as MessageComposer, M as MessageList, h as ScrollToBottomButton, e as StreamingText, S as SuggestedActions, i as ToolStatusIndicator, T as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-BNHzYP_O.js';
+export { g as AttachmentPreview, A as Avatar, C as ChatContainer, a as ChatLayout, f as MarkdownContent, b as Message, c as MessageActionBar, d as MessageComposer, M as MessageList, h as ScrollToBottomButton, e as StreamingText, S as SuggestedActions, i as ToolStatusIndicator, T as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-DdkdTFji.js';
 import { ClassValue } from 'clsx';
 import 'react/jsx-runtime';
 import 'react';

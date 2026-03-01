@@ -2,46 +2,6 @@ import { forwardRef, useCallback, useRef, useState, useEffect } from "react";
 import { ArrowUp, Paperclip, X, FileText, Image, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "../utils/cn";
 
-import { AutoLinkNode } from "@lexical/link";
-import { ListItemNode, ListNode } from "@lexical/list";
-import {
-  $convertFromMarkdownString,
-  $convertToMarkdownString,
-  BOLD_STAR,
-  ITALIC_UNDERSCORE,
-  ORDERED_LIST,
-  QUOTE,
-  UNORDERED_LIST,
-} from "@lexical/markdown";
-import { LexicalComposer } from "@lexical/react/LexicalComposer";
-import { ContentEditable } from "@lexical/react/LexicalContentEditable";
-import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
-import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
-import { ListPlugin } from "@lexical/react/LexicalListPlugin";
-import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
-import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
-import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin";
-import { QuoteNode } from "@lexical/rich-text";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import {
-  COMMAND_PRIORITY_HIGH,
-  KEY_ENTER_COMMAND,
-  $getRoot,
-  $createParagraphNode,
-} from "lexical";
-import type { EditorState } from "lexical";
-
-const TRANSFORMERS = [BOLD_STAR, ITALIC_UNDERSCORE, QUOTE, ORDERED_LIST, UNORDERED_LIST];
-
-const EDITOR_THEME = {
-  ltr: "ltr",
-  rtl: "rtl",
-  placeholder: "editor-placeholder",
-  paragraph: "editor-paragraph",
-  quote: "editor-quote",
-  text: {},
-};
-
 // ============================================================================
 // File upload constants (matching in-house backend)
 // ============================================================================
@@ -189,50 +149,6 @@ function AttachmentBar({
   );
 }
 
-/**
- * Lexical plugin: Enter to submit, Shift+Enter for newline.
- */
-function EnterKeyPlugin({ onSubmit, disabled }: { onSubmit: () => void; disabled: boolean }) {
-  const [editor] = useLexicalComposerContext();
-
-  useEffect(() => {
-    return editor.registerCommand(
-      KEY_ENTER_COMMAND,
-      (event: KeyboardEvent | null) => {
-        if (!event) return false;
-        // Shift+Enter → newline (default behavior)
-        if (event.shiftKey) return false;
-        // Enter → submit
-        event.preventDefault();
-        if (!disabled) onSubmit();
-        return true;
-      },
-      COMMAND_PRIORITY_HIGH,
-    );
-  }, [editor, onSubmit, disabled]);
-
-  return null;
-}
-
-/**
- * Helper plugin to clear editor content programmatically.
- */
-function ClearEditorPlugin({ clearRef }: { clearRef: React.MutableRefObject<(() => void) | null> }) {
-  const [editor] = useLexicalComposerContext();
-
-  useEffect(() => {
-    clearRef.current = () => {
-      editor.update(() => {
-        const root = $getRoot();
-        root.clear();
-        root.append($createParagraphNode());
-      });
-    };
-  }, [editor, clearRef]);
-
-  return null;
-}
-
 // ============================================================================
 // Main component
 // ============================================================================
@@ -263,7 +179,7 @@ export interface MessageComposerProps {
 }
 
 /**
- * Rich text MessageComposer with Lexical editor, attachment support,
+ * MessageComposer with textarea, attachment support,
  * file upload integration, drag & drop, and Enter-to-submit.
  */
 export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
@@ -287,7 +203,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const clearEditorRef = useRef<(() => void) | null>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const dragCounterRef = useRef(0);
 
     const isSubmitDisabled = disabled || isSubmitting;
@@ -298,15 +214,17 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     const hasAttachments = uploadedIds.length > 0 || attachments.some((a) => a.status === "pending");
     const hasContent = inputText.trim().length > 0 || hasAttachments;
 
-    const handleChange = useCallback((editorState: EditorState) => {
-      editorState.read(() => {
-        const value = $convertToMarkdownString(TRANSFORMERS);
-        const processedValue = value
-          .replace(/\n\s*\n\s*\n+/g, "\n\n")
-          .replace(/(?<!\n)\n(?!\n)/g, "  \n");
-        setInputText(processedValue);
-      });
+    // Auto-resize textarea
+    const adjustHeight = useCallback(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      textarea.style.height = "auto";
+      textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px";
     }, []);
+
+    useEffect(() => {
+      adjustHeight();
+    }, [inputText, adjustHeight]);
 
     const processFiles = useCallback(
       async (files: File[]) => {
@@ -369,7 +287,6 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       const savedAttachments = attachments;
 
       // Clear state immediately
-      clearEditorRef.current?.();
       setInputText("");
       setAttachments([]);
 
@@ -385,6 +302,19 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         setAttachments(savedAttachments);
       }
     }, [inputText, attachments, hasContent, isSubmitDisabled, isAnyUploading, onSubmit, onUploadFile, uploadedIds]);
+
+    const handleKeyDown = useCallback(
+      (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        // Enter → submit, Shift+Enter → newline
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          if (!isSubmitDisabled && !isAnyUploading) {
+            handleSubmit();
+          }
+        }
+      },
+      [handleSubmit, isSubmitDisabled, isAnyUploading],
+    );
 
     const handleFileSelect = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -463,19 +393,6 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const initialConfig = {
-      namespace: "ChatComposer",
-      theme: EDITOR_THEME,
-      onError(error: Error) {
-        console.error("[ChatComposer]", error);
-      },
-      editorState() {
-        return $convertFromMarkdownString("", TRANSFORMERS);
-      },
-      nodes: [ListItemNode, ListNode, AutoLinkNode, QuoteNode],
-      editable: !isSubmitting,
-    };
-
     return (
       <div
         ref={ref}
@@ -542,38 +459,26 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
               </button>
             )}
 
-            {/* Lexical editor */}
+            {/* Textarea */}
             <div className="flex-1 min-w-0">
-              <LexicalComposer initialConfig={initialConfig}>
-                <div className="relative px-1 text-sm">
-                  <RichTextPlugin
-                    contentEditable={
-                      <ContentEditable
-                        className={cn(
-                          "outline-none resize-none",
-                          "min-h-[24px] max-h-[200px] overflow-y-auto",
-                          "text-gray-900 dark:text-zinc-100",
-                          "[&_.editor-paragraph]:my-0",
-                          "[&_.editor-quote]:ml-0 [&_.editor-quote]:pl-3 [&_.editor-quote]:border-l-4 [&_.editor-quote]:border-gray-300",
-                          "[&_ul]:pl-4 [&_ol]:pl-4",
-                        )}
-                      />
-                    }
-                    placeholder={
-                      <span className="absolute top-0 left-1 text-gray-400 dark:text-zinc-500 pointer-events-none select-none">
-                        {placeholder}
-                      </span>
-                    }
-                    ErrorBoundary={LexicalErrorBoundary}
-                  />
-                  <OnChangePlugin onChange={handleChange} />
-                  <ListPlugin />
-                  <HistoryPlugin />
-                  <AutoFocusPlugin defaultSelection="rootStart" />
-                  <EnterKeyPlugin onSubmit={handleSubmit} disabled={isSubmitDisabled || isAnyUploading} />
-                  <ClearEditorPlugin clearRef={clearEditorRef} />
-                </div>
-              </LexicalComposer>
+              <textarea
+                ref={textareaRef}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={isSubmitDisabled}
+                placeholder={placeholder}
+                rows={1}
+                className={cn(
+                  "w-full resize-none outline-none",
+                  "min-h-[24px] max-h-[200px]",
+                  "text-sm leading-relaxed",
+                  "text-gray-900 dark:text-zinc-100",
+                  "placeholder:text-gray-400 dark:placeholder:text-zinc-500",
+                  "bg-transparent",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                )}
+              />
             </div>
 
             {/* Send button */}
