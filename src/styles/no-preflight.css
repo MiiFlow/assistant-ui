@@ -47,6 +47,105 @@
     --chat-halo-secondary: rgba(86, 193, 138, 0.03);
   }
 
+  /* Scoped preflight for chat-ui components.
+   * Mirrors Tailwind's preflight but only within chat-ui containers,
+   * so host-page styles (MUI, Bootstrap, etc.) are unaffected. */
+  [data-chat-ui] {
+    font-family: var(--chat-font-family, 'Inter', 'Assistant', system-ui, -apple-system, sans-serif);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--chat-text, #1D2033);
+    background: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  [data-chat-ui] *,
+  [data-chat-ui] *::before,
+  [data-chat-ui] *::after {
+    box-sizing: border-box;
+    border-width: 0;
+    border-style: solid;
+    border-color: #e5e7eb;
+  }
+
+  [data-chat-ui] button,
+  [data-chat-ui] input,
+  [data-chat-ui] textarea,
+  [data-chat-ui] select {
+    font-family: inherit;
+    font-size: 100%;
+    font-weight: inherit;
+    line-height: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
+
+  [data-chat-ui] button {
+    cursor: pointer;
+    -webkit-appearance: button;
+  }
+
+  [data-chat-ui] textarea {
+    resize: none;
+    box-shadow: none;
+  }
+
+  [data-chat-ui] textarea::placeholder,
+  [data-chat-ui] input::placeholder {
+    opacity: 1;
+    color: #9ca3af;
+  }
+
+  [data-chat-ui] h1,
+  [data-chat-ui] h2,
+  [data-chat-ui] h3,
+  [data-chat-ui] h4,
+  [data-chat-ui] h5,
+  [data-chat-ui] h6 {
+    font-size: inherit;
+    font-weight: inherit;
+    margin: 0;
+  }
+
+  [data-chat-ui] p {
+    margin: 0;
+  }
+
+  [data-chat-ui] a {
+    color: inherit;
+    text-decoration: inherit;
+  }
+
+  [data-chat-ui] ol,
+  [data-chat-ui] ul,
+  [data-chat-ui] menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  [data-chat-ui] blockquote {
+    margin: 0;
+  }
+
+  [data-chat-ui] img,
+  [data-chat-ui] video {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  [data-chat-ui] table {
+    border-collapse: collapse;
+    border-color: inherit;
+    text-indent: 0;
+  }
+
   /* Dark mode support */
   .dark {
     --chat-message-bg: rgba(255, 255, 255, 0.05);
