@@ -51,8 +51,8 @@ export default defineConfig({
     "recharts",
     "react-syntax-highlighter",
     /^react-syntax-highlighter\//,
-    "lexical",
-    /^@lexical\//,
+    // lexical and @lexical/* are NOT externalized — they are bundled to avoid
+    // version conflicts when consumers use a different Lexical version.
     "clsx",
     "tailwind-merge",
   ],
