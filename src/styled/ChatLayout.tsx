@@ -29,7 +29,7 @@ export interface ChatLayoutProps {
 export const ChatLayout = forwardRef<HTMLDivElement, ChatLayoutProps>(
 	({ isEmpty, header, welcomeScreen, messageList, composer, footer, className }, ref) => {
 		return (
-			<div ref={ref} className={cn("relative h-full overflow-hidden flex flex-col min-h-0", className)}>
+			<div ref={ref} data-chat-ui className={cn("relative h-full overflow-hidden flex flex-col min-h-0", className)}>
 				<AnimatePresence mode="wait">
 					{isEmpty && welcomeScreen ? (
 						<motion.div
