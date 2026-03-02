@@ -165,7 +165,15 @@
   }
 
   .chat-prose table {
-    @apply min-w-full divide-y divide-gray-200 my-2;
+    @apply min-w-full my-2;
+  }
+
+  .chat-prose thead {
+    @apply border-b border-gray-200;
+  }
+
+  .dark .chat-prose thead {
+    @apply border-gray-700;
   }
 
   .chat-prose th {

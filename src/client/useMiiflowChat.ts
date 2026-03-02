@@ -1364,13 +1364,13 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
             WS_RECONNECT_MAX_DELAY,
           );
           reconnectAttempt++;
-          console.log(`[Miiflow] WebSocket closed, reconnecting in ${delay}ms`);
           reconnectTimer = setTimeout(connect, delay);
         }
       };
 
-      ws.onerror = (err) => {
-        console.error("[Miiflow] WebSocket error:", err);
+      ws.onerror = () => {
+        // Intentionally silent — onerror always precedes onclose,
+        // which handles reconnection with exponential backoff.
       };
     }
 

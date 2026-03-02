@@ -221,13 +221,13 @@ export function MarkdownContent({
         pre: ({ children }) => <>{children}</>,
         table: ({ children }) => (
           <div className="overflow-x-auto my-2 rounded-lg border border-gray-200 dark:border-gray-700">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <table className="min-w-full">
               {children}
             </table>
           </div>
         ),
         thead: ({ children }) => (
-          <thead className="bg-gray-50 dark:bg-gray-800">{children}</thead>
+          <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">{children}</thead>
         ),
         th: ({ children }) => (
           <th className="px-3 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300" style={fontStyle}>
