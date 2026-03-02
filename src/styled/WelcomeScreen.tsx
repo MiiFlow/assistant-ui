@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { MessageCircleQuestion, Paperclip, X } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "../utils/cn";
+import { Avatar } from "./Avatar";
 
 export interface WelcomeScreenProps {
 	/** Rotating placeholder strings displayed in the input */
@@ -20,6 +21,10 @@ export interface WelcomeScreenProps {
 	composerSlot?: ReactNode;
 	/** Additional CSS classes for the outer wrapper */
 	className?: string;
+	/** Assistant avatar image URL — when provided, welcome text renders in message format */
+	assistantAvatar?: string;
+	/** Assistant display name (shown alongside avatar) */
+	assistantName?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -325,6 +330,8 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 			supportsAttachments,
 			composerSlot,
 			className,
+			assistantAvatar,
+			assistantName,
 		},
 		ref,
 	) => {
@@ -353,8 +360,26 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 					animate={{ scale: 1, y: 0, opacity: 1 }}
 					transition={{ type: "spring", stiffness: 200, damping: 25 }}
 					className="relative w-full max-w-[800px] flex flex-col items-center gap-8">
-					{/* Welcome heading */}
-					{welcomeText && (
+					{/* Welcome heading — message format when avatar is configured */}
+					{welcomeText && assistantAvatar ? (
+						<motion.div
+							initial={{ opacity: 0, y: -10 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.1, duration: 0.4 }}
+							className="flex items-start gap-2 w-full">
+							<div className="flex-shrink-0">
+								<Avatar
+									name={assistantName}
+									src={assistantAvatar}
+									role="assistant"
+									className="w-10 h-10 flex-shrink-0"
+								/>
+							</div>
+							<div className="rounded-2xl px-4 py-3">
+								<p className="text-base text-gray-800 dark:text-gray-300">{welcomeText}</p>
+							</div>
+						</motion.div>
+					) : welcomeText ? (
 						<motion.h2
 							initial={{ opacity: 0, y: -10 }}
 							animate={{ opacity: 1, y: 0 }}
@@ -362,7 +387,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 							className="text-2xl font-semibold text-gray-800 dark:text-gray-300 text-center">
 							{welcomeText}
 						</motion.h2>
-					)}
+					) : null}
 
 					{/* Composer with glow ring */}
 					<div
