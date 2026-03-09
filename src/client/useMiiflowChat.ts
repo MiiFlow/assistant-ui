@@ -88,6 +88,8 @@ interface InternalMessage {
   citations?: import("../types").SourceReference[];
   attachments?: import("../types").Attachment[];
   pendingClarification?: ClarificationData;
+  /** Media items (images/videos) for inline rendering */
+  medias?: import("../types").MediaChunkData[];
   /** Wall-clock execution time in seconds, persisted after streaming completes */
   executionTime?: number;
 }
@@ -216,6 +218,7 @@ async function parseSSEStream(
     | Array<{ id: string; label: string; value: string }>
     | undefined;
   let pendingClarification: ClarificationData | undefined;
+  let mediaItems: import("../types").MediaChunkData[] = [];
   let receivedComplete = false;
 
   // Chunk accumulation state
@@ -326,6 +329,7 @@ async function parseSSEStream(
         isStreaming: true,
         reasoning: displayChunks,
         suggestedActions,
+        medias: mediaItems.length > 0 ? mediaItems : undefined,
       };
       callbacks.onMessageCreate(assistantMsg);
     } else {
@@ -334,6 +338,7 @@ async function parseSSEStream(
         textContent: assistantContent,
         reasoning: displayChunks,
         suggestedActions,
+        medias: mediaItems.length > 0 ? mediaItems : undefined,
       });
     }
   };
@@ -1085,6 +1090,21 @@ async function parseSSEStream(
           }
 
           updateStreamingMessage();
+        } else if (parsed.type === "media") {
+          // Media event (image/video) from image generation tools
+          const mediaData = parsed.media_data;
+          if (mediaData) {
+            mediaItems = [
+              ...mediaItems,
+              {
+                id: mediaData.id,
+                url: mediaData.url,
+                mediaType: mediaData.media_type || "image",
+                altText: mediaData.alt_text,
+              },
+            ];
+            updateStreamingMessage();
+          }
         } else if (parsed.type === "assistant_complete") {
           finalizeChunk();
           receivedComplete = true;

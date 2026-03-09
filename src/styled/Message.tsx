@@ -2,6 +2,7 @@ import { forwardRef, useContext, useMemo, useRef } from "react";
 import { MessageContent as MessageContentPrimitive, Message as MessagePrimitive } from "../primitives";
 import type {
 	ClarificationData,
+	MediaChunkData,
 	MessageData,
 	ParticipantRole,
 	SourceReference,
@@ -22,44 +23,7 @@ import { ReasoningPanel } from "./ReasoningPanel";
 import { StreamingText } from "./StreamingText";
 import { SuggestedActions } from "./SuggestedActions";
 import { VisualizationRenderer } from "./visualizations";
-
-// Regex to match visualization markers [VIZ:uuid]
-const VIZ_MARKER_REGEX = /\[VIZ:([a-f0-9-]+)\]/gi;
-
-/**
- * Parse content and split it by visualization markers.
- * Returns an array of alternating text and visualization IDs.
- */
-function parseContentWithVisualizations(
-	content: string,
-): Array<{ type: "text"; content: string } | { type: "viz"; id: string }> {
-	const parts: Array<{ type: "text"; content: string } | { type: "viz"; id: string }> = [];
-	let lastIndex = 0;
-	let match;
-
-	// Reset regex lastIndex
-	VIZ_MARKER_REGEX.lastIndex = 0;
-
-	while ((match = VIZ_MARKER_REGEX.exec(content)) !== null) {
-		if (match.index > lastIndex) {
-			const text = content.slice(lastIndex, match.index);
-			if (text.trim()) {
-				parts.push({ type: "text", content: text });
-			}
-		}
-		parts.push({ type: "viz", id: match[1] });
-		lastIndex = match.index + match[0].length;
-	}
-
-	if (lastIndex < content.length) {
-		const text = content.slice(lastIndex);
-		if (text.trim()) {
-			parts.push({ type: "text", content: text });
-		}
-	}
-
-	return parts;
-}
+import { parseContentWithInlineMarkers } from "../utils/inline-markers";
 
 export interface MessageProps {
 	/** The message data */
@@ -92,6 +56,8 @@ export interface MessageProps {
 	citations?: SourceReference[];
 	/** Inline visualizations to render within message content */
 	visualizations?: VisualizationChunkData[];
+	/** Inline media (images/videos) to render within message content */
+	medias?: MediaChunkData[];
 	/** Base font size multiplier for markdown rendering */
 	baselineFontSize?: number;
 	/** Total execution time in seconds (persisted from streaming wall-clock) */
@@ -125,6 +91,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			onReasoningExpandedChange,
 			citations,
 			visualizations,
+			medias,
 			baselineFontSize,
 			executionTime,
 			pendingClarification,
@@ -194,18 +161,24 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			return map;
 		}, [visualizations]);
 
-		// Parse content for visualization markers
-		const hasViz = vizMap && vizMap.size > 0;
+		// Parse content for inline viz markers
+		const hasVizInlineContent = vizMap && vizMap.size > 0;
 		const contentParts = useMemo(() => {
-			if (!hasViz || !message.textContent) return null;
-			return parseContentWithVisualizations(message.textContent);
-		}, [hasViz, message.textContent]);
+			if (!hasVizInlineContent || !message.textContent) return null;
+			return parseContentWithInlineMarkers(message.textContent);
+		}, [hasVizInlineContent, message.textContent]);
+
+		// Strip [MEDIA:...] markers from text content (media rendered separately)
+		const cleanTextContent = useMemo(() => {
+			if (!medias || medias.length === 0 || !message.textContent) return message.textContent;
+			return message.textContent.replace(/\[MEDIA:[a-f0-9-]+\]/gi, "").trim();
+		}, [message.textContent, medias]);
 
 		const renderContent = () => {
 			if (!message.textContent) return null;
 
-			// Content with inline visualizations
-			if (contentParts && contentParts.length > 0 && vizMap) {
+			// Content with inline visualization markers
+			if (contentParts && contentParts.length > 0 && hasVizInlineContent) {
 				return (
 					<>
 						{contentParts.map((part, idx) => {
@@ -221,10 +194,14 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 									</MarkdownContent>
 								);
 							}
-							const viz = vizMap.get(part.id);
-							if (viz) {
-								return <VisualizationRenderer key={`viz-${part.id}`} data={viz} isStreaming={isStreaming} onAction={onVisualizationAction} />;
+							if (part.type === "viz") {
+								const viz = vizMap?.get(part.id);
+								if (viz) {
+									return <VisualizationRenderer key={`viz-${part.id}`} data={viz} isStreaming={isStreaming} onAction={onVisualizationAction} />;
+								}
+								return null;
 							}
+							// Media markers stripped — rendered below
 							return null;
 						})}
 					</>
@@ -235,7 +212,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			if (isStreaming && renderMarkdown) {
 				return (
 					<StreamingText
-						content={message.textContent}
+						content={cleanTextContent || ""}
 						isStreaming
 						baselineFontSize={baselineFontSize}
 						className={isViewer ? "prose-invert" : ""}
@@ -247,12 +224,28 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			if (renderMarkdown) {
 				return (
 					<MarkdownContent baselineFontSize={baselineFontSize} className={isViewer ? "prose-invert" : ""}>
-						{message.textContent}
+						{cleanTextContent || ""}
 					</MarkdownContent>
 				);
 			}
 
-			return <p className="whitespace-pre-wrap">{message.textContent}</p>;
+			return <p className="whitespace-pre-wrap">{cleanTextContent}</p>;
+		};
+
+		const renderMediaItems = () => {
+			if (!medias || medias.length === 0) return null;
+			return medias.map((media) =>
+				media.mediaType === "image" ? (
+					<div key={`media-${media.id}`} className="my-3">
+						<img
+							src={media.url}
+							alt={media.altText || "Generated image"}
+							className="max-w-full rounded-lg"
+							style={{ maxHeight: 512, display: "block" }}
+						/>
+					</div>
+				) : null
+			);
 		};
 
 		// Track if this message was ever in streaming state.
@@ -335,6 +328,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 										color: isViewer ? "var(--chat-user-message-text, #ffffff)" : "var(--chat-text)",
 									}}>
 									<MessageContentPrimitive>{renderContent()}</MessageContentPrimitive>
+									{renderMediaItems()}
 
 									{/* Citations */}
 									{citations && citations.length > 0 && (

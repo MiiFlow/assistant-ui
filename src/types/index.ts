@@ -57,6 +57,7 @@ export type {
   VisualizationConfig,
   VisualizationData,
   VisualizationChunkData,
+  MediaChunkData,
   // Event timeline types
   EventStatus,
   EventType,

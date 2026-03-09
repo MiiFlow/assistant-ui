@@ -1,11 +1,11 @@
-export { A as Attachment, C as ChatMessage, M as MessageData, b as MessageError, a as Participant, P as ParticipantRole, R as ReasoningChunk, d as SourceReference, e as SourceTypeConfig, S as SuggestedAction, c as SuggestedActionType } from './message-D3U71RE-.js';
-export { b as StreamChunk, c as StreamingOptions, a as StreamingState } from './streaming-CXHkN_Ul.js';
+export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-DzaWYuGZ.js';
+export { a as StreamChunk, b as StreamingOptions, c as StreamingState } from './streaming-DrnCgnnh.js';
 export { B as BrandingData } from './branding-SzYU4ncD.js';
 export { ChatContext, ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from './context/index.js';
 export { useAttachments, useAutoScroll, useBrandingCSSVars, useMessageComposer, useScrollLock, useStreaming } from './hooks/index.js';
-export { A as AvatarPrimitive, f as ComposerContext, C as ComposerInput, e as ComposerSubmit, d as MessageComposerPrimitive, a as MessageContentPrimitive, c as MessageContext, M as MessagePrimitive, b as MessageTimestampPrimitive, g as useComposer, u as useMessage } from './avatar-BWmQERQw.js';
+export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-Ba45LfAJ.js';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.js';
-export { g as AttachmentPreview, A as Avatar, C as ChatContainer, a as ChatLayout, f as MarkdownContent, b as Message, c as MessageActionBar, d as MessageComposer, M as MessageList, h as ScrollToBottomButton, e as StreamingText, S as SuggestedActions, i as ToolStatusIndicator, T as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-B0SbjVId.js';
+export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-BeoworEU.js';
 import { ClassValue } from 'clsx';
 import 'react/jsx-runtime';
 import 'react';
@@ -41,6 +41,21 @@ declare function formatRelativeTime(date: Date | string): string;
  * Falls back to "#ffffff" if the color cannot be parsed.
  */
 declare function getContrastTextColor(bgColor: string): string;
+
+type ContentPart = {
+    type: "text";
+    content: string;
+} | {
+    type: "viz";
+    id: string;
+} | {
+    type: "media";
+    id: string;
+};
+/**
+ * Parse content and split it by inline markers ([VIZ:id] and [MEDIA:id]).
+ */
+declare function parseContentWithInlineMarkers(content: string): ContentPart[];
 
 /**
  * Design tokens for the chat UI.
@@ -154,4 +169,4 @@ declare const chatTokens: {
 };
 type ChatTokens = typeof chatTokens;
 
-export { type ChatTokens, chatTokens, cn, formatMessageTime, formatRelativeTime, getContrastTextColor };
+export { type ChatTokens, type ContentPart, chatTokens, cn, formatMessageTime, formatRelativeTime, getContrastTextColor, parseContentWithInlineMarkers };

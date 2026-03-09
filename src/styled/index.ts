@@ -126,6 +126,8 @@ export type {
 	WebOperationChunkData,
 	ClaudeToolChunkData,
 	ClarificationData,
+	// Media types
+	MediaChunkData,
 	// Visualization types
 	VisualizationType,
 	VisualizationChunkData,

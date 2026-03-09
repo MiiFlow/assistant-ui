@@ -53,6 +53,8 @@ export type ChunkType =
   | "clarification_needed"          // Agent needs user input to continue
   // Visualization
   | "visualization"   // Rich visualization (chart, table, card, etc.)
+  // Media (inline image/video/audio)
+  | "media"           // Inline media from image generation tools
   // Claude SDK native chunk types
   | "subagent"        // Nested subagent execution
   | "file_operation"  // Read/Write/Edit file operations
@@ -411,6 +413,17 @@ export interface VisualizationChunkData extends VisualizationData {
   };
 }
 
+export interface MediaChunkData {
+  id: string;
+  url: string;
+  mediaType: string; // "image", "video", "audio"
+  altText?: string;
+  context?: {
+    orchestratorType?: string;
+    toolName?: string;
+  };
+}
+
 /**
  * Extended streaming chunk with full agentic support
  */
@@ -465,6 +478,7 @@ export interface StreamingChunk {
   claudeToolData?: ClaudeToolChunkData;
   clarificationData?: ClarificationData;
   visualizationData?: VisualizationChunkData;
+  mediaData?: MediaChunkData;
   toolUseId?: string;
 }
 
@@ -497,6 +511,9 @@ export interface StreamingMessage {
 
   // Visualizations
   visualizations?: VisualizationChunkData[];
+
+  // Media (images, video, audio)
+  medias?: MediaChunkData[];
 }
 
 /**
