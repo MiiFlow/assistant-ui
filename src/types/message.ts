@@ -71,6 +71,8 @@ export interface ChatMessage extends MessageData {
   reasoning?: StreamingChunk[];
   citations?: import("./citation").SourceReference[];
   pendingClarification?: import("./streaming").ClarificationData;
+  /** Inline media (images/videos) to render within message content */
+  medias?: import("./streaming").MediaChunkData[];
   /** Wall-clock execution time in seconds (persisted after streaming completes) */
   executionTime?: number;
 }

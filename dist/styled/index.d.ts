@@ -1,14 +1,14 @@
-export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-BeoworEU.js';
+export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-AIT2x8b7.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode } from 'react';
-import { A as Attachment, S as SourceReference } from '../message-DzaWYuGZ.js';
-export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-DzaWYuGZ.js';
+import { A as Attachment, S as SourceReference } from '../message-BnGtSz1P.js';
+export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-BnGtSz1P.js';
 import { S as StreamingChunk, P as PlanData, C as ClarificationData, V as VisualizationChunkData, d as VisualizationActionEvent, e as ChartVisualizationData, f as VisualizationConfig, T as TableVisualizationData, g as CardVisualizationData, K as KpiVisualizationData, h as CodePreviewVisualizationData, F as FormVisualizationData, E as Event, i as EventStatus } from '../streaming-DrnCgnnh.js';
 export { j as ChunkType, k as ClaudeToolChunkData, l as EventType, m as FileOperationChunkData, n as FollowupAction, M as MediaChunkData, O as ObservationEvent, o as ParallelSubtaskData, p as PlanningEvent, q as ProgressData, r as SearchResultsChunkData, s as StreamingMessage, t as SubTaskData, u as SubagentChunkData, v as SubagentInfo, w as SubtaskEvent, x as TerminalChunkData, y as ThinkingEvent, z as ToolEvent, A as VisualizationType, W as WaveData, B as WebOperationChunkData } from '../streaming-DrnCgnnh.js';
 import { z, ZodSchema } from 'zod';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
 export { B as BrandingData } from '../branding-SzYU4ncD.js';
-export { u as useComposer, g as useMessage } from '../avatar-Ba45LfAJ.js';
+export { u as useComposer, g as useMessage } from '../avatar-B6YLvJt3.js';
 
 interface LoadingDotsProps {
     /** Size variant */
