@@ -176,6 +176,8 @@ export interface MessageComposerProps {
   className?: string;
   /** Whether a message is currently being submitted */
   isSubmitting?: boolean;
+  /** Centered/welcome mode: bigger radius, more padding, nicer shadow (used inside WelcomeScreen) */
+  centered?: boolean;
 }
 
 /**
@@ -196,6 +198,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       placeholder = "Type a message...",
       className,
       isSubmitting = false,
+      centered = false,
     },
     ref,
   ) => {
@@ -397,11 +400,13 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       <div
         ref={ref}
         className={cn(
-          "flex-shrink-0 px-3 pt-2 pb-3",
-          "border-t border-gray-200 dark:border-zinc-700",
-          "bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm",
+          "flex-shrink-0",
+          centered
+            ? "p-0 bg-transparent"
+            : "px-3 pt-2 pb-3 border-t border-gray-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm",
           className,
         )}
+        style={centered ? { padding: 0, background: "transparent", border: "none" } : undefined}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
@@ -410,14 +415,20 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         <div
           className={cn(
             "mx-auto max-w-[900px]",
-            "rounded-xl",
             "bg-white dark:bg-zinc-800",
-            "border border-gray-200 dark:border-zinc-700",
-            "shadow-sm",
             "transition-all duration-200",
-            "focus-within:shadow-md focus-within:border-gray-300 dark:focus-within:border-zinc-600",
+            centered
+              ? ""
+              : "rounded-xl border border-gray-200 dark:border-zinc-700 shadow-sm focus-within:shadow-md focus-within:border-gray-300 dark:focus-within:border-zinc-600",
             isDragOver && "ring-2 ring-blue-400 border-blue-400",
           )}
+          style={centered ? {
+            borderRadius: "1rem",
+            border: "1px solid rgba(0,0,0,0.08)",
+            boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
+            backgroundColor: "white",
+            overflow: "hidden",
+          } : undefined}
         >
           {/* Drag overlay */}
           {isDragOver && (
@@ -434,9 +445,11 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
           {/* Main input row */}
           <div
             className={cn(
-              "flex items-center gap-2 p-3",
+              "flex items-center gap-2",
+              centered ? "p-4" : "p-3",
               attachments.length > 0 && "pt-1.5",
             )}
+            style={centered ? { padding: "1rem" } : undefined}
           >
             {/* Paperclip button */}
             {supportsAttachments && (

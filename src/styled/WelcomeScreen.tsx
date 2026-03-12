@@ -131,6 +131,13 @@ function DefaultInput({
 				"transition duration-200",
 				"focus-within:shadow-[0_8px_30px_rgba(0,0,0,0.12)] focus-within:border-gray-200 dark:focus-within:border-zinc-600",
 			)}
+			style={{
+				borderRadius: "1rem",
+				border: "1px solid rgba(0,0,0,0.06)",
+				boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
+				backgroundColor: "white",
+				overflow: "hidden",
+			}}
 			onSubmit={(e) => {
 				e.preventDefault();
 				handleSubmit();
@@ -157,7 +164,7 @@ function DefaultInput({
 				</div>
 			)}
 
-			<div className="flex items-center gap-2">
+			<div className="flex items-center gap-2" style={{ padding: "0.25rem 0" }}>
 				{/* Paperclip button */}
 				{supportsAttachments && (
 					<button
@@ -173,7 +180,8 @@ function DefaultInput({
 							"hover:text-gray-600 dark:hover:text-zinc-300",
 							"disabled:opacity-40 disabled:cursor-not-allowed",
 							"transition-colors",
-						)}>
+						)}
+						style={{ marginLeft: "0.75rem" }}>
 						<Paperclip size={16} />
 					</button>
 				)}
@@ -197,6 +205,13 @@ function DefaultInput({
 						"disabled:opacity-50 disabled:cursor-not-allowed",
 						"max-h-[200px] overflow-y-auto",
 					)}
+					style={{
+						padding: "1rem 0.25rem",
+						border: "none",
+						background: "transparent",
+						outline: "none",
+						resize: "none",
+					}}
 				/>
 				<button
 					type="submit"
@@ -214,7 +229,13 @@ function DefaultInput({
 						"disabled:text-gray-500 dark:disabled:text-zinc-400",
 						"disabled:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed",
 						"transition-all duration-200",
-					)}>
+					)}
+					style={{
+						marginRight: "0.75rem",
+						width: "2.25rem",
+						height: "2.25rem",
+						borderRadius: "0.5rem",
+					}}>
 					<svg
 						width="16"
 						height="16"
@@ -376,7 +397,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 								/>
 							</div>
 							<div className="rounded-2xl px-4 py-3">
-								<p className="text-base text-gray-800 dark:text-gray-300">{welcomeText}</p>
+								<p style={{ fontSize: "1rem", lineHeight: "1.5rem" }} className="text-base text-gray-800 dark:text-gray-300">{welcomeText}</p>
 							</div>
 						</motion.div>
 					) : welcomeText ? (
@@ -384,6 +405,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 							initial={{ opacity: 0, y: -10 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ delay: 0.1, duration: 0.4 }}
+							style={{ fontSize: "1.5rem", lineHeight: "2rem", fontWeight: 600 }}
 							className="text-2xl font-semibold text-gray-800 dark:text-gray-300 text-center">
 							{welcomeText}
 						</motion.h2>
