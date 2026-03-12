@@ -424,10 +424,10 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
           )}
           style={centered ? {
             borderRadius: "1rem",
-            border: "1px solid rgba(0,0,0,0.08)",
-            boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
-            backgroundColor: "white",
             overflow: "hidden",
+            backgroundColor: "var(--chat-composer-bg, #ffffff)",
+            border: "1px solid var(--chat-composer-border, rgba(0,0,0,0.06))",
+            boxShadow: "var(--chat-composer-shadow, 0 8px 30px rgba(0,0,0,0.08))",
           } : undefined}
         >
           {/* Drag overlay */}

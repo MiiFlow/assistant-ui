@@ -37,6 +37,11 @@
     --chat-radius-panel: 0.5rem;
     --chat-radius-button: 0.5rem;
 
+    /* Composer (input box) backgrounds */
+    --chat-composer-bg: #ffffff;
+    --chat-composer-border: rgba(0, 0, 0, 0.06);
+    --chat-composer-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+
     /* Welcome screen halo effect */
     --chat-halo-primary: rgba(16, 105, 151, 0.06);
     --chat-halo-secondary: rgba(86, 193, 138, 0.03);
@@ -52,6 +57,11 @@
     --chat-text: #F5F5F5;
     --chat-text-subtle: rgba(255, 255, 255, 0.5);
     --chat-placeholder: rgba(255, 255, 255, 0.4);
+
+    /* Composer backgrounds */
+    --chat-composer-bg: #27272A;
+    --chat-composer-border: rgba(255, 255, 255, 0.1);
+    --chat-composer-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
 
     /* Slightly stronger halo in dark mode */
     --chat-halo-primary: rgba(16, 105, 151, 0.10);

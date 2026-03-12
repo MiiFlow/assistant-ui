@@ -124,19 +124,15 @@ function DefaultInput({
 		<form
 			className={cn(
 				"w-full relative mx-auto",
-				"bg-white dark:bg-zinc-800",
 				"rounded-2xl overflow-hidden",
-				"shadow-[0_8px_30px_rgba(0,0,0,0.08)]",
-				"border border-gray-100 dark:border-zinc-700/50",
 				"transition duration-200",
-				"focus-within:shadow-[0_8px_30px_rgba(0,0,0,0.12)] focus-within:border-gray-200 dark:focus-within:border-zinc-600",
 			)}
 			style={{
 				borderRadius: "1rem",
-				border: "1px solid rgba(0,0,0,0.06)",
-				boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
-				backgroundColor: "white",
 				overflow: "hidden",
+				backgroundColor: "var(--chat-composer-bg, #ffffff)",
+				border: "1px solid var(--chat-composer-border, rgba(0,0,0,0.06))",
+				boxShadow: "var(--chat-composer-shadow, 0 8px 30px rgba(0,0,0,0.08))",
 			}}
 			onSubmit={(e) => {
 				e.preventDefault();
@@ -397,7 +393,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 								/>
 							</div>
 							<div className="rounded-2xl px-4 py-3">
-								<p style={{ fontSize: "1rem", lineHeight: "1.5rem" }} className="text-base text-gray-800 dark:text-gray-300">{welcomeText}</p>
+								<p style={{ fontSize: "1rem", lineHeight: "1.5rem" }} className="text-base text-gray-800 dark:text-white">{welcomeText}</p>
 							</div>
 						</motion.div>
 					) : welcomeText ? (
@@ -406,7 +402,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ delay: 0.1, duration: 0.4 }}
 							style={{ fontSize: "1.5rem", lineHeight: "2rem", fontWeight: 600 }}
-							className="text-2xl font-semibold text-gray-800 dark:text-gray-300 text-center">
+							className="text-2xl font-semibold text-gray-800 dark:text-white text-center">
 							{welcomeText}
 						</motion.h2>
 					) : null}
