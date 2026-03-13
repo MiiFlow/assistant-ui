@@ -208,6 +208,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const dragCounterRef = useRef(0);
+    const isSubmittingRef = useRef(false);
 
     const isSubmitDisabled = disabled || isSubmitting;
     const isAnyUploading = attachments.some((a) => a.status === "uploading");
@@ -281,7 +282,9 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     );
 
     const handleSubmit = useCallback(async () => {
-      if (!hasContent || isSubmitDisabled || isAnyUploading) return;
+      if (!hasContent || isSubmitDisabled || isAnyUploading || isSubmittingRef.current) return;
+      // Lock immediately to prevent double-send race condition
+      isSubmittingRef.current = true;
 
       const text = inputText;
       const rawFiles = attachments
@@ -303,6 +306,8 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         // Restore on error
         setInputText(text);
         setAttachments(savedAttachments);
+      } finally {
+        isSubmittingRef.current = false;
       }
     }, [inputText, attachments, hasContent, isSubmitDisabled, isAnyUploading, onSubmit, onUploadFile, uploadedIds]);
 

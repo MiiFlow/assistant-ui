@@ -26,6 +26,7 @@ export function useMessageComposer({
   const [error, setError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isSubmittingRef = useRef(false);
 
   const handleContentChange = useCallback((value: string) => {
     setContent(value);
@@ -64,10 +65,12 @@ export function useMessageComposer({
 
   const handleSubmit = useCallback(async () => {
     const trimmedContent = content.trim();
-    if ((!trimmedContent && attachments.length === 0) || disabled || isSubmitting) {
+    if ((!trimmedContent && attachments.length === 0) || disabled || isSubmitting || isSubmittingRef.current) {
       return;
     }
 
+    // Lock immediately to prevent double-send race condition
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
 
@@ -80,6 +83,7 @@ export function useMessageComposer({
       setError(err instanceof Error ? err.message : "Failed to send message");
     } finally {
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
   }, [content, attachments, disabled, isSubmitting, onSubmit]);
 

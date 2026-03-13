@@ -1,2 +1,2 @@
-export{b as useAttachments,a as useStreaming}from'../chunk-WG77GQR3.js';export{a as useScrollLock}from'../chunk-D2PFIJNZ.js';export{a as useAutoScroll,b as useMessageComposer}from'../chunk-65VDOUZG.js';export{b as useBrandingCSSVars}from'../chunk-NSTK5EUQ.js';//# sourceMappingURL=index.js.map
+export{b as useAttachments,a as useStreaming}from'../chunk-WG77GQR3.js';export{a as useScrollLock}from'../chunk-D2PFIJNZ.js';export{a as useAutoScroll,b as useMessageComposer}from'../chunk-4WWJTYYA.js';export{b as useBrandingCSSVars}from'../chunk-NSTK5EUQ.js';//# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map

@@ -1426,6 +1426,8 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
       const hasAttachments = attachmentIds && attachmentIds.length > 0;
 
       if ((!hasText && !hasAttachments) || isStreamingRef.current || !currentSession) return;
+      // Lock immediately to prevent double-send race condition
+      isStreamingRef.current = true;
 
       const optimisticId = `msg-${Date.now()}`;
 
