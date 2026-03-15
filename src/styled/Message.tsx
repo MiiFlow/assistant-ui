@@ -234,7 +234,15 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 
 		const renderMediaItems = () => {
 			if (!medias || medias.length === 0) return null;
-			return medias.map((media) =>
+			// Skip media items already rendered inline as markdown images
+			const textContent = cleanTextContent || "";
+			const filteredMedias = medias.filter((media) => {
+				if (media.mediaType !== "image") return true;
+				// Check if this URL appears as a markdown image in the text
+				return !textContent.includes(media.url);
+			});
+			if (filteredMedias.length === 0) return null;
+			return filteredMedias.map((media) =>
 				media.mediaType === "image" ? (
 					<div key={`media-${media.id}`} className="my-3">
 						<img
