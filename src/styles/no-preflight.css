@@ -8,473 +8,483 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    /* Primary colors - customize these to match your brand */
-    --chat-primary: #106997;
-    --chat-secondary: #56C18A;
-    --chat-error: #B1001B;
-    --chat-warning: #DD9652;
+	:root {
+		/* Primary colors - customize these to match your brand */
+		--chat-primary: #106997;
+		--chat-secondary: #56c18a;
+		--chat-error: #b1001b;
+		--chat-warning: #dd9652;
 
-    /* Message backgrounds */
-    --chat-message-bg: rgba(0, 0, 0, 0.03);
-    --chat-user-message-bg: var(--chat-primary);
-    --chat-user-message-text: #ffffff;
+		/* Message backgrounds */
+		--chat-message-bg: rgba(0, 0, 0, 0.03);
+		--chat-user-message-bg: var(--chat-primary);
+		--chat-user-message-text: #ffffff;
 
-    /* Panel backgrounds */
-    --chat-panel-bg: rgba(0, 0, 0, 0.02);
-    --chat-panel-border: rgba(0, 0, 0, 0.06);
+		/* Panel backgrounds */
+		--chat-panel-bg: rgba(0, 0, 0, 0.02);
+		--chat-panel-border: rgba(0, 0, 0, 0.06);
 
-    /* Borders */
-    --chat-border: rgba(0, 0, 0, 0.06);
-    --chat-border-hover: rgba(0, 0, 0, 0.12);
+		/* Borders */
+		--chat-border: rgba(0, 0, 0, 0.06);
+		--chat-border-hover: rgba(0, 0, 0, 0.12);
 
-    /* Text colors */
-    --chat-text: #1D2033;
-    --chat-text-subtle: rgba(0, 0, 0, 0.5);
-    --chat-placeholder: rgba(0, 0, 0, 0.4);
+		/* Text colors */
+		--chat-text: #1d2033;
+		--chat-text-subtle: rgba(0, 0, 0, 0.5);
+		--chat-placeholder: rgba(0, 0, 0, 0.4);
 
-    /* Typography */
-    --chat-font-family: 'Inter', 'Assistant', system-ui, -apple-system, sans-serif;
+		/* Typography */
+		--chat-font-family: "Inter", "Assistant", system-ui, -apple-system, sans-serif;
 
-    /* Border radius */
-    --chat-radius-message: 0.5rem;
-    --chat-radius-input: 1rem;
-    --chat-radius-panel: 0.5rem;
-    --chat-radius-button: 0.5rem;
+		/* Border radius */
+		--chat-radius-message: 0.5rem;
+		--chat-radius-input: 1rem;
+		--chat-radius-panel: 0.5rem;
+		--chat-radius-button: 0.5rem;
 
-    /* Composer (input box) backgrounds */
-    --chat-composer-bg: #ffffff;
-    --chat-composer-border: rgba(0, 0, 0, 0.06);
-    --chat-composer-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+		/* Composer (input box) backgrounds */
+		--chat-composer-bg: #ffffff;
+		--chat-composer-border: rgba(0, 0, 0, 0.06);
+		--chat-composer-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
 
-    /* Welcome screen halo effect */
-    --chat-halo-primary: rgba(16, 105, 151, 0.06);
-    --chat-halo-secondary: rgba(86, 193, 138, 0.03);
-  }
+		/* Welcome screen halo effect */
+		--chat-halo-primary: rgba(16, 105, 151, 0.06);
+		--chat-halo-secondary: rgba(86, 193, 138, 0.03);
+	}
 
-  /* Scoped preflight for chat-ui components.
+	/* Scoped preflight for chat-ui components.
    * Mirrors Tailwind's preflight but only within chat-ui containers,
    * so host-page styles (MUI, Bootstrap, etc.) are unaffected. */
-  [data-chat-ui] {
-    font-family: var(--chat-font-family, 'Inter', 'Assistant', system-ui, -apple-system, sans-serif);
-    font-size: 14px;
-    line-height: 1.5;
-    color: var(--chat-text, #1D2033);
-    background: transparent;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
+	[data-chat-ui] {
+		font-family: var(--chat-font-family, "Inter", "Assistant", system-ui, -apple-system, sans-serif);
+		font-size: 14px;
+		line-height: 1.5;
+		color: var(--chat-text, #1d2033);
+		background: transparent;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
 
-  [data-chat-ui] *,
-  [data-chat-ui] *::before,
-  [data-chat-ui] *::after {
-    box-sizing: border-box;
-    border-width: 0;
-    border-style: solid;
-    border-color: #e5e7eb;
-  }
+	[data-chat-ui] *,
+	[data-chat-ui] *::before,
+	[data-chat-ui] *::after {
+		box-sizing: border-box;
+		border-width: 0;
+		border-style: solid;
+		border-color: #e5e7eb;
+	}
 
-  [data-chat-ui] button,
-  [data-chat-ui] input,
-  [data-chat-ui] textarea,
-  [data-chat-ui] select {
-    font-family: inherit;
-    font-size: 100%;
-    font-weight: inherit;
-    line-height: inherit;
-    letter-spacing: inherit;
-    color: inherit;
-    margin: 0;
-    padding: 0;
-    border: none;
-    background: transparent;
-  }
+	[data-chat-ui] button,
+	[data-chat-ui] input,
+	[data-chat-ui] textarea,
+	[data-chat-ui] select {
+		font-family: inherit;
+		font-size: 100%;
+		font-weight: inherit;
+		line-height: inherit;
+		letter-spacing: inherit;
+		color: inherit;
+		margin: 0;
+		padding: 0;
+		border: none;
+		background: transparent;
+	}
 
-  [data-chat-ui] button {
-    cursor: pointer;
-    -webkit-appearance: button;
-  }
+	[data-chat-ui] button {
+		cursor: pointer;
+		-webkit-appearance: button;
+	}
 
-  [data-chat-ui] textarea {
-    resize: none;
-    box-shadow: none;
-  }
+	[data-chat-ui] textarea {
+		resize: none;
+		box-shadow: none;
+	}
 
-  [data-chat-ui] textarea::placeholder,
-  [data-chat-ui] input::placeholder {
-    opacity: 1;
-    color: #9ca3af;
-  }
+	[data-chat-ui] textarea::placeholder,
+	[data-chat-ui] input::placeholder {
+		opacity: 1;
+		color: #9ca3af;
+	}
 
-  [data-chat-ui] h1,
-  [data-chat-ui] h2,
-  [data-chat-ui] h3,
-  [data-chat-ui] h4,
-  [data-chat-ui] h5,
-  [data-chat-ui] h6 {
-    font-size: inherit;
-    font-weight: inherit;
-    margin: 0;
-  }
+	[data-chat-ui] h1,
+	[data-chat-ui] h2,
+	[data-chat-ui] h3,
+	[data-chat-ui] h4,
+	[data-chat-ui] h5,
+	[data-chat-ui] h6 {
+		font-size: inherit;
+		font-weight: inherit;
+		margin: 0;
+	}
 
-  [data-chat-ui] p {
-    margin: 0;
-  }
+	[data-chat-ui] p {
+		margin: 0;
+	}
 
-  [data-chat-ui] a {
-    color: inherit;
-    text-decoration: inherit;
-  }
+	[data-chat-ui] a {
+		color: inherit;
+		text-decoration: inherit;
+	}
 
-  [data-chat-ui] ol,
-  [data-chat-ui] ul,
-  [data-chat-ui] menu {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
+	[data-chat-ui] ol,
+	[data-chat-ui] ul,
+	[data-chat-ui] menu {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
 
-  [data-chat-ui] blockquote {
-    margin: 0;
-  }
+	[data-chat-ui] blockquote {
+		margin: 0;
+	}
 
-  [data-chat-ui] img,
-  [data-chat-ui] video {
-    max-width: 100%;
-    height: auto;
-    display: block;
-  }
+	[data-chat-ui] img,
+	[data-chat-ui] video {
+		max-width: 100%;
+		height: auto;
+		display: block;
+	}
 
-  [data-chat-ui] table {
-    border-collapse: collapse;
-    border-color: inherit;
-    text-indent: 0;
-  }
+	[data-chat-ui] table {
+		border-collapse: collapse;
+		border-color: inherit;
+		text-indent: 0;
+	}
 
-  /* Dark mode support */
-  .dark {
-    --chat-message-bg: rgba(255, 255, 255, 0.05);
-    --chat-panel-bg: rgba(255, 255, 255, 0.03);
-    --chat-panel-border: rgba(255, 255, 255, 0.08);
-    --chat-border: rgba(255, 255, 255, 0.08);
-    --chat-border-hover: rgba(255, 255, 255, 0.15);
-    --chat-text: #F5F5F5;
-    --chat-text-subtle: rgba(255, 255, 255, 0.5);
-    --chat-placeholder: rgba(255, 255, 255, 0.4);
+	/* Dark mode support */
+	.dark {
+		--chat-message-bg: rgba(255, 255, 255, 0.05);
+		--chat-panel-bg: rgba(255, 255, 255, 0.03);
+		--chat-panel-border: rgba(255, 255, 255, 0.08);
+		--chat-border: rgba(255, 255, 255, 0.08);
+		--chat-border-hover: rgba(255, 255, 255, 0.15);
+		--chat-text: #f5f5f5;
+		--chat-text-subtle: rgba(255, 255, 255, 0.5);
+		--chat-placeholder: rgba(255, 255, 255, 0.4);
 
-    /* Composer backgrounds */
-    --chat-composer-bg: #27272A;
-    --chat-composer-border: rgba(255, 255, 255, 0.1);
-    --chat-composer-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+		/* Composer backgrounds */
+		--chat-composer-bg: #27272a;
+		--chat-composer-border: rgba(255, 255, 255, 0.1);
+		--chat-composer-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
 
-    /* Slightly stronger halo in dark mode */
-    --chat-halo-primary: rgba(16, 105, 151, 0.10);
-    --chat-halo-secondary: rgba(86, 193, 138, 0.05);
-  }
+		/* Slightly stronger halo in dark mode */
+		--chat-halo-primary: rgba(16, 105, 151, 0.1);
+		--chat-halo-secondary: rgba(86, 193, 138, 0.05);
+	}
 }
 
 @layer components {
-  /* Custom scrollbar for chat containers */
-  .chat-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
-  }
+	/* Custom scrollbar for chat containers */
+	.chat-scrollbar {
+		scrollbar-width: thin;
+		scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+	}
 
-  .chat-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
+	.chat-scrollbar::-webkit-scrollbar {
+		width: 6px;
+	}
 
-  .chat-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
+	.chat-scrollbar::-webkit-scrollbar-track {
+		background: transparent;
+	}
 
-  .chat-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 3px;
-  }
+	.chat-scrollbar::-webkit-scrollbar-thumb {
+		background: rgba(0, 0, 0, 0.1);
+		border-radius: 3px;
+	}
 
-  .chat-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.2);
-  }
+	.chat-scrollbar::-webkit-scrollbar-thumb:hover {
+		background: rgba(0, 0, 0, 0.2);
+	}
 
-  /* Dark mode scrollbar */
-  .dark .chat-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-  }
+	/* Dark mode scrollbar */
+	.dark .chat-scrollbar::-webkit-scrollbar-thumb {
+		background: rgba(255, 255, 255, 0.1);
+	}
 
-  .dark .chat-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
+	.dark .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+		background: rgba(255, 255, 255, 0.2);
+	}
 
-  /* Message prose styling */
-  .chat-prose {
-    @apply leading-relaxed;
-    color: var(--chat-text);
-  }
+	/* Message prose styling */
+	.chat-prose {
+		@apply leading-relaxed;
+		color: var(--chat-text);
+	}
 
-  .chat-prose.prose-invert {
-    color: var(--chat-user-message-text, #ffffff);
-  }
+	.chat-prose.prose-invert {
+		color: var(--chat-user-message-text, #ffffff);
+	}
 
-  .chat-prose p {
-    @apply mb-2 last:mb-0;
-  }
+	.chat-prose p {
+		@apply mb-2 last:mb-0;
+	}
 
-  .chat-prose h1 {
-    @apply text-xl font-semibold mt-4 mb-2;
-  }
+	.chat-prose h1 {
+		@apply text-xl font-semibold mt-4 mb-2;
+	}
 
-  .chat-prose h2 {
-    @apply text-lg font-semibold mt-3 mb-2;
-  }
+	.chat-prose h2 {
+		@apply text-lg font-semibold mt-3 mb-2;
+	}
 
-  .chat-prose h3 {
-    @apply text-base font-medium mt-2 mb-1;
-  }
+	.chat-prose h3 {
+		@apply text-base font-medium mt-2 mb-1;
+	}
 
-  .chat-prose ul {
-    @apply list-disc pl-4 mb-2 space-y-1;
-  }
+	.chat-prose ul {
+		@apply list-disc pl-4 mb-2 space-y-1;
+	}
 
-  .chat-prose ol {
-    @apply list-decimal pl-4 mb-2 space-y-1;
-  }
+	.chat-prose ol {
+		@apply list-decimal pl-4 mb-2 space-y-1;
+	}
 
-  .chat-prose li {
-    @apply leading-relaxed;
-  }
+	.chat-prose li {
+		@apply leading-relaxed;
+	}
 
-  .chat-prose a {
-    @apply text-primary underline hover:opacity-80;
-  }
+	.chat-prose a {
+		@apply text-primary underline hover:opacity-80;
+	}
 
-  .chat-prose blockquote {
-    @apply border-l-2 border-gray-300 pl-3 my-2 italic;
-  }
+	.chat-prose blockquote {
+		@apply border-l-2 border-gray-300 pl-3 my-2 italic;
+	}
 
-  .chat-prose code:not(pre code) {
-    @apply bg-gray-100 px-1 py-0.5 rounded text-sm font-mono;
-  }
+	.chat-prose code:not(pre code) {
+		@apply bg-gray-100 px-1 py-0.5 rounded text-sm font-mono;
+	}
 
-  .dark .chat-prose code:not(pre code) {
-    @apply bg-gray-800;
-  }
+	.dark .chat-prose code:not(pre code) {
+		@apply bg-gray-800;
+	}
 
-  .chat-prose pre {
-    @apply bg-gray-100 p-3 rounded overflow-x-auto text-sm font-mono my-2;
-  }
+	.chat-prose pre {
+		@apply bg-gray-100 p-3 rounded overflow-x-auto text-sm font-mono my-2;
+	}
 
-  .dark .chat-prose pre {
-    @apply bg-gray-800;
-  }
+	.dark .chat-prose pre {
+		@apply bg-gray-800;
+	}
 
-  .chat-prose table {
-    @apply min-w-full divide-y divide-gray-200 my-2;
-  }
+	.chat-prose table {
+		@apply min-w-full divide-y divide-gray-200;
+	}
 
-  .chat-prose th {
-    @apply px-3 py-2 text-left text-sm font-medium text-gray-700 bg-gray-50;
-  }
+	.chat-prose th {
+		@apply px-3 py-2 text-left text-sm font-medium text-gray-700 bg-gray-50;
+	}
 
-  .dark .chat-prose th {
-    @apply text-gray-300 bg-gray-800;
-  }
+	.dark .chat-prose th {
+		@apply text-gray-300 bg-gray-800;
+	}
 
-  .chat-prose td {
-    @apply px-3 py-2 text-sm text-gray-600 border-t border-gray-100;
-  }
+	.chat-prose td {
+		@apply px-3 py-2 text-sm text-gray-600 border-t border-gray-100;
+	}
 
-  .dark .chat-prose td {
-    @apply text-gray-400 border-gray-700;
-  }
+	.dark .chat-prose td {
+		@apply text-gray-400 border-gray-700;
+	}
 
-  .chat-prose hr {
-    @apply my-4 border-gray-200;
-  }
+	.chat-prose hr {
+		@apply my-4 border-gray-200;
+	}
 
-  .dark .chat-prose hr {
-    @apply border-gray-700;
-  }
+	.dark .chat-prose hr {
+		@apply border-gray-700;
+	}
 }
 
 @layer utilities {
-  /* Animation utilities */
-  .animate-fade-in {
-    animation: fadeIn 0.2s ease-out forwards;
-  }
+	/* Animation utilities */
+	.animate-fade-in {
+		animation: fadeIn 0.2s ease-out forwards;
+	}
 
-  .animate-beamer {
-    animation: beamer 2s linear infinite;
-  }
+	.animate-beamer {
+		animation: beamer 2s linear infinite;
+	}
 
-  .animate-pulse-subtle {
-    animation: pulse-subtle 2s ease-in-out infinite;
-  }
+	.animate-pulse-subtle {
+		animation: pulse-subtle 2s ease-in-out infinite;
+	}
 
-  /* Magical glow animations */
-  .animate-pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
+	/* Magical glow animations */
+	.animate-pulse-glow {
+		animation: pulse-glow 2s ease-in-out infinite;
+	}
 
-  .animate-gradient-shift {
-    background-size: 200% 200%;
-    animation: gradient-shift 3s ease infinite;
-  }
+	.animate-gradient-shift {
+		background-size: 200% 200%;
+		animation: gradient-shift 3s ease infinite;
+	}
 
-  .animate-flow-down {
-    animation: flow-down 0.4s linear infinite;
-  }
+	.animate-flow-down {
+		animation: flow-down 0.4s linear infinite;
+	}
 
-  .animate-complete-pop {
-    animation: complete-pop 0.3s ease-out forwards;
-  }
+	.animate-complete-pop {
+		animation: complete-pop 0.3s ease-out forwards;
+	}
 
-  .animate-success-flash {
-    animation: success-flash 0.5s ease-out forwards;
-  }
+	.animate-success-flash {
+		animation: success-flash 0.5s ease-out forwards;
+	}
 
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
 
-  @keyframes beamer {
-    0% {
-      left: -30%;
-    }
-    100% {
-      left: 100%;
-    }
-  }
+	@keyframes beamer {
+		0% {
+			left: -30%;
+		}
+		100% {
+			left: 100%;
+		}
+	}
 
-  @keyframes pulse-subtle {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.85;
-    }
-  }
+	@keyframes pulse-subtle {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.85;
+		}
+	}
 
-  @keyframes pulse-glow {
-    0%, 100% {
-      box-shadow: 0 0 4px 2px rgba(99, 102, 241, 0.3);
-      transform: scale(1);
-    }
-    50% {
-      box-shadow: 0 0 10px 4px rgba(99, 102, 241, 0.5);
-      transform: scale(1.05);
-    }
-  }
+	@keyframes pulse-glow {
+		0%,
+		100% {
+			box-shadow: 0 0 4px 2px rgba(99, 102, 241, 0.3);
+			transform: scale(1);
+		}
+		50% {
+			box-shadow: 0 0 10px 4px rgba(99, 102, 241, 0.5);
+			transform: scale(1.05);
+		}
+	}
 
-  @keyframes gradient-shift {
-    0% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-    100% {
-      background-position: 0% 50%;
-    }
-  }
+	@keyframes gradient-shift {
+		0% {
+			background-position: 0% 50%;
+		}
+		50% {
+			background-position: 100% 50%;
+		}
+		100% {
+			background-position: 0% 50%;
+		}
+	}
 
-  @keyframes flow-down {
-    0% {
-      background-position: 0 0;
-    }
-    100% {
-      background-position: 0 16px;
-    }
-  }
+	@keyframes flow-down {
+		0% {
+			background-position: 0 0;
+		}
+		100% {
+			background-position: 0 16px;
+		}
+	}
 
-  @keyframes complete-pop {
-    0% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.2);
-    }
-    100% {
-      transform: scale(1);
-    }
-  }
+	@keyframes complete-pop {
+		0% {
+			transform: scale(1);
+		}
+		50% {
+			transform: scale(1.2);
+		}
+		100% {
+			transform: scale(1);
+		}
+	}
 
-  @keyframes success-flash {
-    0% {
-      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
-    }
-    50% {
-      box-shadow: 0 0 8px 4px rgba(34, 197, 94, 0.4);
-    }
-    100% {
-      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-    }
-  }
+	@keyframes success-flash {
+		0% {
+			box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+		}
+		50% {
+			box-shadow: 0 0 8px 4px rgba(34, 197, 94, 0.4);
+		}
+		100% {
+			box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+		}
+	}
 
-  /* Cursor blink animation */
-  .animate-blink {
-    animation: blink 1s step-end infinite;
-  }
+	/* Cursor blink animation */
+	.animate-blink {
+		animation: blink 1s step-end infinite;
+	}
 
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-  }
+	@keyframes blink {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0;
+		}
+	}
 
-  /* Loading dots animation */
-  .animate-loading-dot {
-    animation: loadingDot 1.4s ease-in-out infinite;
-  }
+	/* Loading dots animation */
+	.animate-loading-dot {
+		animation: loadingDot 1.4s ease-in-out infinite;
+	}
 
-  .animate-loading-dot-1 {
-    animation-delay: 0s;
-  }
+	.animate-loading-dot-1 {
+		animation-delay: 0s;
+	}
 
-  .animate-loading-dot-2 {
-    animation-delay: 0.2s;
-  }
+	.animate-loading-dot-2 {
+		animation-delay: 0.2s;
+	}
 
-  .animate-loading-dot-3 {
-    animation-delay: 0.4s;
-  }
+	.animate-loading-dot-3 {
+		animation-delay: 0.4s;
+	}
 
-  @keyframes loadingDot {
-    0%, 80%, 100% {
-      opacity: 0.3;
-      transform: scale(0.8);
-    }
-    40% {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
+	@keyframes loadingDot {
+		0%,
+		80%,
+		100% {
+			opacity: 0.3;
+			transform: scale(0.8);
+		}
+		40% {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
 
-  /* Welcome screen halo breathing animation */
-  .animate-welcome-halo {
-    animation: welcome-halo-breathe 6s ease-in-out infinite;
-  }
+	/* Welcome screen halo breathing animation */
+	.animate-welcome-halo {
+		animation: welcome-halo-breathe 6s ease-in-out infinite;
+	}
 
-  @keyframes welcome-halo-breathe {
-    0%, 100% {
-      opacity: 0.6;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 1;
-      transform: scale(1.05);
-    }
-  }
+	@keyframes welcome-halo-breathe {
+		0%,
+		100% {
+			opacity: 0.6;
+			transform: scale(1);
+		}
+		50% {
+			opacity: 1;
+			transform: scale(1.05);
+		}
+	}
 
-  @media (prefers-reduced-motion: reduce) {
-    .animate-welcome-halo {
-      animation: none;
-    }
-  }
+	@media (prefers-reduced-motion: reduce) {
+		.animate-welcome-halo {
+			animation: none;
+		}
+	}
 }
