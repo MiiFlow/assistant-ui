@@ -155,17 +155,30 @@ export function MarkdownContent({
         p: ({ children }) => (
           <p className="mb-2 last:mb-0 leading-relaxed" style={fontStyle}>{children}</p>
         ),
-        a: ({ href, children }) => (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary underline hover:opacity-80 transition-opacity"
-            style={fontStyle}
-          >
-            {children}
-          </a>
-        ),
+        a: ({ href, children }) => {
+          const isImageUrl = href && /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(href);
+          if (isImageUrl) {
+            return (
+              <img
+                src={href}
+                alt={typeof children === "string" ? children : ""}
+                className="max-w-full h-auto rounded-lg my-2"
+                loading="lazy"
+              />
+            );
+          }
+          return (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline hover:opacity-80 transition-opacity"
+              style={fontStyle}
+            >
+              {children}
+            </a>
+          );
+        },
         ul: ({ children }) => (
           <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>
         ),
