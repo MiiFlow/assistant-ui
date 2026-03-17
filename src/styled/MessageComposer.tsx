@@ -341,6 +341,35 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       [processFiles],
     );
 
+    const handlePaste = useCallback(
+      (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        if (!supportsAttachments || isSubmitting) return;
+        const clipboardData = e.clipboardData;
+        if (!clipboardData) return;
+
+        // Collect files from clipboard
+        const files: File[] = [];
+        for (const file of clipboardData.files) {
+          files.push(file);
+        }
+        // Fallback: check items for image data (e.g. screenshots, images from web pages)
+        if (files.length === 0 && clipboardData.items) {
+          for (const item of clipboardData.items) {
+            if (item.kind === "file") {
+              const file = item.getAsFile();
+              if (file) files.push(file);
+            }
+          }
+        }
+
+        if (files.length > 0) {
+          e.preventDefault();
+          processFiles(files);
+        }
+      },
+      [supportsAttachments, isSubmitting, processFiles],
+    );
+
     const handleRemoveAttachment = useCallback((id: string) => {
       setAttachments((prev) => {
         const removed = prev.find((a) => a.id === id);
@@ -490,6 +519,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
                 disabled={isSubmitDisabled}
                 placeholder={placeholder}
                 rows={1}
