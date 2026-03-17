@@ -36,12 +36,18 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(
 		};
 
 		return (
-			<div className="relative flex-1 overflow-hidden">
+			<div
+				className="relative flex-1 overflow-hidden"
+				style={{
+					mask: "linear-gradient(to bottom, black 0%, black calc(100% - 20px), transparent 100%)",
+					WebkitMask: "linear-gradient(to bottom, black 0%, black calc(100% - 20px), transparent 100%)",
+				}}
+			>
 				<div
 					ref={mergedRef}
 					className={cn(
 						"h-full overflow-y-auto",
-						"flex flex-col gap-4 p-4",
+						"flex flex-col gap-4 p-4 pb-12",
 						"chat-scrollbar",
 						className,
 					)}

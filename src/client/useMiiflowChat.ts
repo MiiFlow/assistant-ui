@@ -1205,6 +1205,8 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   const isStreamingRef = useRef(isStreaming);
   isStreamingRef.current = isStreaming;
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const toolHandlersRef = useRef(new Map<string, ToolHandler>());
   const toolDefinitionsRef = useRef(
     new Map<string, Omit<ClientToolDefinition, "handler">>()
@@ -1477,6 +1479,9 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
       try {
         const backendBaseUrl = getBackendBaseUrl(configRef.current);
 
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
+
         const response = await fetch(
           `${backendBaseUrl}/assistant/message/stream/`,
           {
@@ -1493,6 +1498,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
               metadata: {},
               attachment_ids: attachmentIds || [],
             }),
+            signal: abortController.signal,
           }
         );
 
@@ -1598,6 +1604,12 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           );
         }
       } catch (err) {
+        // AbortError means user stopped streaming — keep partial content, no error
+        if (err instanceof DOMException && err.name === "AbortError") {
+          // Streaming was stopped by user — partial content already finalized by stopStreaming
+          return;
+        }
+
         console.error("[Miiflow] Send error:", err);
 
         const sess = sessionRef.current;
@@ -1621,12 +1633,34 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         ]);
         setError(err instanceof Error ? err.message : "Send failed");
       } finally {
+        abortControllerRef.current = null;
         setIsStreaming(false);
         setStreamingMessageId(null);
       }
     },
     [handleToolInvocation] // stable — reads sessionRef and isStreamingRef
   );
+
+  // Stop streaming — aborts fetch, finalizes partial content
+  const stopStreaming = useCallback(() => {
+    if (!isStreamingRef.current) return;
+
+    // Abort the fetch connection
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+
+    // Finalize any streaming message with accumulated content
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.isStreaming ? { ...msg, isStreaming: false } : msg
+      )
+    );
+
+    // Reset streaming state
+    isStreamingRef.current = false;
+    setIsStreaming(false);
+    setStreamingMessageId(null);
+  }, []);
 
   // Start new thread — uses sessionRef for stable reference
   const startNewThread = useCallback(async (): Promise<string> => {
@@ -1774,5 +1808,6 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     sendSystemEvent,
     handleToolInvocation,
     updateSession,
+    stopStreaming,
   };
 }

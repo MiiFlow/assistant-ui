@@ -61,14 +61,13 @@ export const ChatLayout = forwardRef<HTMLDivElement, ChatLayoutProps>(
 								{messageList}
 							</motion.div>
 
-							{/* Footer slot (e.g. ClarificationPanel) */}
-							{footer}
-
-							{/* Composer */}
+							{/* Footer + Composer: floating over messages */}
 							<motion.div
 								initial={{ opacity: 0, y: 20 }}
 								animate={{ opacity: 1, y: 0 }}
-								transition={{ duration: 0.4, delay: 0.2 }}>
+								transition={{ duration: 0.4, delay: 0.2 }}
+								className="relative z-10">
+								{footer}
 								{composer}
 							</motion.div>
 						</motion.div>

@@ -118,6 +118,9 @@ export interface MiiflowChatResult {
   handleToolInvocation: (invocation: ToolInvocationRequest) => Promise<boolean>;
   /** Update the session externally (e.g. after token refresh) */
   updateSession: (session: EmbedSession) => void;
+
+  /** Stop the current streaming response (aborts fetch, preserves partial content) */
+  stopStreaming: () => void;
 }
 
 // ============================================================================

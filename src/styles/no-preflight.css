@@ -333,6 +333,24 @@
 		animation: success-flash 0.5s ease-out forwards;
 	}
 
+	@keyframes streaming-flash {
+		0%, 100% {
+			opacity: 0.3;
+		}
+		50% {
+			opacity: 0.7;
+		}
+	}
+
+	@keyframes beamer-spin {
+		0% {
+			transform: rotate(0deg);
+		}
+		100% {
+			transform: rotate(360deg);
+		}
+	}
+
 	@keyframes fadeIn {
 		from {
 			opacity: 0;

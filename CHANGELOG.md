@@ -1,5 +1,17 @@
 # @miiflow/assistant-ui
 
+## 0.5.2
+
+### Features
+
+- **Floating composer**: Composer no longer reserves a fixed space with a top border; messages scroll naturally behind it with a gradient fade mask on the message list
+- **Consistent send button states**: Unified dark button style (`gray-900`/`zinc-100`) across disabled, enabled, hover, and streaming states — replaces the inconsistent grey/white/blue transitions
+- **Streaming stop indicator**: Stop button now shows a subtle background flash animation to indicate active streaming
+
+### Bug Fixes
+
+- Fix stop button icon being invisible in dark mode (black icon on black background)
+
 ## 0.5.0
 
 ### Features

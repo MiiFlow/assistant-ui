@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useRef, useState, useEffect } from "react";
-import { ArrowUp, Paperclip, X, FileText, Image, Loader2, AlertCircle } from "lucide-react";
+import { ArrowUp, Paperclip, X, FileText, Image, Loader2, AlertCircle, Square } from "lucide-react";
 import { cn } from "../utils/cn";
 
 // ============================================================================
@@ -178,6 +178,10 @@ export interface MessageComposerProps {
   isSubmitting?: boolean;
   /** Centered/welcome mode: bigger radius, more padding, nicer shadow (used inside WelcomeScreen) */
   centered?: boolean;
+  /** Whether assistant is currently streaming a response */
+  isStreaming?: boolean;
+  /** Callback to stop the current streaming response */
+  onStopStreaming?: () => void;
 }
 
 /**
@@ -199,6 +203,8 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       className,
       isSubmitting = false,
       centered = false,
+      isStreaming = false,
+      onStopStreaming,
     },
     ref,
   ) => {
@@ -408,7 +414,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
           "flex-shrink-0",
           centered
             ? "p-0 bg-transparent"
-            : "px-3 pt-2 pb-3 border-t border-gray-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm",
+            : "px-3 pb-3",
           className,
         )}
         style={centered ? { padding: 0, background: "transparent", border: "none" } : undefined}
@@ -500,25 +506,47 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
               />
             </div>
 
-            {/* Send button */}
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!hasContent || isSubmitDisabled || isAnyUploading}
-              className={cn(
-                "flex-shrink-0",
-                "w-9 h-9 rounded-lg",
-                "flex items-center justify-center",
-                "bg-blue-500 text-white",
-                "shadow-sm",
-                "hover:bg-blue-600 hover:shadow-md hover:-translate-y-px",
-                "active:translate-y-0 active:shadow-sm",
-                "disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed",
-                "transition-all duration-200",
-              )}
-            >
-              {isSubmitting || isAnyUploading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} />}
-            </button>
+            {/* Send / Stop button */}
+            {isStreaming && onStopStreaming ? (
+              <div className="relative flex-shrink-0 w-9 h-9">
+                {/* Pulsing background glow */}
+                <span className="absolute inset-0 rounded-lg bg-gray-400 dark:bg-zinc-400"
+                  style={{ animation: "streaming-flash 3s ease-in-out infinite" }}
+                />
+                <button
+                  type="button"
+                  onClick={onStopStreaming}
+                  className={cn(
+                    "relative w-full h-full rounded-lg",
+                    "flex items-center justify-center",
+                    "bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900",
+                    "hover:bg-gray-700 dark:hover:bg-zinc-300",
+                    "transition-colors duration-200",
+                  )}
+                >
+                  <Square size={14} fill="currentColor" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!hasContent || isSubmitDisabled || isAnyUploading}
+                className={cn(
+                  "flex-shrink-0",
+                  "w-9 h-9 rounded-lg",
+                  "flex items-center justify-center",
+                  "bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900",
+                  "shadow-sm",
+                  "hover:bg-gray-700 dark:hover:bg-zinc-300 hover:shadow-md",
+                  "active:shadow-sm",
+                  "disabled:bg-gray-200 dark:disabled:bg-zinc-700 disabled:text-gray-400 dark:disabled:text-zinc-500 disabled:shadow-none disabled:cursor-not-allowed",
+                  "transition-all duration-200",
+                )}
+              >
+                {isSubmitting || isAnyUploading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} />}
+              </button>
+            )}
           </div>
 
           {/* Hidden file input */}
