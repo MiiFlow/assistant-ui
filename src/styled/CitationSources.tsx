@@ -44,6 +44,7 @@ export function CitationSources({
 }: CitationSourcesProps) {
   const [selectedSource, setSelectedSource] = useState<SourceReference | null>(null);
   const [localFeedback, setLocalFeedback] = useState<Record<string, MemoryFeedbackType>>({});
+  const [showAll, setShowAll] = useState(false);
 
   // Merge external feedback state with local state
   const feedbackState = { ...localFeedback, ...memoryFeedbackState };
@@ -71,7 +72,6 @@ export function CitationSources({
 
   // Determine if we need to show overflow
   const MAX_VISIBLE = 8;
-  const [showAll, setShowAll] = useState(false);
   const visibleSources = showAll ? sources : sources.slice(0, MAX_VISIBLE);
   const hiddenCount = sources.length - MAX_VISIBLE;
 
