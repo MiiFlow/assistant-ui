@@ -3,6 +3,7 @@ import { MessageContent as MessageContentPrimitive, Message as MessagePrimitive 
 import type {
 	ClarificationData,
 	MediaChunkData,
+	MemoryFeedbackType,
 	MessageData,
 	ParticipantRole,
 	SourceReference,
@@ -66,6 +67,10 @@ export interface MessageProps {
 	pendingClarification?: ClarificationData;
 	/** Callback when user responds to a clarification */
 	onClarificationSubmit?: (response: string) => void;
+	/** Callback when user gives feedback on a memory citation */
+	onMemoryFeedback?: (semanticAtomId: string, feedback: MemoryFeedbackType) => void;
+	/** Current feedback state for memory citations (atomId -> feedback) */
+	memoryFeedbackState?: Record<string, MemoryFeedbackType>;
 }
 
 /**
@@ -96,6 +101,8 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			executionTime,
 			pendingClarification,
 			onClarificationSubmit,
+			onMemoryFeedback,
+			memoryFeedbackState,
 		},
 		ref,
 	) => {
@@ -341,7 +348,11 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 									{/* Citations */}
 									{citations && citations.length > 0 && (
 										<div className="mt-2 pt-2 border-t border-[var(--chat-border)]">
-											<CitationSources sources={citations} />
+											<CitationSources
+												sources={citations}
+												onMemoryFeedback={onMemoryFeedback}
+												memoryFeedbackState={memoryFeedbackState}
+											/>
 										</div>
 									)}
 								</div>

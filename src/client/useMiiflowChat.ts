@@ -1072,6 +1072,7 @@ async function parseSSEStream(
             subtaskDescription: parsed.subtask_description,
             subagentName: parsed.subagent_name,
             subagentRole: parsed.subagent_role,
+            toolCallId: parsed.tool_call_id,
           };
 
           // Add clarification chunk
@@ -1422,7 +1423,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   // Send message — uses refs for stable reference, safe to capture in widget bridge.
   // Also fixes: allows attachment-only messages (empty text with attachmentIds).
   const sendMessage = useCallback(
-    async (content: string, attachmentIds?: string[]) => {
+    async (content: string, attachmentIds?: string[], extraMetadata?: Record<string, unknown>) => {
       const currentSession = sessionRef.current;
       const hasText = !!content.trim();
       const hasAttachments = attachmentIds && attachmentIds.length > 0;
@@ -1432,22 +1433,11 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
       isStreamingRef.current = true;
 
       const optimisticId = `msg-${Date.now()}`;
+      const isClarificationResponse = !!extraMetadata?.is_clarification_response;
 
       const messageAttachments = attachmentIds
         ?.map((id) => uploadedAttachmentsRef.current.get(id))
         .filter(Boolean) as import("../types").Attachment[] | undefined;
-
-      const userMessage: InternalMessage = {
-        id: optimisticId,
-        textContent: content,
-        participant: {
-          id: "user",
-          name: configRef.current.userName || "You",
-          role: "user",
-        },
-        createdAt: new Date().toISOString(),
-        attachments: messageAttachments?.length ? messageAttachments : undefined,
-      };
 
       // Clean up stored attachment metadata
       attachmentIds?.forEach((id) => uploadedAttachmentsRef.current.delete(id));
@@ -1469,12 +1459,30 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         isStreaming: true,
       };
 
-      setMessages((prev) => [...prev, userMessage, placeholderAssistant]);
+      if (isClarificationResponse) {
+        // Clarification responses are tool observations, not user messages —
+        // skip the user message bubble and only show the assistant placeholder
+        setMessages((prev) => [...prev, placeholderAssistant]);
+      } else {
+        const userMessage: InternalMessage = {
+          id: optimisticId,
+          textContent: content,
+          participant: {
+            id: "user",
+            name: configRef.current.userName || "You",
+            role: "user",
+          },
+          createdAt: new Date().toISOString(),
+          attachments: messageAttachments?.length ? messageAttachments : undefined,
+        };
+
+        setMessages((prev) => [...prev, userMessage, placeholderAssistant]);
+
+        // Notify consumer that a user message was created (for widget event emission)
+        configRef.current.onUserMessageCreated?.({ id: optimisticId, content });
+      }
       setIsStreaming(true);
       setStreamingMessageId(placeholderAssistantId);
-
-      // Notify consumer that a user message was created (for widget event emission)
-      configRef.current.onUserMessageCreated?.({ id: optimisticId, content });
 
       try {
         const backendBaseUrl = getBackendBaseUrl(configRef.current);
@@ -1495,7 +1503,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
               thread_id: currentSession.config.thread_id,
               text_content: content,
               message_id: optimisticId,
-              metadata: {},
+              metadata: extraMetadata || {},
               attachment_ids: attachmentIds || [],
             }),
             signal: abortController.signal,

@@ -17,7 +17,9 @@ export type {
   BrandingData,
   SourceReference,
   SourceTypeConfig,
+  MemoryFeedbackType,
 } from "./types";
+export { isMemoryCitation } from "./types";
 
 // Context & Provider
 export {

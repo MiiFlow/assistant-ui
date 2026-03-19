@@ -74,4 +74,5 @@ export type {
 
 export type { BrandingData } from "./branding";
 
-export type { SourceReference, SourceTypeConfig } from "./citation";
+export type { SourceReference, SourceTypeConfig, MemoryFeedbackType } from "./citation";
+export { isMemoryCitation } from "./citation";

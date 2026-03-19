@@ -232,6 +232,8 @@ export interface ClarificationData {
   subtaskDescription?: string;
   subagentName?: string;
   subagentRole?: string;
+  // Tool call ID from the orchestrator for proper tool observation flow
+  toolCallId?: string;
 }
 
 // ============================================================================
