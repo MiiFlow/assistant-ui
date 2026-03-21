@@ -1,11 +1,11 @@
-export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-BnGtSz1P.js';
-export { a as StreamChunk, b as StreamingOptions, c as StreamingState } from './streaming-DrnCgnnh.js';
+export { A as Attachment, C as ChatMessage, a as MemoryFeedbackType, M as MessageData, b as MessageError, c as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, d as SourceTypeConfig, e as SuggestedAction, f as SuggestedActionType, i as isMemoryCitation } from './message-D3D59U_Q.js';
+export { a as StreamChunk, b as StreamingOptions, c as StreamingState } from './streaming-Q8hp5ev4.js';
 export { B as BrandingData } from './branding-SzYU4ncD.js';
 export { ChatContext, ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from './context/index.js';
 export { useAttachments, useAutoScroll, useBrandingCSSVars, useMessageComposer, useScrollLock, useStreaming } from './hooks/index.js';
-export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-B6YLvJt3.js';
+export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-CAmTN1L7.js';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.js';
-export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-bnqQ3Y5t.js';
+export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-D32Tsu6G.js';
 import { ClassValue } from 'clsx';
 import 'react/jsx-runtime';
 import 'react';
