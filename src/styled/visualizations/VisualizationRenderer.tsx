@@ -19,7 +19,16 @@ export function VisualizationRenderer({
 
   const renderVisualization = () => {
     const entry = getVisualization(type);
-
+    if (type === "auth_prompt") {
+      const gReg = (globalThis as any).__miiflow_visualization_registry__;
+      console.log("[chat-ui VizRenderer] auth_prompt lookup:", {
+        found: !!entry,
+        globalThisExists: !!gReg,
+        globalThisSize: gReg?.size,
+        globalThisHas: gReg?.has?.("auth_prompt"),
+        globalThisKeys: gReg ? Array.from(gReg.keys()) : [],
+      });
+    }
     if (!entry) {
       return (
         <div className="flex items-center gap-2 p-4 text-yellow-500">

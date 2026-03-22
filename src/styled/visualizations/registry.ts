@@ -11,7 +11,12 @@ export interface VisualizationEntry {
   schema?: ZodSchema;
 }
 
-const registry = new Map<string, VisualizationEntry>();
+// Use globalThis to ensure a single registry instance even when the module
+// is evaluated multiple times (e.g., Next.js transpilePackages re-bundling).
+const REGISTRY_KEY = "__miiflow_visualization_registry__";
+const registry: Map<string, VisualizationEntry> =
+  (globalThis as any)[REGISTRY_KEY] ??
+  ((globalThis as any)[REGISTRY_KEY] = new Map<string, VisualizationEntry>());
 
 /**
  * Register a visualization type. Built-in types are registered at module load.
@@ -58,6 +63,7 @@ registerVisualization("card", { component: CardVisualization });
 registerVisualization("kpi", { component: KpiVisualization });
 registerVisualization("code_preview", { component: CodePreviewVisualization });
 registerVisualization("form", { component: FormVisualization });
+
 
 /**
  * Attach schemas to already-registered built-in types.

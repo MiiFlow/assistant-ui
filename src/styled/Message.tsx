@@ -345,6 +345,24 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 									<MessageContentPrimitive>{renderContent()}</MessageContentPrimitive>
 									{renderMediaItems()}
 
+									{/* Unreferenced visualizations (not embedded inline via [VIZ:id] markers) */}
+									{visualizations && visualizations.length > 0 && (() => {
+										const textContent = message.textContent || "";
+										const unreferenced = visualizations.filter(
+											(viz) => !textContent.includes(`[VIZ:${viz.id}]`)
+										);
+										if (unreferenced.length === 0) return null;
+										return unreferenced.map((viz) => (
+											<div key={`viz-unreferenced-${viz.id}`} className="my-3">
+												<VisualizationRenderer
+													data={viz}
+													isStreaming={isStreaming}
+													onAction={onVisualizationAction}
+												/>
+											</div>
+										));
+									})()}
+
 									{/* Citations */}
 									{citations && citations.length > 0 && (
 										<div className="mt-2 pt-2 border-t border-[var(--chat-border)]">
