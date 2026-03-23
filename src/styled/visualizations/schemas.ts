@@ -13,21 +13,21 @@ const chartSeriesSchema = z.object({
 			z.object({ name: z.string(), value: z.number() }),
 		]),
 	),
-	color: z.string().optional(),
+	color: z.string().nullish(),
 });
 
 const chartAxisSchema = z.object({
-	label: z.string().optional(),
-	type: z.enum(["category", "number", "time"]).optional(),
-	min: z.number().optional(),
-	max: z.number().optional(),
+	label: z.string().nullish(),
+	type: z.enum(["category", "number", "time"]).nullish(),
+	min: z.number().nullish(),
+	max: z.number().nullish(),
 });
 
 export const chartVisualizationSchema = z.object({
 	chartType: z.enum(["line", "bar", "pie", "area", "scatter", "composed"]),
 	series: z.array(chartSeriesSchema),
-	xAxis: chartAxisSchema.optional(),
-	yAxis: chartAxisSchema.optional(),
+	xAxis: chartAxisSchema.nullish(),
+	yAxis: chartAxisSchema.nullish(),
 });
 
 // ---------------------------------------------------------------------------
@@ -37,9 +37,9 @@ export const chartVisualizationSchema = z.object({
 const tableColumnSchema = z.object({
 	key: z.string(),
 	label: z.string(),
-	type: z.enum(["string", "number", "currency", "date", "badge", "link", "boolean", "progress"]).optional(),
-	align: z.enum(["left", "center", "right"]).optional(),
-	width: z.string().optional(),
+	type: z.enum(["string", "number", "currency", "date", "badge", "link", "boolean", "progress"]).nullish(),
+	align: z.enum(["left", "center", "right"]).nullish(),
+	width: z.string().nullish(),
 });
 
 export const tableVisualizationSchema = z.object({
@@ -52,22 +52,22 @@ export const tableVisualizationSchema = z.object({
 // ---------------------------------------------------------------------------
 
 const cardSectionSchema = z.object({
-	title: z.string().optional(),
-	items: z.array(z.object({ label: z.string(), value: z.union([z.string(), z.number()]) })).optional(),
-	content: z.string().optional(),
+	title: z.string().nullish(),
+	items: z.array(z.object({ label: z.string(), value: z.union([z.string(), z.number()]) })).nullish(),
+	content: z.string().nullish(),
 });
 
 const cardActionSchema = z.object({
 	label: z.string(),
 	action: z.string(),
-	variant: z.enum(["primary", "secondary", "text"]).optional(),
+	variant: z.enum(["primary", "secondary", "text"]).nullish(),
 });
 
 export const cardVisualizationSchema = z.object({
-	subtitle: z.string().optional(),
-	imageUrl: z.string().optional(),
+	subtitle: z.string().nullish(),
+	imageUrl: z.string().nullish(),
 	sections: z.array(cardSectionSchema),
-	actions: z.array(cardActionSchema).optional(),
+	actions: z.array(cardActionSchema).nullish(),
 });
 
 // ---------------------------------------------------------------------------
@@ -77,17 +77,17 @@ export const cardVisualizationSchema = z.object({
 const kpiMetricSchema = z.object({
 	label: z.string(),
 	value: z.union([z.string(), z.number()]),
-	unit: z.string().optional(),
-	trend: z.enum(["up", "down", "neutral"]).optional(),
-	change: z.string().optional(),
-	changeLabel: z.string().optional(),
-	sparkline: z.array(z.number()).optional(),
-	color: z.string().optional(),
+	unit: z.string().nullish(),
+	trend: z.enum(["up", "down", "neutral"]).nullish(),
+	change: z.string().nullish(),
+	changeLabel: z.string().nullish(),
+	sparkline: z.array(z.number()).nullish(),
+	color: z.string().nullish(),
 });
 
 export const kpiVisualizationSchema = z.object({
 	metrics: z.array(kpiMetricSchema),
-	layout: z.enum(["row", "grid"]).optional(),
+	layout: z.enum(["row", "grid"]).nullish(),
 });
 
 // ---------------------------------------------------------------------------
@@ -97,9 +97,9 @@ export const kpiVisualizationSchema = z.object({
 export const codePreviewVisualizationSchema = z.object({
 	code: z.string(),
 	language: z.string(),
-	lineNumbers: z.boolean().optional(),
-	highlightLines: z.array(z.number()).optional(),
-	startLine: z.number().optional(),
+	lineNumbers: z.boolean().nullish(),
+	highlightLines: z.array(z.number()).nullish(),
+	startLine: z.number().nullish(),
 });
 
 // ---------------------------------------------------------------------------
@@ -121,23 +121,23 @@ const formFieldSchema = z.object({
 		"datetime",
 	]),
 	label: z.string(),
-	required: z.boolean().optional(),
-	placeholder: z.string().optional(),
-	options: z.array(z.object({ value: z.string(), label: z.string() })).optional(),
-	defaultValue: z.unknown().optional(),
+	required: z.boolean().nullish(),
+	placeholder: z.string().nullish(),
+	options: z.array(z.object({ value: z.string(), label: z.string() })).nullish(),
+	defaultValue: z.unknown().nullish(),
 	validation: z
 		.object({
-			min: z.number().optional(),
-			max: z.number().optional(),
-			pattern: z.string().optional(),
-			message: z.string().optional(),
+			min: z.number().nullish(),
+			max: z.number().nullish(),
+			pattern: z.string().nullish(),
+			message: z.string().nullish(),
 		})
-		.optional(),
+		.nullish(),
 });
 
 export const formVisualizationSchema = z.object({
 	fields: z.array(formFieldSchema),
-	submitAction: z.string().optional(),
+	submitAction: z.string().nullish(),
 });
 
 // ---------------------------------------------------------------------------
