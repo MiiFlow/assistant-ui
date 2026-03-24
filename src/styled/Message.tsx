@@ -186,6 +186,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 
 			// Content with inline visualization markers
 			if (contentParts && contentParts.length > 0 && hasVizInlineContent) {
+				const renderedVizIds = new Set<string>();
 				return (
 					<>
 						{contentParts.map((part, idx) => {
@@ -202,8 +203,10 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 								);
 							}
 							if (part.type === "viz") {
+								if (renderedVizIds.has(part.id)) return null;
 								const viz = vizMap?.get(part.id);
 								if (viz) {
+									renderedVizIds.add(part.id);
 									return <VisualizationRenderer key={`viz-${part.id}`} data={viz} isStreaming={isStreaming} onAction={onVisualizationAction} />;
 								}
 								return null;
