@@ -193,34 +193,34 @@ declare const chartVisualizationSchema: z.ZodObject<{
             name: z.ZodString;
             value: z.ZodNumber;
         }, z.core.$strip>]>>;
-        color: z.ZodOptional<z.ZodString>;
+        color: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     }, z.core.$strip>>;
-    xAxis: z.ZodOptional<z.ZodObject<{
-        label: z.ZodOptional<z.ZodString>;
-        type: z.ZodOptional<z.ZodEnum<{
+    xAxis: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        label: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        type: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
             number: "number";
             category: "category";
             time: "time";
-        }>>;
-        min: z.ZodOptional<z.ZodNumber>;
-        max: z.ZodOptional<z.ZodNumber>;
-    }, z.core.$strip>>;
-    yAxis: z.ZodOptional<z.ZodObject<{
-        label: z.ZodOptional<z.ZodString>;
-        type: z.ZodOptional<z.ZodEnum<{
+        }>>>;
+        min: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+        max: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    }, z.core.$strip>>>;
+    yAxis: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        label: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        type: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
             number: "number";
             category: "category";
             time: "time";
-        }>>;
-        min: z.ZodOptional<z.ZodNumber>;
-        max: z.ZodOptional<z.ZodNumber>;
-    }, z.core.$strip>>;
+        }>>>;
+        min: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+        max: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    }, z.core.$strip>>>;
 }, z.core.$strip>;
 declare const tableVisualizationSchema: z.ZodObject<{
     columns: z.ZodArray<z.ZodObject<{
         key: z.ZodString;
         label: z.ZodString;
-        type: z.ZodOptional<z.ZodEnum<{
+        type: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
             string: "string";
             number: "number";
             boolean: "boolean";
@@ -229,63 +229,63 @@ declare const tableVisualizationSchema: z.ZodObject<{
             date: "date";
             badge: "badge";
             link: "link";
-        }>>;
-        align: z.ZodOptional<z.ZodEnum<{
+        }>>>;
+        align: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
             left: "left";
             center: "center";
             right: "right";
-        }>>;
-        width: z.ZodOptional<z.ZodString>;
+        }>>>;
+        width: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     }, z.core.$strip>>;
     rows: z.ZodArray<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.core.$strip>;
 declare const cardVisualizationSchema: z.ZodObject<{
-    subtitle: z.ZodOptional<z.ZodString>;
-    imageUrl: z.ZodOptional<z.ZodString>;
+    subtitle: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     sections: z.ZodArray<z.ZodObject<{
-        title: z.ZodOptional<z.ZodString>;
-        items: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        title: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        items: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
             label: z.ZodString;
             value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>;
-        }, z.core.$strip>>>;
-        content: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>>>>;
+        content: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     }, z.core.$strip>>;
-    actions: z.ZodOptional<z.ZodArray<z.ZodObject<{
+    actions: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
         label: z.ZodString;
         action: z.ZodString;
-        variant: z.ZodOptional<z.ZodEnum<{
+        variant: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
             primary: "primary";
             secondary: "secondary";
             text: "text";
-        }>>;
-    }, z.core.$strip>>>;
+        }>>>;
+    }, z.core.$strip>>>>;
 }, z.core.$strip>;
 declare const kpiVisualizationSchema: z.ZodObject<{
     metrics: z.ZodArray<z.ZodObject<{
         label: z.ZodString;
         value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>;
-        unit: z.ZodOptional<z.ZodString>;
-        trend: z.ZodOptional<z.ZodEnum<{
+        unit: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        trend: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
             up: "up";
             down: "down";
             neutral: "neutral";
-        }>>;
-        change: z.ZodOptional<z.ZodString>;
-        changeLabel: z.ZodOptional<z.ZodString>;
-        sparkline: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
-        color: z.ZodOptional<z.ZodString>;
+        }>>>;
+        change: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        changeLabel: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        sparkline: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodNumber>>>;
+        color: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     }, z.core.$strip>>;
-    layout: z.ZodOptional<z.ZodEnum<{
+    layout: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
         row: "row";
         grid: "grid";
-    }>>;
+    }>>>;
 }, z.core.$strip>;
 declare const codePreviewVisualizationSchema: z.ZodObject<{
     code: z.ZodString;
     language: z.ZodString;
-    lineNumbers: z.ZodOptional<z.ZodBoolean>;
-    highlightLines: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
-    startLine: z.ZodOptional<z.ZodNumber>;
+    lineNumbers: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+    highlightLines: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodNumber>>>;
+    startLine: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
 }, z.core.$strip>;
 declare const formVisualizationSchema: z.ZodObject<{
     fields: z.ZodArray<z.ZodObject<{
@@ -303,21 +303,21 @@ declare const formVisualizationSchema: z.ZodObject<{
             datetime: "datetime";
         }>;
         label: z.ZodString;
-        required: z.ZodOptional<z.ZodBoolean>;
-        placeholder: z.ZodOptional<z.ZodString>;
-        options: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        required: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+        placeholder: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        options: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
             value: z.ZodString;
             label: z.ZodString;
+        }, z.core.$strip>>>>;
+        defaultValue: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
+        validation: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+            min: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+            max: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+            pattern: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            message: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         }, z.core.$strip>>>;
-        defaultValue: z.ZodOptional<z.ZodUnknown>;
-        validation: z.ZodOptional<z.ZodObject<{
-            min: z.ZodOptional<z.ZodNumber>;
-            max: z.ZodOptional<z.ZodNumber>;
-            pattern: z.ZodOptional<z.ZodString>;
-            message: z.ZodOptional<z.ZodString>;
-        }, z.core.$strip>>;
     }, z.core.$strip>>;
-    submitAction: z.ZodOptional<z.ZodString>;
+    submitAction: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, z.core.$strip>;
 
 interface VisualizationRendererProps {
