@@ -88,6 +88,7 @@ interface InternalMessage {
   citations?: import("../types").SourceReference[];
   attachments?: import("../types").Attachment[];
   pendingClarification?: ClarificationData;
+  pendingToolApproval?: import("../types").ToolApprovalData;
   /** Media items (images/videos) for inline rendering */
   medias?: import("../types").MediaChunkData[];
   /** Wall-clock execution time in seconds, persisted after streaming completes */
@@ -103,6 +104,7 @@ type ChunkType =
   | "subtask"
   | "progress"
   | "clarification_needed"
+  | "tool_approval_needed"
   // Multi-Agent
   | "multi_agent_planning"
   | "subagent_start"
@@ -198,7 +200,8 @@ interface StreamParseCallbacks {
     suggestedActions?: Array<{ id: string; label: string; value: string }>,
     sources?: any[],
     pendingClarification?: ClarificationData,
-    executionTime?: number
+    executionTime?: number,
+    pendingToolApproval?: import("../types").ToolApprovalData,
   ) => void;
   onToolInvocation?: (invocation: ToolInvocationRequest) => void;
 }
@@ -218,6 +221,7 @@ async function parseSSEStream(
     | Array<{ id: string; label: string; value: string }>
     | undefined;
   let pendingClarification: ClarificationData | undefined;
+  let pendingToolApproval: import("../types").ToolApprovalData | undefined;
   let mediaItems: import("../types").MediaChunkData[] = [];
   let receivedComplete = false;
 
@@ -1091,6 +1095,27 @@ async function parseSSEStream(
           }
 
           updateStreamingMessage();
+        } else if (parsed.type === "tool_approval_needed") {
+          // Tool requires user approval before execution
+          finalizeChunk();
+
+          const toolApprovalData: import("../types").ToolApprovalData = {
+            toolName: parsed.tool_name || "",
+            toolDescription: parsed.tool_description || "",
+            toolInputs: parsed.tool_inputs || {},
+            toolSchema: parsed.tool_schema,
+            toolCallId: parsed.tool_call_id,
+          };
+
+          chunks.push({
+            type: "tool_approval_needed",
+            content: toolApprovalData.toolDescription,
+            toolApprovalData,
+          } as AccumulatedChunk);
+
+          pendingToolApproval = toolApprovalData;
+
+          updateStreamingMessage();
         } else if (parsed.type === "media") {
           // Media event (image/video) from image generation tools
           const mediaData = parsed.media_data;
@@ -1124,7 +1149,8 @@ async function parseSSEStream(
             suggestedActions,
             sources,
             pendingClarification,
-            elapsedSeconds
+            elapsedSeconds,
+            pendingToolApproval,
           );
           assistantContent = finalContent;
           if (finalId) assistantMsgId = finalId;
@@ -1152,7 +1178,8 @@ async function parseSSEStream(
               suggestedActions,
               undefined,
               pendingClarification,
-              elapsedSecondsDone
+              elapsedSecondsDone,
+              pendingToolApproval,
             );
           } else if (parsed.message_id && assistantMsgId) {
             callbacks.onMessageUpdate({
@@ -1554,7 +1581,8 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
               suggestedActions,
               sources,
               pendingClarification,
-              executionTime
+              executionTime,
+              pendingToolApproval,
             ) => {
               if (assistantMsgId) {
                 setMessages((prev) =>
@@ -1569,6 +1597,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
                           suggestedActions,
                           citations: sources,
                           pendingClarification,
+                          pendingToolApproval,
                           executionTime,
                         }
                       : msg
@@ -1788,6 +1817,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         citations: msg.citations,
         attachments: msg.attachments,
         pendingClarification: msg.pendingClarification,
+        pendingToolApproval: msg.pendingToolApproval,
         executionTime: msg.executionTime,
       })),
     [messages]

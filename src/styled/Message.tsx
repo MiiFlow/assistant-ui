@@ -16,6 +16,7 @@ import { ChatContext } from "../context/ChatProvider";
 import { Avatar } from "./Avatar";
 import { CitationSources } from "./CitationSources";
 import { ClarificationPanel } from "./ClarificationPanel";
+import { ToolApprovalPanel } from "./ToolApprovalPanel";
 import { LoadingDots } from "./LoadingDots";
 import { MarkdownContent } from "./MarkdownContent";
 import { MessageActionBar } from "./MessageActionBar";
@@ -67,6 +68,12 @@ export interface MessageProps {
 	pendingClarification?: ClarificationData;
 	/** Callback when user responds to a clarification */
 	onClarificationSubmit?: (response: string) => void;
+	/** Pending tool approval data (tool requires user approval) */
+	pendingToolApproval?: import("../types").ToolApprovalData;
+	/** Callback when user approves a tool execution */
+	onToolApprove?: (modifiedInputs: Record<string, unknown>) => void;
+	/** Callback when user rejects a tool execution */
+	onToolReject?: (reason?: string) => void;
 	/** Callback when user gives feedback on a memory citation */
 	onMemoryFeedback?: (semanticAtomId: string, feedback: MemoryFeedbackType) => void;
 	/** Current feedback state for memory citations (atomId -> feedback) */
@@ -101,6 +108,9 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			executionTime,
 			pendingClarification,
 			onClarificationSubmit,
+			pendingToolApproval,
+			onToolApprove,
+			onToolReject,
 			onMemoryFeedback,
 			memoryFeedbackState,
 		},
@@ -458,6 +468,17 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 							<ClarificationPanel
 								clarification={pendingClarification}
 								onSubmit={onClarificationSubmit}
+							/>
+						</div>
+					)}
+
+					{/* Tool approval panel - when tool requires user approval */}
+					{pendingToolApproval && !isStreaming && onToolApprove && onToolReject && (
+						<div className="w-full max-w-[80%]">
+							<ToolApprovalPanel
+								approval={pendingToolApproval}
+								onApprove={onToolApprove}
+								onReject={onToolReject}
 							/>
 						</div>
 					)}

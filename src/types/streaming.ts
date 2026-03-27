@@ -51,6 +51,8 @@ export type ChunkType =
   | "synthesis"                     // Synthesizing results from subagents
   // Clarification request
   | "clarification_needed"          // Agent needs user input to continue
+  // Tool approval request
+  | "tool_approval_needed"          // Tool requires user approval before execution
   // Visualization
   | "visualization"   // Rich visualization (chart, table, card, etc.)
   // Media (inline image/video/audio)
@@ -233,6 +235,14 @@ export interface ClarificationData {
   subagentName?: string;
   subagentRole?: string;
   // Tool call ID from the orchestrator for proper tool observation flow
+  toolCallId?: string;
+}
+
+export interface ToolApprovalData {
+  toolName: string;
+  toolDescription: string;
+  toolInputs: Record<string, unknown>;
+  toolSchema?: Record<string, unknown>;
   toolCallId?: string;
 }
 
@@ -479,6 +489,7 @@ export interface StreamingChunk {
   webOperationData?: WebOperationChunkData;
   claudeToolData?: ClaudeToolChunkData;
   clarificationData?: ClarificationData;
+  toolApprovalData?: ToolApprovalData;
   visualizationData?: VisualizationChunkData;
   mediaData?: MediaChunkData;
   toolUseId?: string;
@@ -510,6 +521,9 @@ export interface StreamingMessage {
 
   // Pending clarification
   pendingClarification?: ClarificationData;
+
+  // Pending tool approval
+  pendingToolApproval?: ToolApprovalData;
 
   // Visualizations
   visualizations?: VisualizationChunkData[];

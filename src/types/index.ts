@@ -36,6 +36,7 @@ export type {
   WebOperationChunkData,
   ClaudeToolChunkData,
   ClarificationData,
+  ToolApprovalData,
   // Visualization types
   VisualizationType,
   ChartDataType,
