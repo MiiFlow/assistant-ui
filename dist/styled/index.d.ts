@@ -1,14 +1,14 @@
-export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-D32Tsu6G.js';
+export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-BT-mOSLE.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode } from 'react';
-import { A as Attachment, S as SourceReference, a as MemoryFeedbackType } from '../message-D3D59U_Q.js';
-export { C as ChatMessage, M as MessageData, b as MessageError, c as Participant, P as ParticipantRole, d as SourceTypeConfig, e as SuggestedAction, f as SuggestedActionType } from '../message-D3D59U_Q.js';
-import { S as StreamingChunk, P as PlanData, C as ClarificationData, V as VisualizationChunkData, d as VisualizationActionEvent, e as ChartVisualizationData, f as VisualizationConfig, T as TableVisualizationData, g as CardVisualizationData, K as KpiVisualizationData, h as CodePreviewVisualizationData, F as FormVisualizationData, E as Event, i as EventStatus } from '../streaming-Q8hp5ev4.js';
-export { j as ChunkType, k as ClaudeToolChunkData, l as EventType, m as FileOperationChunkData, n as FollowupAction, M as MediaChunkData, O as ObservationEvent, o as ParallelSubtaskData, p as PlanningEvent, q as ProgressData, r as SearchResultsChunkData, s as StreamingMessage, t as SubTaskData, u as SubagentChunkData, v as SubagentInfo, w as SubtaskEvent, x as TerminalChunkData, y as ThinkingEvent, z as ToolEvent, A as VisualizationType, W as WaveData, B as WebOperationChunkData } from '../streaming-Q8hp5ev4.js';
+import { A as Attachment, S as SourceReference, a as MemoryFeedbackType } from '../message-BBWdaL9u.js';
+export { C as ChatMessage, M as MessageData, b as MessageError, c as Participant, P as ParticipantRole, d as SourceTypeConfig, e as SuggestedAction, f as SuggestedActionType } from '../message-BBWdaL9u.js';
+import { S as StreamingChunk, P as PlanData, C as ClarificationData, T as ToolApprovalData, V as VisualizationChunkData, d as VisualizationActionEvent, e as ChartVisualizationData, f as VisualizationConfig, g as TableVisualizationData, h as CardVisualizationData, K as KpiVisualizationData, i as CodePreviewVisualizationData, F as FormVisualizationData, E as Event, j as EventStatus } from '../streaming-22xVgbZB.js';
+export { k as ChunkType, l as ClaudeToolChunkData, m as EventType, n as FileOperationChunkData, o as FollowupAction, M as MediaChunkData, O as ObservationEvent, p as ParallelSubtaskData, q as PlanningEvent, r as ProgressData, s as SearchResultsChunkData, t as StreamingMessage, u as SubTaskData, v as SubagentChunkData, w as SubagentInfo, x as SubtaskEvent, y as TerminalChunkData, z as ThinkingEvent, A as ToolEvent, B as VisualizationType, W as WaveData, D as WebOperationChunkData } from '../streaming-22xVgbZB.js';
 import { z, ZodSchema } from 'zod';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
 export { B as BrandingData } from '../branding-SzYU4ncD.js';
-export { u as useComposer, g as useMessage } from '../avatar-CAmTN1L7.js';
+export { u as useComposer, g as useMessage } from '../avatar-DBUJR0T0.js';
 
 interface LoadingDotsProps {
     /** Size variant */
@@ -114,6 +114,20 @@ interface ClarificationPanelProps {
  * Orange left-border panel with question, radio options, and free-text input.
  */
 declare function ClarificationPanel({ clarification, onSubmit, onOptionSelect, disabled, loading, className, }: ClarificationPanelProps): react_jsx_runtime.JSX.Element;
+
+interface ToolApprovalPanelProps {
+    approval: ToolApprovalData;
+    onApprove: (modifiedInputs: Record<string, unknown>) => void;
+    onReject: (reason?: string) => void;
+    disabled?: boolean;
+    className?: string;
+}
+/**
+ * Tool approval panel - displays when the AI agent needs user approval before
+ * executing a tool. Shows tool summary, editable parameters, and approve/reject actions.
+ * Amber left-border panel (distinguished from orange clarification panel).
+ */
+declare function ToolApprovalPanel({ approval, onApprove, onReject, disabled, className, }: ToolApprovalPanelProps): react_jsx_runtime.JSX.Element;
 
 interface CitationSourcesProps {
     sources: SourceReference[];
@@ -480,4 +494,4 @@ interface TimelineItemProps {
  */
 declare function TimelineItem({ status, isLast, badgeSize, children, className, }: TimelineItemProps): react_jsx_runtime.JSX.Element;
 
-export { Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, ClaudeToolPreview, type ClaudeToolPreviewProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FileOperationPreview, type FileOperationPreviewProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SearchResultsView, type SearchResultsViewProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TerminalOutput, type TerminalOutputProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, WebOperationPreview, type WebOperationPreviewProps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, formVisualizationSchema, getRegisteredTypes, getVisualization, kpiVisualizationSchema, registerVisualization, tableVisualizationSchema };
+export { Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, ClaudeToolPreview, type ClaudeToolPreviewProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FileOperationPreview, type FileOperationPreviewProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SearchResultsView, type SearchResultsViewProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TerminalOutput, type TerminalOutputProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, ToolApprovalPanel, type ToolApprovalPanelProps, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, WebOperationPreview, type WebOperationPreviewProps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, formVisualizationSchema, getRegisteredTypes, getVisualization, kpiVisualizationSchema, registerVisualization, tableVisualizationSchema };
