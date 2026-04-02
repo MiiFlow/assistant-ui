@@ -41,6 +41,7 @@ import {
 } from "./session";
 import { validateToolDefinition, serializeToolDefinition } from "./tool-validator";
 import { useBrandingCSSVars } from "../hooks/use-branding-css-vars";
+import { compressImageIfNeeded } from "../utils/compress-image";
 
 // ============================================================================
 // WebSocket helpers
@@ -1280,6 +1281,16 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     async (file: File): Promise<string> => {
       const currentSession = sessionRef.current;
       if (!currentSession) throw new Error("Not initialized");
+
+      // Compress large images to stay under API base64 size limit (5 MB)
+      if (file.type.startsWith("image/")) {
+        try {
+          file = await compressImageIfNeeded(file);
+        } catch (e) {
+          console.warn("Image compression failed, using original:", e);
+        }
+      }
+
       const attachmentId = await uploadFileToBackend(configRef.current, currentSession, file);
       uploadedAttachmentsRef.current.set(attachmentId, {
         id: attachmentId,

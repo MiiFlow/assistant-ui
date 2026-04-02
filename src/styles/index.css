@@ -187,19 +187,19 @@
 	}
 
 	.chat-prose th {
-		@apply px-3 py-2 text-left text-sm font-medium text-gray-700 bg-gray-50;
+		@apply px-3 py-2 text-left text-sm font-medium bg-gray-50;
 	}
 
 	.dark .chat-prose th {
-		@apply text-gray-300 bg-gray-800;
+		@apply bg-gray-800;
 	}
 
 	.chat-prose td {
-		@apply px-3 py-2 text-sm text-gray-600 border-t border-gray-100;
+		@apply px-3 py-2 text-sm border-t border-gray-100;
 	}
 
 	.dark .chat-prose td {
-		@apply text-gray-400 border-gray-700;
+		@apply border-gray-700;
 	}
 
 	.chat-prose hr {

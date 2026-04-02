@@ -156,7 +156,7 @@ export function MarkdownContent({
           <p className="mb-2 last:mb-0 leading-relaxed" style={fontStyle}>{children}</p>
         ),
         a: ({ href, children }) => {
-          const isImageUrl = href && /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(href);
+          const isImageUrl = href && /\.(png|jpe?g|gif|webp|svg)([?#]|$)/i.test(href);
           if (isImageUrl) {
             return (
               <img
@@ -243,12 +243,12 @@ export function MarkdownContent({
           <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">{children}</thead>
         ),
         th: ({ children }) => (
-          <th className="px-3 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300" style={fontStyle}>
+          <th className="px-3 py-2 text-left text-sm font-medium" style={fontStyle}>
             {children}
           </th>
         ),
         td: ({ children }) => (
-          <td className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700" style={fontStyle}>
+          <td className="px-3 py-2 text-sm border-t border-gray-100 dark:border-gray-700" style={fontStyle}>
             {children}
           </td>
         ),
