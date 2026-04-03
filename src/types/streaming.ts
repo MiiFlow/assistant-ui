@@ -66,15 +66,7 @@ export type ChunkType =
   | "claude_text"     // Claude SDK text output
   | "claude_thinking" // Claude SDK extended thinking
   // Suggested action (inline recommendation card)
-  | "suggested_action_created" // Agent recommended an action
-  // Claude SDK native chunk types
-  | "subagent"        // Nested subagent execution
-  | "file_operation"  // Read/Write/Edit file operations
-  | "terminal"        // Bash command execution
-  | "search_results"  // Glob/Grep search results
-  | "web_operation"   // WebSearch/WebFetch operations
-  | "claude_text"     // Claude SDK text output
-  | "claude_thinking"; // Claude SDK extended thinking
+  | "suggested_action_created"; // Agent recommended an action
 
 /**
  * Subtask data structure for Plan & Execute mode

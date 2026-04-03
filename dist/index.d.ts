@@ -1,11 +1,11 @@
-export { A as Attachment, C as ChatMessage, a as MemoryFeedbackType, M as MessageData, b as MessageError, c as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, d as SourceTypeConfig, e as SuggestedAction, f as SuggestedActionType, i as isMemoryCitation } from './message-BBWdaL9u.js';
-export { a as StreamChunk, b as StreamingOptions, c as StreamingState } from './streaming-22xVgbZB.js';
+export { A as Attachment, C as ChatMessage, a as MemoryFeedbackType, M as MessageData, b as MessageError, c as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, d as SourceTypeConfig, e as SuggestedAction, f as SuggestedActionType, i as isMemoryCitation } from './message-BbCy3JdC.js';
+export { a as StreamChunk, b as StreamingOptions, c as StreamingState } from './streaming-DT3NIa_x.js';
 export { B as BrandingData } from './branding-SzYU4ncD.js';
 export { ChatContext, ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from './context/index.js';
 export { useAttachments, useAutoScroll, useBrandingCSSVars, useMessageComposer, useScrollLock, useStreaming } from './hooks/index.js';
-export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-DBUJR0T0.js';
+export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-BDhGKmc-.js';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.js';
-export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-BT-mOSLE.js';
+export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-C99JlqTA.js';
 import { ClassValue } from 'clsx';
 import 'react/jsx-runtime';
 import 'react';
@@ -51,9 +51,12 @@ type ContentPart = {
 } | {
     type: "media";
     id: string;
+} | {
+    type: "sa";
+    id: string;
 };
 /**
- * Parse content and split it by inline markers ([VIZ:id] and [MEDIA:id]).
+ * Parse content and split it by inline markers ([VIZ:id], [MEDIA:id], and [SA:id]).
  */
 declare function parseContentWithInlineMarkers(content: string): ContentPart[];
 
