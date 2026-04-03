@@ -78,6 +78,8 @@ export interface MessageProps {
 	onMemoryFeedback?: (semanticAtomId: string, feedback: MemoryFeedbackType) => void;
 	/** Current feedback state for memory citations (atomId -> feedback) */
 	memoryFeedbackState?: Record<string, MemoryFeedbackType>;
+	/** Render function for inline suggested action cards (from [SA:id] markers) */
+	renderInlineSuggestedAction?: (id: string) => React.ReactNode;
 }
 
 /**
@@ -113,6 +115,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			onToolReject,
 			onMemoryFeedback,
 			memoryFeedbackState,
+			renderInlineSuggestedAction,
 		},
 		ref,
 	) => {
@@ -178,12 +181,13 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			return map;
 		}, [visualizations]);
 
-		// Parse content for inline viz markers
+		// Parse content for inline viz/SA markers
 		const hasVizInlineContent = vizMap && vizMap.size > 0;
+		const hasInlineMarkers = hasVizInlineContent || (message.textContent && /\[SA:[\w-]+\]/i.test(message.textContent));
 		const contentParts = useMemo(() => {
-			if (!hasVizInlineContent || !message.textContent) return null;
+			if (!hasInlineMarkers || !message.textContent) return null;
 			return parseContentWithInlineMarkers(message.textContent);
-		}, [hasVizInlineContent, message.textContent]);
+		}, [hasInlineMarkers, message.textContent]);
 
 		// Strip [MEDIA:...] markers from text content (media rendered separately)
 		const cleanTextContent = useMemo(() => {
@@ -194,8 +198,8 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 		const renderContent = () => {
 			if (!message.textContent) return null;
 
-			// Content with inline visualization markers
-			if (contentParts && contentParts.length > 0 && hasVizInlineContent) {
+			// Content with inline visualization/suggested action markers
+			if (contentParts && contentParts.length > 0 && hasInlineMarkers) {
 				const renderedVizIds = new Set<string>();
 				return (
 					<>
@@ -218,6 +222,12 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 								if (viz) {
 									renderedVizIds.add(part.id);
 									return <VisualizationRenderer key={`viz-${part.id}`} data={viz} isStreaming={isStreaming} onAction={onVisualizationAction} />;
+								}
+								return null;
+							}
+							if (part.type === "sa") {
+								if (renderInlineSuggestedAction) {
+									return <div key={`sa-${part.id}`}>{renderInlineSuggestedAction(part.id)}</div>;
 								}
 								return null;
 							}

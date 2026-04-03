@@ -1,13 +1,15 @@
-// Regex to match inline markers: [VIZ:uuid] and [MEDIA:uuid]
-const INLINE_MARKER_REGEX = /\[(VIZ|MEDIA):([a-f0-9-]+)\]/gi;
+// Regex to match inline markers: [VIZ:uuid], [MEDIA:uuid], and [SA:id]
+// VIZ/MEDIA use hex UUIDs; SA uses TokenField IDs (alphanumeric + underscore, e.g. saction_AbC123xYz)
+const INLINE_MARKER_REGEX = /\[(VIZ|MEDIA|SA):([\w-]+)\]/gi;
 
 export type ContentPart =
   | { type: "text"; content: string }
   | { type: "viz"; id: string }
-  | { type: "media"; id: string };
+  | { type: "media"; id: string }
+  | { type: "sa"; id: string };
 
 /**
- * Parse content and split it by inline markers ([VIZ:id] and [MEDIA:id]).
+ * Parse content and split it by inline markers ([VIZ:id], [MEDIA:id], and [SA:id]).
  */
 export function parseContentWithInlineMarkers(content: string): ContentPart[] {
   const parts: ContentPart[] = [];
@@ -27,6 +29,8 @@ export function parseContentWithInlineMarkers(content: string): ContentPart[] {
     const markerType = match[1].toUpperCase();
     if (markerType === "VIZ") {
       parts.push({ type: "viz", id: match[2] });
+    } else if (markerType === "SA") {
+      parts.push({ type: "sa", id: match[2] });
     } else {
       parts.push({ type: "media", id: match[2] });
     }
