@@ -26,6 +26,7 @@ import { StreamingText } from "./StreamingText";
 import { SuggestedActions } from "./SuggestedActions";
 import { VisualizationRenderer } from "./visualizations";
 import { parseContentWithInlineMarkers } from "../utils/inline-markers";
+import { useStreamingMinHeight } from "../hooks/use-streaming-min-height";
 
 export interface MessageProps {
 	/** The message data */
@@ -292,6 +293,15 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 		if (isStreaming) wasStreamingRef.current = true;
 		const showFadeIn = !isStreaming && !wasStreamingRef.current;
 
+		// Reserve vertical space for streaming text bodies (off-DOM measurement
+		// via @chenglou/pretext) so the scroll anchor doesn't jitter per token.
+		const bubbleRef = useRef<HTMLDivElement>(null);
+		const streamingMinHeight = useStreamingMinHeight(
+			bubbleRef,
+			message.textContent,
+			!!isStreaming,
+		);
+
 		return (
 			<MessagePrimitive
 				ref={ref}
@@ -355,7 +365,12 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 							)}
 
 							{/* Message bubble */}
-							<div className={cn("max-w-[85%]", "flex flex-col")} data-message-role={isViewer ? "viewer" : "other"}>
+							<div
+								ref={bubbleRef}
+								className={cn("max-w-[85%]", "flex flex-col")}
+								data-message-role={isViewer ? "viewer" : "other"}
+								style={streamingMinHeight ? { minHeight: streamingMinHeight } : undefined}
+							>
 								<div
 									className={cn(
 									"rounded-2xl",

@@ -24,6 +24,16 @@ export {
   getTimeUntilExpiry,
 } from "./token-utils";
 
+// Off-DOM text measurement
+export {
+  measureMessageHeight,
+  clearMeasurementCache,
+} from "../utils/measureMessage";
+export type {
+  MeasureOptions,
+  MeasuredText,
+} from "../utils/measureMessage";
+
 // Tool validation
 export {
   validateToolDefinition,
