@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { ExternalLink, ThumbsUp, ThumbsDown, X } from "lucide-react";
+import { ExternalLink, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "../utils/cn";
-import type { SourceReference, SourceTypeConfig, MemoryFeedbackType } from "../types";
-import { isMemoryCitation } from "../types";
+import type { SourceReference, SourceTypeConfig } from "../types";
 
 function getSourceTypeDisplay(sourceType: string): SourceTypeConfig {
   switch (sourceType) {
@@ -27,48 +26,20 @@ function getSourceTypeDisplay(sourceType: string): SourceTypeConfig {
 export interface CitationSourcesProps {
   sources: SourceReference[];
   className?: string;
-  onMemoryFeedback?: (semanticAtomId: string, feedback: MemoryFeedbackType) => void;
-  memoryFeedbackState?: Record<string, MemoryFeedbackType>;
 }
 
 /**
  * Renders citation sources as a horizontal row of clickable chips.
  * Clicking a chip opens a modal showing full source content.
- * Memory citations include feedback buttons (thumbs up/down).
  */
 export function CitationSources({
   sources,
   className,
-  onMemoryFeedback,
-  memoryFeedbackState,
 }: CitationSourcesProps) {
   const [selectedSource, setSelectedSource] = useState<SourceReference | null>(null);
-  const [localFeedback, setLocalFeedback] = useState<Record<string, MemoryFeedbackType>>({});
   const [showAll, setShowAll] = useState(false);
 
-  // Merge external feedback state with local state
-  const feedbackState = { ...localFeedback, ...memoryFeedbackState };
-
   if (!sources || sources.length === 0) return null;
-
-  const handleFeedback = (source: SourceReference, feedback: MemoryFeedbackType) => {
-    const atomId = source.metadata?.semantic_atom_id as string;
-    if (!atomId) return;
-
-    const currentFeedback = feedbackState[atomId];
-    if (currentFeedback === feedback) {
-      // Toggle off — remove feedback
-      setLocalFeedback((prev) => {
-        const next = { ...prev };
-        delete next[atomId];
-        return next;
-      });
-      return;
-    }
-
-    setLocalFeedback((prev) => ({ ...prev, [atomId]: feedback }));
-    onMemoryFeedback?.(atomId, feedback);
-  };
 
   // Determine if we need to show overflow
   const MAX_VISIBLE = 8;
@@ -80,9 +51,6 @@ export function CitationSources({
       <div className={cn("flex flex-wrap gap-1.5 mt-2", className)}>
         {visibleSources.map((source) => {
           const typeDisplay = getSourceTypeDisplay(source.source_type);
-          const isMem = isMemoryCitation(source);
-          const atomId = source.metadata?.semantic_atom_id as string | undefined;
-          const currentFeedback = atomId ? feedbackState[atomId] : undefined;
 
           return (
             <span key={source.index} className="inline-flex items-center gap-0.5">
@@ -97,40 +65,6 @@ export function CitationSources({
               >
                 [{source.index}] {source.title}
               </button>
-              {isMem && atomId && onMemoryFeedback && (
-                <>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleFeedback(source, "relevant");
-                    }}
-                    className={cn(
-                      "inline-flex items-center justify-center w-5 h-5 rounded-full transition-colors",
-                      currentFeedback === "relevant"
-                        ? "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400"
-                        : "text-gray-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20",
-                    )}
-                    title="Relevant memory"
-                  >
-                    <ThumbsUp size={11} />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleFeedback(source, "not_relevant");
-                    }}
-                    className={cn(
-                      "inline-flex items-center justify-center w-5 h-5 rounded-full transition-colors",
-                      currentFeedback === "not_relevant"
-                        ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400"
-                        : "text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20",
-                    )}
-                    title="Not relevant memory"
-                  >
-                    <ThumbsDown size={11} />
-                  </button>
-                </>
-              )}
             </span>
           );
         })}
@@ -147,9 +81,6 @@ export function CitationSources({
       <SourceDetailModal
         source={selectedSource}
         onClose={() => setSelectedSource(null)}
-        onMemoryFeedback={onMemoryFeedback}
-        feedbackState={feedbackState}
-        onFeedbackChange={handleFeedback}
       />
     </>
   );
@@ -158,17 +89,11 @@ export function CitationSources({
 export interface SourceDetailModalProps {
   source: SourceReference | null;
   onClose: () => void;
-  onMemoryFeedback?: (semanticAtomId: string, feedback: MemoryFeedbackType) => void;
-  feedbackState?: Record<string, MemoryFeedbackType>;
-  onFeedbackChange?: (source: SourceReference, feedback: MemoryFeedbackType) => void;
 }
 
 export function SourceDetailModal({
   source,
   onClose,
-  onMemoryFeedback,
-  feedbackState = {},
-  onFeedbackChange,
 }: SourceDetailModalProps) {
   // Close on Escape
   useEffect(() => {
@@ -183,9 +108,6 @@ export function SourceDetailModal({
   if (!source) return null;
 
   const typeDisplay = getSourceTypeDisplay(source.source_type);
-  const isMem = isMemoryCitation(source);
-  const atomId = source.metadata?.semantic_atom_id as string | undefined;
-  const currentFeedback = atomId ? feedbackState[atomId] : undefined;
 
   return (
     <AnimatePresence>
@@ -276,36 +198,6 @@ export function SourceDetailModal({
                 <p className="text-sm text-gray-400 italic">No content available for this source.</p>
               )}
 
-              {/* Memory feedback buttons (larger, in modal view) */}
-              {isMem && atomId && onMemoryFeedback && onFeedbackChange && (
-                <div className="mt-4 flex items-center gap-3">
-                  <span className="text-sm text-gray-500">Was this memory helpful?</span>
-                  <button
-                    onClick={() => onFeedbackChange(source, "relevant")}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors",
-                      currentFeedback === "relevant"
-                        ? "bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700"
-                        : "text-gray-500 border-gray-200 hover:bg-green-50 hover:text-green-600 dark:border-gray-700 dark:hover:bg-green-900/20",
-                    )}
-                  >
-                    <ThumbsUp size={14} />
-                    Relevant
-                  </button>
-                  <button
-                    onClick={() => onFeedbackChange(source, "not_relevant")}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors",
-                      currentFeedback === "not_relevant"
-                        ? "bg-red-50 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700"
-                        : "text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-600 dark:border-gray-700 dark:hover:bg-red-900/20",
-                    )}
-                  >
-                    <ThumbsDown size={14} />
-                    Not relevant
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Footer */}

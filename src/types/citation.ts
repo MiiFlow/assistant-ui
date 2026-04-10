@@ -22,9 +22,3 @@ export interface SourceTypeConfig {
   label: string;
   color: string;
 }
-
-export type MemoryFeedbackType = "relevant" | "not_relevant";
-
-export function isMemoryCitation(source: SourceReference): boolean {
-  return source.source_type === "memory";
-}

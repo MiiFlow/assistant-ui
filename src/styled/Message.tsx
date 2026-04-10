@@ -3,7 +3,6 @@ import { MessageContent as MessageContentPrimitive, Message as MessagePrimitive 
 import type {
 	ClarificationData,
 	MediaChunkData,
-	MemoryFeedbackType,
 	MessageData,
 	ParticipantRole,
 	SourceReference,
@@ -75,10 +74,6 @@ export interface MessageProps {
 	onToolApprove?: (modifiedInputs: Record<string, unknown>) => void;
 	/** Callback when user rejects a tool execution */
 	onToolReject?: (reason?: string) => void;
-	/** Callback when user gives feedback on a memory citation */
-	onMemoryFeedback?: (semanticAtomId: string, feedback: MemoryFeedbackType) => void;
-	/** Current feedback state for memory citations (atomId -> feedback) */
-	memoryFeedbackState?: Record<string, MemoryFeedbackType>;
 	/** Render function for inline suggested action cards (from [SA:id] markers) */
 	renderInlineSuggestedAction?: (id: string) => React.ReactNode;
 }
@@ -114,8 +109,6 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			pendingToolApproval,
 			onToolApprove,
 			onToolReject,
-			onMemoryFeedback,
-			memoryFeedbackState,
 			renderInlineSuggestedAction,
 		},
 		ref,
@@ -404,11 +397,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 									{/* Citations */}
 									{citations && citations.length > 0 && (
 										<div className="mt-2 pt-2 border-t border-[var(--chat-border)]">
-											<CitationSources
-												sources={citations}
-												onMemoryFeedback={onMemoryFeedback}
-												memoryFeedbackState={memoryFeedbackState}
-											/>
+											<CitationSources sources={citations} />
 										</div>
 									)}
 								</div>
