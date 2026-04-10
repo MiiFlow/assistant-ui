@@ -1,14 +1,14 @@
-export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-C99JlqTA.js';
+export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-33ghSL7_.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode } from 'react';
-import { A as Attachment, S as SourceReference, a as MemoryFeedbackType } from '../message-BbCy3JdC.js';
-export { C as ChatMessage, M as MessageData, b as MessageError, c as Participant, P as ParticipantRole, d as SourceTypeConfig, e as SuggestedAction, f as SuggestedActionType } from '../message-BbCy3JdC.js';
+import { A as Attachment, S as SourceReference } from '../message-CgvptO3w.js';
+export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-CgvptO3w.js';
 import { S as StreamingChunk, P as PlanData, C as ClarificationData, T as ToolApprovalData, V as VisualizationChunkData, d as VisualizationActionEvent, e as ChartVisualizationData, f as VisualizationConfig, g as TableVisualizationData, h as CardVisualizationData, K as KpiVisualizationData, i as CodePreviewVisualizationData, F as FormVisualizationData, E as Event, j as EventStatus } from '../streaming-DT3NIa_x.js';
 export { k as ChunkType, l as ClaudeToolChunkData, m as EventType, n as FileOperationChunkData, o as FollowupAction, M as MediaChunkData, O as ObservationEvent, p as ParallelSubtaskData, q as PlanningEvent, r as ProgressData, s as SearchResultsChunkData, t as StreamingMessage, u as SubTaskData, v as SubagentChunkData, w as SubagentInfo, x as SubtaskEvent, y as TerminalChunkData, z as ThinkingEvent, A as ToolEvent, B as VisualizationType, W as WaveData, D as WebOperationChunkData } from '../streaming-DT3NIa_x.js';
 import { z, ZodSchema } from 'zod';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
 export { B as BrandingData } from '../branding-SzYU4ncD.js';
-export { u as useComposer, g as useMessage } from '../avatar-BDhGKmc-.js';
+export { u as useComposer, g as useMessage } from '../avatar-CgnGqD0K.js';
 
 interface LoadingDotsProps {
     /** Size variant */
@@ -132,23 +132,17 @@ declare function ToolApprovalPanel({ approval, onApprove, onReject, disabled, cl
 interface CitationSourcesProps {
     sources: SourceReference[];
     className?: string;
-    onMemoryFeedback?: (semanticAtomId: string, feedback: MemoryFeedbackType) => void;
-    memoryFeedbackState?: Record<string, MemoryFeedbackType>;
 }
 /**
  * Renders citation sources as a horizontal row of clickable chips.
  * Clicking a chip opens a modal showing full source content.
- * Memory citations include feedback buttons (thumbs up/down).
  */
-declare function CitationSources({ sources, className, onMemoryFeedback, memoryFeedbackState, }: CitationSourcesProps): react_jsx_runtime.JSX.Element | null;
+declare function CitationSources({ sources, className, }: CitationSourcesProps): react_jsx_runtime.JSX.Element | null;
 interface SourceDetailModalProps {
     source: SourceReference | null;
     onClose: () => void;
-    onMemoryFeedback?: (semanticAtomId: string, feedback: MemoryFeedbackType) => void;
-    feedbackState?: Record<string, MemoryFeedbackType>;
-    onFeedbackChange?: (source: SourceReference, feedback: MemoryFeedbackType) => void;
 }
-declare function SourceDetailModal({ source, onClose, onMemoryFeedback, feedbackState, onFeedbackChange, }: SourceDetailModalProps): react_jsx_runtime.JSX.Element | null;
+declare function SourceDetailModal({ source, onClose, }: SourceDetailModalProps): react_jsx_runtime.JSX.Element | null;
 /**
  * Inline citation badge - renders a small numbered badge like [1]
  * with optional tooltip on hover and click-to-open URL.
