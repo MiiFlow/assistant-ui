@@ -2,7 +2,13 @@
  * Session initialization and management for Miiflow embedded chat.
  */
 
-import type { EmbedSession, MiiflowChatConfig, SystemEvent, ToolExecutionResult } from "./types";
+import type {
+	EmbedSession,
+	MiiflowChatConfig,
+	PageContext,
+	SystemEvent,
+	ToolExecutionResult,
+} from "./types";
 
 /**
  * Determine the backend base URL from config.
@@ -217,6 +223,47 @@ export async function sendSystemEvent(
 	const result = await response.json();
 	if (!result.success) {
 		throw new Error(result.error || "Failed to send system event");
+	}
+}
+
+/**
+ * Append a hidden page-context message to the thread.
+ *
+ * Does not render in the UI and does not trigger an assistant response — the
+ * content is preserved in history so the LLM sees it on the next user turn.
+ */
+export async function sendPageContext(
+	config: MiiflowChatConfig,
+	session: EmbedSession,
+	context: PageContext,
+): Promise<void> {
+	const backendBaseUrl = getBackendBaseUrl(config);
+
+	const response = await fetch(`${backendBaseUrl}/api/embed/page-context`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${session.token}`,
+			"x-mii-user-id": getOrCreateUserId(),
+		},
+		body: JSON.stringify({
+			thread_id: session.config.thread_id,
+			page_context: {
+				action: context.action,
+				content: context.content,
+				metadata: context.metadata || {},
+			},
+		}),
+	});
+
+	if (!response.ok) {
+		const errorText = await response.text();
+		throw new Error(`Failed to send page context: ${response.status} - ${errorText}`);
+	}
+
+	const result = await response.json();
+	if (!result.success) {
+		throw new Error(result.error || "Failed to send page context");
 	}
 }
 

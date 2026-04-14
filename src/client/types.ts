@@ -114,6 +114,8 @@ export interface MiiflowChatResult {
 
   /** Send a system event (invisible to chat, processed by assistant) */
   sendSystemEvent: (event: SystemEvent) => Promise<void>;
+  /** Append hidden page context to the thread (not rendered, no auto-reply) */
+  sendPageContext: (context: PageContext) => Promise<void>;
   /** Execute a client tool invocation (called when backend invokes a registered tool). Returns true if handled. */
   handleToolInvocation: (invocation: ToolInvocationRequest) => Promise<boolean>;
   /** Update the session externally (e.g. after token refresh) */
@@ -185,6 +187,30 @@ export interface SystemEvent {
   action: string;
   description: string;
   followUpInstruction: string;
+  metadata?: Record<string, unknown>;
+}
+
+// ============================================================================
+// Page Context
+// ============================================================================
+
+/**
+ * Ambient page context injected into the conversation.
+ *
+ * Unlike a SystemEvent, page context does NOT trigger an assistant response —
+ * it is stored as a hidden message in the thread so the model sees it on the
+ * next turn. Use it to describe the current page, registered client tools,
+ * relevant URLs, or any other context the assistant should be aware of.
+ *
+ * Append-only: each call adds a new entry. To avoid duplicates across
+ * re-renders, call from a `useEffect` with stable dependencies.
+ */
+export interface PageContext {
+  /** Short tag, e.g. "page_navigated" or "tools_registered". */
+  action: string;
+  /** Full text the model should see (tool usage hints, URLs, excerpts, etc). */
+  content: string;
+  /** Optional free-form metadata (url, pageId, toolNames, etc). */
   metadata?: Record<string, unknown>;
 }
 

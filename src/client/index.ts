@@ -13,6 +13,7 @@ export {
   registerToolsOnBackend,
   uploadFile,
   sendSystemEvent,
+  sendPageContext,
   sendToolResult,
 } from "./session";
 
@@ -55,6 +56,7 @@ export type {
   ToolInvocationRequest,
   ToolExecutionResult,
   SystemEvent,
+  PageContext,
   WidgetEventType,
   WidgetEventPayload,
   WidgetEventCallback,

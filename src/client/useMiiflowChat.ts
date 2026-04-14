@@ -28,6 +28,7 @@ import type {
   ToolHandler,
   ToolInvocationRequest,
   SystemEvent,
+  PageContext,
 } from "./types";
 import {
   initSession,
@@ -37,6 +38,7 @@ import {
   registerToolsOnBackend,
   uploadFile as uploadFileToBackend,
   sendSystemEvent as sendSystemEventToBackend,
+  sendPageContext as sendPageContextToBackend,
   sendToolResult,
 } from "./session";
 import { validateToolDefinition, serializeToolDefinition } from "./tool-validator";
@@ -1458,6 +1460,16 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     [] // stable — reads sessionRef
   );
 
+  // Send hidden page context — stored in history, not rendered, no auto-reply
+  const sendPageContext = useCallback(
+    async (context: PageContext): Promise<void> => {
+      const currentSession = sessionRef.current;
+      if (!currentSession) throw new Error("Not initialized");
+      await sendPageContextToBackend(configRef.current, currentSession, context);
+    },
+    [] // stable — reads sessionRef
+  );
+
   // Send message — uses refs for stable reference, safe to capture in widget bridge.
   // Also fixes: allows attachment-only messages (empty text with attachmentIds).
   const sendMessage = useCallback(
@@ -1814,23 +1826,27 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     [] // stable — reads sessionRef
   );
 
-  // Convert internal messages to ChatMessage format
+  // Convert internal messages to ChatMessage format.
+  // Hidden page-context messages (role=system) are never rendered — they exist
+  // only in history for the LLM's benefit.
   const chatMessages: ChatMessage[] = useMemo(
     () =>
-      messages.map((msg) => ({
-        id: msg.id,
-        textContent: msg.textContent?.replace(/\[ref:[^\]]+\]/g, '') || msg.textContent,
-        participant: msg.participant,
-        createdAt: msg.createdAt,
-        isStreaming: msg.isStreaming,
-        reasoning: msg.reasoning,
-        suggestedActions: msg.suggestedActions,
-        citations: msg.citations,
-        attachments: msg.attachments,
-        pendingClarification: msg.pendingClarification,
-        pendingToolApproval: msg.pendingToolApproval,
-        executionTime: msg.executionTime,
-      })),
+      messages
+        .filter((msg) => msg.participant.role !== "system")
+        .map((msg) => ({
+          id: msg.id,
+          textContent: msg.textContent?.replace(/\[ref:[^\]]+\]/g, '') || msg.textContent,
+          participant: msg.participant,
+          createdAt: msg.createdAt,
+          isStreaming: msg.isStreaming,
+          reasoning: msg.reasoning,
+          suggestedActions: msg.suggestedActions,
+          citations: msg.citations,
+          attachments: msg.attachments,
+          pendingClarification: msg.pendingClarification,
+          pendingToolApproval: msg.pendingToolApproval,
+          executionTime: msg.executionTime,
+        })),
     [messages]
   );
 
@@ -1855,6 +1871,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     registerTool,
     registerTools,
     sendSystemEvent,
+    sendPageContext,
     handleToolInvocation,
     updateSession,
     stopStreaming,
