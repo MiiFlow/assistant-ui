@@ -1,4 +1,17 @@
-import { forwardRef, useContext, useMemo, useRef } from "react";
+import {
+	forwardRef,
+	useContext,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import {
+	MediaLightbox,
+	PlayOverlay,
+	YOUTUBE_ID_RE,
+	useMediaLightbox,
+	type MediaItem,
+} from "./MediaLightbox";
 import { MessageContent as MessageContentPrimitive, Message as MessagePrimitive } from "../primitives";
 import type {
 	ClarificationData,
@@ -26,6 +39,177 @@ import { SuggestedActions } from "./SuggestedActions";
 import { VisualizationRenderer } from "./visualizations";
 import { parseContentWithInlineMarkers } from "../utils/inline-markers";
 import { useStreamingMinHeight } from "../hooks/use-streaming-min-height";
+
+// ── Lazy media helpers ───────────────────────────────────────────────
+// Videos are mounted only after the user clicks the poster. This keeps
+// long audit lists (top 5 + bottom 5, possibly dozens of videos) from
+// instantiating every <video>/<iframe> on initial render.
+// MediaItem / YOUTUBE_ID_RE / PlayOverlay / MediaLightbox are imported
+// from ./MediaLightbox so TableVisualization can reuse them.
+
+interface LazyVideoProps {
+	url: string;
+	posterUrl?: string;
+	altText?: string;
+}
+
+const LazyYouTubeEmbed = ({ ytId, altText }: { ytId: string; altText?: string }) => {
+	const [loaded, setLoaded] = useState(false);
+	const posterUrl = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
+	return (
+		<div className="my-3">
+			<div
+				className="relative w-full overflow-hidden rounded-lg"
+				style={{ maxWidth: 640, aspectRatio: "16 / 9" }}
+			>
+				{loaded ? (
+					<iframe
+						src={`https://www.youtube.com/embed/${ytId}?autoplay=1`}
+						title={altText || "Video"}
+						allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+						allowFullScreen
+						className="absolute inset-0 h-full w-full border-0"
+					/>
+				) : (
+					<button
+						type="button"
+						onClick={() => setLoaded(true)}
+						className="absolute inset-0 block border-0 bg-transparent p-0"
+						aria-label={altText || "Play video"}
+					>
+						<img
+							src={posterUrl}
+							alt={altText || "Video preview"}
+							className="h-full w-full object-cover"
+							loading="lazy"
+						/>
+						<PlayOverlay label={altText || "Play video"} />
+					</button>
+				)}
+			</div>
+			{altText && <div className="mt-1 text-xs text-gray-500">{altText}</div>}
+		</div>
+	);
+};
+
+const LazyHtmlVideo = ({ url, posterUrl, altText }: LazyVideoProps) => {
+	const [loaded, setLoaded] = useState(false);
+	return (
+		<div className="my-3">
+			<div
+				className="relative overflow-hidden rounded-lg"
+				style={{ maxWidth: 640, maxHeight: 512 }}
+			>
+				{loaded ? (
+					<video
+						controls
+						autoPlay
+						preload="metadata"
+						className="block max-h-[512px] w-full rounded-lg"
+						poster={posterUrl}
+					>
+						<source src={url} />
+						Your browser does not support the video tag.
+					</video>
+				) : (
+					<button
+						type="button"
+						onClick={() => setLoaded(true)}
+						className="block w-full border-0 bg-transparent p-0"
+						aria-label={altText || "Play video"}
+					>
+						{posterUrl ? (
+							<img
+								src={posterUrl}
+								alt={altText || "Video preview"}
+								className="block max-h-[512px] w-full object-cover"
+								loading="lazy"
+							/>
+						) : (
+							<div
+								className="flex w-full items-center justify-center bg-gray-900 text-gray-400"
+								style={{ aspectRatio: "16 / 9" }}
+							>
+								<span className="text-sm">Click to load video</span>
+							</div>
+						)}
+						<PlayOverlay label={altText || "Play video"} />
+					</button>
+				)}
+			</div>
+			{altText && <div className="mt-1 text-xs text-gray-500">{altText}</div>}
+		</div>
+	);
+};
+
+// ── Media grid ────────────────────────────────────────────────────────
+// When a tool returns multiple media items (creative audits return 5-10+),
+// a vertical stack wastes screen real estate. The grid tiles the items
+// responsively; click opens a full-size lightbox with keyboard navigation.
+// MediaLightbox itself lives in ./MediaLightbox so TableVisualization can
+// reuse it.
+
+const MediaGridTile = ({
+	media,
+	onOpen,
+}: {
+	media: MediaItem;
+	onOpen: () => void;
+}) => {
+	// Video (YouTube or direct): show thumbnail with play overlay; click opens lightbox.
+	if (media.mediaType === "video") {
+		const ytMatch = media.url.match(YOUTUBE_ID_RE);
+		const ytId = ytMatch ? ytMatch[1] : null;
+		const posterSrc = ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : undefined;
+		return (
+			<button
+				type="button"
+				onClick={onOpen}
+				className={cn(
+					"relative block w-full overflow-hidden rounded-lg border-0 bg-black/5 p-0",
+					"aspect-square cursor-pointer transition-opacity hover:opacity-90",
+				)}
+				style={{ aspectRatio: "1 / 1" }}
+				aria-label={media.altText || "Open video"}
+			>
+				{posterSrc ? (
+					<img
+						src={posterSrc}
+						alt={media.altText || "Video preview"}
+						className="h-full w-full object-cover"
+						loading="lazy"
+					/>
+				) : (
+					<div className="flex h-full w-full items-center justify-center bg-gray-900 text-xs text-gray-400">
+						Video
+					</div>
+				)}
+				<PlayOverlay label={media.altText || "Open video"} />
+			</button>
+		);
+	}
+
+	// Image: click opens lightbox at full size.
+	return (
+		<button
+			type="button"
+			onClick={onOpen}
+			className={cn(
+				"block w-full overflow-hidden rounded-lg border-0 bg-transparent p-0",
+				"aspect-square cursor-pointer transition-opacity hover:opacity-90",
+			)}
+			style={{ aspectRatio: "1 / 1" }}
+			aria-label={media.altText || "Open image"}
+		>
+			<img
+				src={media.url}
+				alt={media.altText || "Image"}
+				className="h-full w-full object-cover"
+				loading="lazy"
+			/>
+		</button>
+	);
+};
 
 export interface MessageProps {
 	/** The message data */
@@ -215,7 +399,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 								const viz = vizMap?.get(part.id);
 								if (viz) {
 									renderedVizIds.add(part.id);
-									return <VisualizationRenderer key={`viz-${part.id}`} data={viz} isStreaming={isStreaming} onAction={onVisualizationAction} />;
+									return <VisualizationRenderer key={`viz-${part.id}`} data={viz} isStreaming={isStreaming} onAction={onVisualizationAction} medias={medias} />;
 								}
 								return null;
 							}
@@ -256,28 +440,98 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			return <p className="whitespace-pre-wrap">{cleanTextContent}</p>;
 		};
 
-		const renderMediaItems = () => {
-			if (!medias || medias.length === 0) return null;
-			// Skip media items already rendered inline as markdown images
+		const filteredMedias: MediaItem[] = useMemo(() => {
+			if (!medias || medias.length === 0) return [];
 			const textContent = cleanTextContent || "";
-			const filteredMedias = medias.filter((media) => {
-				if (media.mediaType !== "image") return true;
-				// Check if this URL appears as a markdown image in the text
-				return !textContent.includes(media.url);
-			});
+			return medias
+				.filter((media) => {
+					if (media.mediaType !== "image") return true;
+					// Skip media items already rendered inline as markdown images
+					return !textContent.includes(media.url);
+				})
+				.map((m) => ({
+					id: m.id,
+					url: m.url,
+					mediaType: m.mediaType,
+					altText: m.altText,
+				}));
+		}, [medias, cleanTextContent]);
+
+		const {
+			index: lightboxIndex,
+			open: openLightbox,
+			close: closeLightbox,
+			navigate: navigateLightbox,
+		} = useMediaLightbox(filteredMedias);
+
+		const renderMediaItems = () => {
 			if (filteredMedias.length === 0) return null;
-			return filteredMedias.map((media) =>
-				media.mediaType === "image" ? (
-					<div key={`media-${media.id}`} className="my-3">
-						<img
-							src={media.url}
-							alt={media.altText || "Generated image"}
-							className="max-w-full rounded-lg"
-							style={{ maxHeight: 512, display: "block" }}
-						/>
+
+			// Grid view for 2+ items — tiles click into the lightbox.
+			if (filteredMedias.length >= 2) {
+				return (
+					<div
+						className="my-3 grid gap-2"
+						style={{
+							gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+							maxWidth: 640,
+						}}
+					>
+						{filteredMedias.map((media, idx) => (
+							<MediaGridTile
+								key={`media-${media.id}`}
+								media={media}
+								onOpen={() => openLightbox(idx)}
+							/>
+						))}
 					</div>
-				) : null
-			);
+				);
+			}
+
+			// Single-item rendering keeps the existing larger layout but adds
+			// click-to-open-lightbox so users can still get a full-size view.
+			const media = filteredMedias[0];
+			if (media.mediaType === "image") {
+				return (
+					<div className="my-3">
+						<button
+							type="button"
+							onClick={() => openLightbox(0)}
+							className="block cursor-zoom-in border-0 bg-transparent p-0"
+							aria-label={media.altText || "Open image"}
+						>
+							<img
+								src={media.url}
+								alt={media.altText || "Generated image"}
+								className="max-w-full rounded-lg"
+								loading="lazy"
+								style={{ maxHeight: 512, display: "block" }}
+							/>
+						</button>
+					</div>
+				);
+			}
+			if (media.mediaType === "video") {
+				const ytMatch = media.url.match(YOUTUBE_ID_RE);
+				if (ytMatch) {
+					return (
+						<LazyYouTubeEmbed
+							key={`media-${media.id}`}
+							ytId={ytMatch[1]}
+							altText={media.altText}
+						/>
+					);
+				}
+				return (
+					<LazyHtmlVideo
+						key={`media-${media.id}`}
+						url={media.url}
+						posterUrl={(media as { posterUrl?: string }).posterUrl}
+						altText={media.altText}
+					/>
+				);
+			}
+			return null;
 		};
 
 		// Track if this message was ever in streaming state.
@@ -375,6 +629,14 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 									}}>
 									<MessageContentPrimitive>{renderContent()}</MessageContentPrimitive>
 									{renderMediaItems()}
+									{lightboxIndex !== null && (
+										<MediaLightbox
+											items={filteredMedias}
+											index={lightboxIndex}
+											onClose={closeLightbox}
+											onNavigate={navigateLightbox}
+										/>
+									)}
 
 									{/* Unreferenced visualizations (not embedded inline via [VIZ:id] markers) */}
 									{visualizations && visualizations.length > 0 && (() => {
@@ -389,6 +651,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 													data={viz}
 													isStreaming={isStreaming}
 													onAction={onVisualizationAction}
+													medias={medias}
 												/>
 											</div>
 										));

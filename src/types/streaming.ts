@@ -290,7 +290,8 @@ export type TableColumnType =
   | "badge"
   | "link"
   | "boolean"
-  | "progress";
+  | "progress"
+  | "media";
 
 export interface TableColumn {
   key: string;

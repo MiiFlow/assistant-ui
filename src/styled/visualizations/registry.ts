@@ -7,6 +7,7 @@ export interface VisualizationEntry {
     config?: VisualizationConfig;
     isStreaming?: boolean;
     onAction?: (event: import("../../types").VisualizationActionEvent) => void;
+    medias?: import("../../types").MediaChunkData[];
   }>;
   schema?: ZodSchema;
 }

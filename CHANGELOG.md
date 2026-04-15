@@ -1,5 +1,24 @@
 # @miiflow/assistant-ui
 
+## 0.6.0
+
+### Features
+
+- **Table `media` column type**: Render image/video thumbnails inline in tables. Cells accept raw URLs, media objects, or `media_ref:<id>` sentinels that resolve against the message-level `medias` bag. Clicks open a table-wide lightbox that navigates across rows and columns.
+- **Message-level media grid + lightbox**: Multi-media messages render as a responsive grid of clickable tiles. Lightbox is portaled into `document.body` (escapes transformed ancestors), locks body scroll, and supports keyboard navigation.
+- **Per-cell hover popover**: Replaced the row-wide hover card with a per-cell popover — selectable text, icon-only copy button, fit-content width, viewport-flip when near the edge. Long cell contents line-clamp on the inner `div` so table layout is preserved.
+- **`ToolApprovalPanel`**: Human-in-the-loop tool approval UI for confirming mutating tool calls before execution.
+- **Streaming min-height**: New `useStreamingMinHeight` hook keeps messages from visually collapsing mid-stream; paired with a `measureMessage` utility.
+- **Image compression utility**: `utils/compress-image.ts` for client-side image resizing before upload.
+- **System messages in client tools**: Client-side tool handlers now receive system messages in addition to user/assistant turns.
+- **Citation + markdown tweaks**: Small UX refinements to `CitationSources` and `MarkdownContent` rendering.
+
+### Bug Fixes
+
+- Add `"media"` to the table column-type zod enum so payloads with media columns pass schema validation (fixes "Invalid table visualization data" error)
+- Resolve `media_ref:<id>` cell values against the message's `medias` array so thumbnails render instead of broken image icons
+- Plumb `medias` through `Message` → `VisualizationRenderer` → `TableVisualization` so visualizations can see the media bag
+
 ## 0.5.2
 
 ### Features

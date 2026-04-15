@@ -1,5 +1,5 @@
 import { AlertCircle } from "lucide-react";
-import type { VisualizationActionEvent, VisualizationChunkData } from "../../types";
+import type { MediaChunkData, VisualizationActionEvent, VisualizationChunkData } from "../../types";
 import { getVisualization } from "./registry";
 // Side-effect import: ensures schemas are registered alongside components
 import "./schemas";
@@ -8,12 +8,15 @@ export interface VisualizationRendererProps {
   data: VisualizationChunkData;
   isStreaming?: boolean;
   onAction?: (event: VisualizationActionEvent) => void;
+  /** Message-level media bag used to resolve `media_ref:<id>` cell values. */
+  medias?: MediaChunkData[];
 }
 
 export function VisualizationRenderer({
   data,
   isStreaming = false,
   onAction,
+  medias,
 }: VisualizationRendererProps) {
   const { type, title, description, data: vizData, config } = data;
 
@@ -63,6 +66,7 @@ export function VisualizationRenderer({
         config={config}
         isStreaming={isStreaming}
         onAction={onAction}
+        medias={medias}
       />
     );
   };

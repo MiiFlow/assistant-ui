@@ -1,15 +1,217 @@
-import { useMemo, useState } from "react";
-import { Check, X, ChevronUp, ChevronDown } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Check, X, ChevronUp, ChevronDown, Copy as CopyIcon } from "lucide-react";
 import { cn } from "../../utils/cn";
-import type { TableVisualizationData, TableColumn, TableColumnType, VisualizationConfig } from "../../types";
+import type { MediaChunkData, TableVisualizationData, TableColumn, TableColumnType, VisualizationConfig } from "../../types";
+import {
+  MediaLightbox,
+  PlayOverlay,
+  YOUTUBE_ID_RE,
+  parseMediaValue,
+  useMediaLightbox,
+  type MediaItem,
+} from "../MediaLightbox";
 
 export interface TableVisualizationProps {
   data: TableVisualizationData;
   config?: VisualizationConfig;
   isStreaming?: boolean;
+  /** Message-level media bag used to resolve `media_ref:<id>` cell values. */
+  medias?: MediaChunkData[];
 }
 
 type Order = "asc" | "desc";
+
+// Column types that render as short, fixed-width atoms — keep nowrap so the
+// column width stays visually tight. Everything else wraps by default so
+// long strings are readable without truncation.
+const _NOWRAP_TYPES = new Set<TableColumnType>([
+  "number",
+  "currency",
+  "date",
+  "badge",
+  "boolean",
+  "progress",
+]);
+
+/** Stringify any value for title attributes + hover card. */
+function _cellToText(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+/** Per-cell hover popover: selectable, copyable, portal-rendered.
+ *
+ * Two UX requirements drive the implementation:
+ *   - text must be selectable so users can copy it → pointer-events: auto
+ *   - cursor must be able to travel from cell → popover without the popover
+ *     closing (otherwise users can never reach the content). onEnter/onLeave
+ *     callbacks hand off hover tracking to the parent, which debounces the
+ *     close so crossing the gap doesn't dismiss.
+ *
+ * Visual: no header — just the content and a small copy icon pinned to
+ * the bottom-right corner. Keeps focus on the data.
+ */
+function CellHoverPopover({
+  text,
+  anchorRect,
+  onEnter,
+  onLeave,
+}: {
+  text: string;
+  anchorRect: DOMRect;
+  onEnter: () => void;
+  onLeave: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  if (typeof document === "undefined") return null;
+
+  // Position below the cell by default; flip above if we'd clip the viewport.
+  // Width is max-content so short values produce compact cards (hover-card
+  // feel) — long values grow up to POPOVER_MAX_WIDTH before wrapping.
+  const VIEWPORT_MARGIN = 16;
+  const POPOVER_MAX_WIDTH = Math.min(
+    360,
+    window.innerWidth - 2 * VIEWPORT_MARGIN,
+  );
+  const spaceBelow = window.innerHeight - anchorRect.bottom - VIEWPORT_MARGIN;
+  const placeBelow = spaceBelow >= 120 || spaceBelow >= anchorRect.top;
+
+  // Clamp `left` using the max width as a pessimistic estimate. When the
+  // actual card is narrower this just leaves more room on the right —
+  // visually fine, and avoids a second measure/layout pass.
+  let left = anchorRect.left;
+  if (left + POPOVER_MAX_WIDTH > window.innerWidth - VIEWPORT_MARGIN) {
+    left = Math.max(
+      VIEWPORT_MARGIN,
+      window.innerWidth - POPOVER_MAX_WIDTH - VIEWPORT_MARGIN,
+    );
+  }
+
+  const style: React.CSSProperties = {
+    position: "fixed",
+    left,
+    width: "max-content",
+    maxWidth: POPOVER_MAX_WIDTH,
+    maxHeight: "50vh",
+    zIndex: 9998,
+    ...(placeBelow
+      ? { top: anchorRect.bottom + 4 }
+      : { bottom: window.innerHeight - anchorRect.top + 4 }),
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // Clipboard blocked (insecure context, permission denied). Users can
+      // still select the text manually.
+    }
+  };
+
+  return createPortal(
+    <div
+      style={style}
+      className={cn(
+        "relative overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg",
+        "dark:border-gray-700 dark:bg-gray-900",
+      )}
+      role="tooltip"
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+    >
+      <div
+        className={cn(
+          "select-text overflow-auto px-2.5 py-1.5 pr-8 text-sm text-gray-900 dark:text-gray-100",
+          "whitespace-pre-wrap break-words",
+        )}
+        style={{ maxHeight: "50vh" }}
+      >
+        {text || <span className="text-gray-400">—</span>}
+      </div>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={copied ? "Copied" : "Copy"}
+        title={copied ? "Copied" : "Copy"}
+        className={cn(
+          "absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center",
+          "rounded text-gray-500 transition-colors",
+          "hover:bg-gray-100 hover:text-gray-800",
+          "dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100",
+        )}
+      >
+        {copied ? <Check size={12} /> : <CopyIcon size={12} />}
+      </button>
+    </div>,
+    document.body,
+  );
+}
+
+/** Inline media cell: clickable thumbnail that opens the table-wide lightbox. */
+function MediaCell({
+  item,
+  onOpen,
+}: {
+  item: MediaItem;
+  onOpen: () => void;
+}) {
+  if (item.mediaType === "video") {
+    const ytMatch = item.url.match(YOUTUBE_ID_RE);
+    const ytId = ytMatch ? ytMatch[1] : null;
+    const posterSrc = ytId
+      ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`
+      : undefined;
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className="relative block overflow-hidden rounded-md border-0 bg-black/5 p-0"
+        style={{ width: 72, height: 72 }}
+        aria-label={item.altText || "Open video"}
+      >
+        {posterSrc ? (
+          <img
+            src={posterSrc}
+            alt={item.altText || "Video preview"}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gray-900 text-[10px] text-gray-400">
+            Video
+          </div>
+        )}
+        <PlayOverlay label={item.altText || "Open video"} />
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="block overflow-hidden rounded-md border-0 bg-transparent p-0 transition-opacity hover:opacity-80"
+      style={{ width: 72, height: 72 }}
+      aria-label={item.altText || "Open image"}
+    >
+      <img
+        src={item.url}
+        alt={item.altText || "Image"}
+        className="h-full w-full object-cover"
+        loading="lazy"
+      />
+    </button>
+  );
+}
 
 const badgeColors: Record<string, string> = {
   active: "bg-green-100 text-green-700",
@@ -75,7 +277,7 @@ function descendingComparator(a: Record<string, unknown>, b: Record<string, unkn
   return String(bValue).localeCompare(String(aValue));
 }
 
-export function TableVisualization({ data, config }: TableVisualizationProps) {
+export function TableVisualization({ data, config, medias }: TableVisualizationProps) {
   const { columns, rows } = data;
   const sortable = config?.sortable !== false;
   const paginated = config?.paginated || false;
@@ -101,6 +303,106 @@ export function TableVisualization({ data, config }: TableVisualizationProps) {
 
   const totalPages = Math.ceil(rows.length / pageSize);
 
+  // Collect every media cell on the currently-visible page into a flat list
+  // so the lightbox can navigate across rows (and columns, if multiple media
+  // columns exist). Each entry carries its (rowIdx, colKey) so a click on a
+  // specific cell jumps to the right index.
+  const mediaIndex = useMemo(() => {
+    const items: MediaItem[] = [];
+    const lookup: Record<string, number> = {}; // `${rowIdx}::${colKey}` → items idx
+    const mediaColumns = columns.filter((c) => c.type === "media");
+    if (mediaColumns.length === 0) return { items, lookup };
+    processedRows.forEach((row, rowIdx) => {
+      mediaColumns.forEach((col) => {
+        const cell = row[col.key];
+        const parsed = parseMediaValue(cell, `${col.key}-${rowIdx}`, medias);
+        if (parsed) {
+          lookup[`${rowIdx}::${col.key}`] = items.length;
+          items.push(parsed);
+        }
+      });
+    });
+    return { items, lookup };
+  }, [processedRows, columns, medias]);
+
+  const {
+    index: lightboxIndex,
+    open: openLightbox,
+    close: closeLightbox,
+    navigate: navigateLightbox,
+  } = useMediaLightbox(mediaIndex.items);
+
+  // Per-cell hover popover. The popover is interactive (selectable text +
+  // Copy button), so we debounce both show and hide so that:
+  //   - fast pointer movements don't flash a popover
+  //   - moving cursor from cell to popover doesn't dismiss before arrival
+  // Timers are cleared when the cursor enters the popover (keep open) and
+  // rescheduled when the cursor leaves either the cell or the popover.
+  const [hoveredCell, setHoveredCell] = useState<{
+    rowIdx: number;
+    colKey: string;
+    rect: DOMRect;
+  } | null>(null);
+
+  const showTimerRef = useRef<number | null>(null);
+  const hideTimerRef = useRef<number | null>(null);
+
+  const cancelShowTimer = () => {
+    if (showTimerRef.current !== null) {
+      window.clearTimeout(showTimerRef.current);
+      showTimerRef.current = null;
+    }
+  };
+  const cancelHideTimer = () => {
+    if (hideTimerRef.current !== null) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  };
+
+  const scheduleShow = (rowIdx: number, colKey: string, rect: DOMRect) => {
+    cancelShowTimer();
+    cancelHideTimer();
+    showTimerRef.current = window.setTimeout(() => {
+      setHoveredCell({ rowIdx, colKey, rect });
+      showTimerRef.current = null;
+    }, 250);
+  };
+  const scheduleHide = () => {
+    cancelShowTimer();
+    cancelHideTimer();
+    hideTimerRef.current = window.setTimeout(() => {
+      setHoveredCell(null);
+      hideTimerRef.current = null;
+    }, 150);
+  };
+  const keepOpen = () => {
+    cancelHideTimer();
+  };
+
+  // Clean up timers on unmount and when lightbox opens (avoid stale popover
+  // on top of a modal).
+  useEffect(() => {
+    return () => {
+      cancelShowTimer();
+      cancelHideTimer();
+    };
+  }, []);
+  useEffect(() => {
+    if (lightboxIndex !== null) {
+      cancelShowTimer();
+      cancelHideTimer();
+      setHoveredCell(null);
+    }
+  }, [lightboxIndex]);
+
+  const hoveredCol =
+    hoveredCell && columns.find((c) => c.key === hoveredCell.colKey);
+  const hoveredText =
+    hoveredCell && hoveredCol
+      ? _cellToText(processedRows[hoveredCell.rowIdx]?.[hoveredCell.colKey])
+      : "";
+
   return (
     <div className="w-full overflow-x-auto">
       <table className="min-w-full text-sm">
@@ -111,14 +413,18 @@ export function TableVisualization({ data, config }: TableVisualizationProps) {
                 key={col.key}
                 className={cn(
                   "px-3 py-2 font-semibold bg-gray-50 dark:bg-gray-800 whitespace-nowrap text-left",
-                  sortable && "cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700"
+                  // Media columns aren't sortable in a meaningful way.
+                  sortable && col.type !== "media" &&
+                    "cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700",
                 )}
                 style={{ width: col.width, textAlign: col.align || "left" }}
-                onClick={() => sortable && handleRequestSort(col.key)}
+                onClick={() =>
+                  sortable && col.type !== "media" && handleRequestSort(col.key)
+                }
               >
                 <span className="inline-flex items-center gap-1">
                   {col.label}
-                  {sortable && orderBy === col.key && (
+                  {sortable && col.type !== "media" && orderBy === col.key && (
                     order === "asc" ? <ChevronUp size={14} /> : <ChevronDown size={14} />
                   )}
                 </span>
@@ -128,16 +434,76 @@ export function TableVisualization({ data, config }: TableVisualizationProps) {
         </thead>
         <tbody>
           {processedRows.map((row, rowIdx) => (
-            <tr key={rowIdx} className="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-              {columns.map((col) => (
-                <td
-                  key={col.key}
-                  className="px-3 py-2 whitespace-nowrap max-w-[300px] overflow-hidden text-ellipsis"
-                  style={{ textAlign: col.align || "left" }}
-                >
-                  {formatCellValue(row[col.key], col)}
-                </td>
-              ))}
+            <tr
+              key={rowIdx}
+              className="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            >
+              {columns.map((col) => {
+                if (col.type === "media") {
+                  const parsed = parseMediaValue(
+                    row[col.key],
+                    `${col.key}-${rowIdx}`,
+                    medias,
+                  );
+                  return (
+                    <td
+                      key={col.key}
+                      className="px-3 py-2 align-middle"
+                      style={{ textAlign: col.align || "left" }}
+                    >
+                      {parsed ? (
+                        <MediaCell
+                          item={parsed}
+                          onOpen={() => {
+                            const idx = mediaIndex.lookup[`${rowIdx}::${col.key}`];
+                            if (typeof idx === "number") openLightbox(idx);
+                          }}
+                        />
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                  );
+                }
+                const nowrap = _NOWRAP_TYPES.has(
+                  (col.type || "string") as TableColumnType,
+                );
+                const cellText = _cellToText(row[col.key]);
+                return (
+                  <td
+                    key={col.key}
+                    // max-w caps the column width but stays on the td so table
+                    // layout is preserved. Critically, do NOT put
+                    // `display: -webkit-box` on the td itself — that kills
+                    // `display: table-cell` and breaks all columns to the
+                    // right. The wrap/line-clamp treatment lives on an inner
+                    // div instead.
+                    className={cn(
+                      "px-3 py-2 align-top",
+                      nowrap ? "max-w-[300px]" : "max-w-[320px]",
+                    )}
+                    style={{ textAlign: col.align || "left" }}
+                    onMouseEnter={(e) => {
+                      if (!cellText) return;
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      scheduleShow(rowIdx, col.key, rect);
+                    }}
+                    onMouseLeave={() => {
+                      scheduleHide();
+                    }}
+                  >
+                    {nowrap ? (
+                      <div className="overflow-hidden whitespace-nowrap text-ellipsis">
+                        {formatCellValue(row[col.key], col)}
+                      </div>
+                    ) : (
+                      <div className="whitespace-normal break-words [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden">
+                        {formatCellValue(row[col.key], col)}
+                      </div>
+                    )}
+                  </td>
+                );
+              })}
             </tr>
           ))}
           {processedRows.length === 0 && (
@@ -149,6 +515,24 @@ export function TableVisualization({ data, config }: TableVisualizationProps) {
           )}
         </tbody>
       </table>
+
+      {hoveredCell && hoveredCol && lightboxIndex === null && (
+        <CellHoverPopover
+          text={hoveredText}
+          anchorRect={hoveredCell.rect}
+          onEnter={keepOpen}
+          onLeave={scheduleHide}
+        />
+      )}
+
+      {lightboxIndex !== null && (
+        <MediaLightbox
+          items={mediaIndex.items}
+          index={lightboxIndex}
+          onClose={closeLightbox}
+          onNavigate={navigateLightbox}
+        />
+      )}
 
       {paginated && rows.length > pageSize && (
         <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 dark:border-gray-700 text-sm">

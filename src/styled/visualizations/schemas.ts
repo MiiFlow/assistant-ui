@@ -37,7 +37,7 @@ export const chartVisualizationSchema = z.object({
 const tableColumnSchema = z.object({
 	key: z.string(),
 	label: z.string(),
-	type: z.enum(["string", "number", "currency", "date", "badge", "link", "boolean", "progress"]).nullish(),
+	type: z.enum(["string", "number", "currency", "date", "badge", "link", "boolean", "progress", "media"]).nullish(),
 	align: z.enum(["left", "center", "right"]).nullish(),
 	width: z.string().nullish(),
 });
