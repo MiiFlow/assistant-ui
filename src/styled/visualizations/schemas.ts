@@ -79,7 +79,7 @@ const kpiMetricSchema = z.object({
 	value: z.union([z.string(), z.number()]),
 	unit: z.string().nullish(),
 	trend: z.enum(["up", "down", "neutral"]).nullish(),
-	change: z.string().nullish(),
+	change: z.union([z.string(), z.number()]).nullish(),
 	changeLabel: z.string().nullish(),
 	sparkline: z.array(z.number()).nullish(),
 	color: z.string().nullish(),

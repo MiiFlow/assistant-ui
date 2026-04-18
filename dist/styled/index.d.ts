@@ -1,14 +1,14 @@
-export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-BbveIIuT.js';
+export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-DqGDUV_0.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode } from 'react';
-import { A as Attachment, S as SourceReference } from '../message-DGpGrmuV.js';
-export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-DGpGrmuV.js';
-import { S as StreamingChunk, P as PlanData, C as ClarificationData, T as ToolApprovalData, V as VisualizationChunkData, d as VisualizationActionEvent, M as MediaChunkData, e as ChartVisualizationData, f as VisualizationConfig, g as TableVisualizationData, h as CardVisualizationData, K as KpiVisualizationData, i as CodePreviewVisualizationData, F as FormVisualizationData, E as Event, j as EventStatus } from '../streaming-DKUh6gsn.js';
-export { k as ChunkType, l as ClaudeToolChunkData, m as EventType, n as FileOperationChunkData, o as FollowupAction, O as ObservationEvent, p as ParallelSubtaskData, q as PlanningEvent, r as ProgressData, s as SearchResultsChunkData, t as StreamingMessage, u as SubTaskData, v as SubagentChunkData, w as SubagentInfo, x as SubtaskEvent, y as TerminalChunkData, z as ThinkingEvent, A as ToolEvent, B as VisualizationType, W as WaveData, D as WebOperationChunkData } from '../streaming-DKUh6gsn.js';
+import { A as Attachment, S as SourceReference } from '../message-BaOE69YA.js';
+export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-BaOE69YA.js';
+import { S as StreamingChunk, P as PlanData, C as ClarificationData, T as ToolApprovalData, V as VisualizationChunkData, d as VisualizationActionEvent, M as MediaChunkData, e as ChartVisualizationData, f as VisualizationConfig, g as TableVisualizationData, h as CardVisualizationData, K as KpiVisualizationData, i as CodePreviewVisualizationData, F as FormVisualizationData, E as Event, j as EventStatus } from '../streaming-C9pfmetN.js';
+export { k as ChunkType, l as ClaudeToolChunkData, m as EventType, n as FileOperationChunkData, o as FollowupAction, O as ObservationEvent, p as ParallelSubtaskData, q as PlanningEvent, r as ProgressData, s as SearchResultsChunkData, t as StreamingMessage, u as SubTaskData, v as SubagentChunkData, w as SubagentInfo, x as SubtaskEvent, y as TerminalChunkData, z as ThinkingEvent, A as ToolEvent, B as VisualizationType, W as WaveData, D as WebOperationChunkData } from '../streaming-C9pfmetN.js';
 import { z, ZodSchema } from 'zod';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
 export { B as BrandingData } from '../branding-SzYU4ncD.js';
-export { u as useComposer, g as useMessage } from '../avatar-Ul_7Y7f_.js';
+export { u as useComposer, g as useMessage } from '../avatar-CbqRSZez.js';
 
 interface LoadingDotsProps {
     /** Size variant */
@@ -279,7 +279,7 @@ declare const kpiVisualizationSchema: z.ZodObject<{
             down: "down";
             neutral: "neutral";
         }>>>;
-        change: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        change: z.ZodOptional<z.ZodNullable<z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>>>;
         changeLabel: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         sparkline: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodNumber>>>;
         color: z.ZodOptional<z.ZodNullable<z.ZodString>>;

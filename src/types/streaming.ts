@@ -330,7 +330,7 @@ export interface KpiMetric {
   value: string | number;
   unit?: string;
   trend?: "up" | "down" | "neutral";
-  change?: string;
+  change?: string | number;
   changeLabel?: string;
   sparkline?: number[];
   color?: string;

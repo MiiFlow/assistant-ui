@@ -1,8 +1,8 @@
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import * as react from 'react';
 import { ReactNode } from 'react';
-import { C as ChatMessage, P as ParticipantRole } from '../message-DGpGrmuV.js';
-import { d as VisualizationActionEvent } from '../streaming-DKUh6gsn.js';
+import { C as ChatMessage, P as ParticipantRole } from '../message-BaOE69YA.js';
+import { d as VisualizationActionEvent } from '../streaming-C9pfmetN.js';
 
 interface ChatContextValue {
     /** List of messages in the conversation */

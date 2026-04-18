@@ -38,10 +38,16 @@ function KpiMetricCard({ metric, color, animate }: { metric: KpiMetric; color: s
           <span className="text-2xl font-bold">{metric.value}</span>
           {metric.unit && <span className="text-sm text-gray-500">{metric.unit}</span>}
         </div>
-        {(metric.trend || metric.change) && (
+        {(metric.trend || metric.change !== undefined && metric.change !== null) && (
           <div className="flex items-center gap-1 mt-2">
             {trendIcon}
-            {metric.change && <span className={cn("text-sm font-medium", trendColor)}>{metric.change}</span>}
+            {metric.change !== undefined && metric.change !== null && (
+              <span className={cn("text-sm font-medium", trendColor)}>
+                {typeof metric.change === "number"
+                  ? `${metric.change > 0 ? "+" : ""}${metric.change}`
+                  : metric.change}
+              </span>
+            )}
             {metric.changeLabel && <span className="text-xs text-gray-500">{metric.changeLabel}</span>}
           </div>
         )}

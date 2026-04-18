@@ -260,6 +260,11 @@ export interface MessageProps {
 	onToolReject?: (reason?: string) => void;
 	/** Render function for inline suggested action cards (from [SA:id] markers) */
 	renderInlineSuggestedAction?: (id: string) => React.ReactNode;
+	/** Report this assistant response as incorrect. Receives an optional reason
+	 *  string (category + free-text details) for the learner pipeline. */
+	onReportIncorrect?: (reason?: string) => void;
+	/** Confirm this assistant response was correct/helpful */
+	onConfirmCorrect?: () => void;
 }
 
 /**
@@ -294,6 +299,8 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			onToolApprove,
 			onToolReject,
 			renderInlineSuggestedAction,
+			onReportIncorrect,
+			onConfirmCorrect,
 		},
 		ref,
 	) => {
@@ -684,7 +691,11 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 											/>
 										)}
 										{isAssistant && message.textContent && (
-											<MessageActionBar textContent={message.textContent} />
+											<MessageActionBar
+												textContent={message.textContent}
+												onReportIncorrect={onReportIncorrect}
+												onConfirmCorrect={onConfirmCorrect}
+											/>
 										)}
 									</div>
 								)}
