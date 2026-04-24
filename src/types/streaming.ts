@@ -57,6 +57,8 @@ export type ChunkType =
   | "visualization"   // Rich visualization (chart, table, card, etc.)
   // Media (inline image/video/audio)
   | "media"           // Inline media from image generation tools
+  // Artifact (downloadable PDF / HTML produced by a tool)
+  | "artifact"        // Persisted artifact with side-panel viewer
   // Claude SDK native chunk types
   | "subagent"        // Nested subagent execution
   | "file_operation"  // Read/Write/Edit file operations
@@ -440,6 +442,39 @@ export interface MediaChunkData {
 }
 
 /**
+ * Artifact chunk — a tool-produced file (PDF, HTML, ...) persisted server-side.
+ *
+ * The backend emits the chunk twice per artifact: first with
+ * `status: "pending"` (before rendering) so the frontend can show a skeleton
+ * card, then again with `status: "ready"` (URL + size populated) or
+ * `status: "failed"` (errorMessage populated). Consumers should key by `id`
+ * and replace state on the second chunk.
+ *
+ * `url` is a stable proxy URL (`/assistant/artifacts/<id>/download/`) — the
+ * backend re-signs on every request, so it does not expire mid-session. It is
+ * `null` while status is pending/failed.
+ */
+export type ArtifactStatus = "pending" | "ready" | "failed";
+
+export interface ArtifactChunkData {
+  id: string;
+  kind: "pdf" | "html" | string;
+  title: string;
+  description?: string;
+  status?: ArtifactStatus;
+  url: string | null;
+  mimetype?: string;
+  sizeBytes?: number;
+  pageCount?: number;
+  createdAt?: string;
+  errorMessage?: string;
+  context?: {
+    orchestratorType?: string;
+    toolName?: string;
+  };
+}
+
+/**
  * Extended streaming chunk with full agentic support
  */
 export interface StreamingChunk {
@@ -495,6 +530,7 @@ export interface StreamingChunk {
   toolApprovalData?: ToolApprovalData;
   visualizationData?: VisualizationChunkData;
   mediaData?: MediaChunkData;
+  artifactData?: ArtifactChunkData;
   toolUseId?: string;
 }
 
@@ -533,6 +569,9 @@ export interface StreamingMessage {
 
   // Media (images, video, audio)
   medias?: MediaChunkData[];
+
+  // Downloadable artifacts (PDF, HTML, ...)
+  artifacts?: ArtifactChunkData[];
 }
 
 /**

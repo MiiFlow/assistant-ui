@@ -85,6 +85,18 @@ export {
   formVisualizationSchema,
 } from "./visualizations";
 
+// Artifact registry + unstyled inline card
+export {
+  ArtifactInlineCard,
+  ArtifactList,
+  registerArtifact,
+  getArtifact,
+  getRegisteredArtifactTypes,
+  type ArtifactEntry,
+  type ArtifactInlineCardProps,
+  type ArtifactListProps,
+} from "./artifacts";
+
 // Timeline components
 export { EventContent } from "./EventContent";
 export { convertChunkToEvent, convertTimelineToEvents, EventTimeline, type EventTimelineProps } from "./EventTimeline";
@@ -131,6 +143,9 @@ export type {
 	ClarificationData,
 	// Media types
 	MediaChunkData,
+	// Artifact types
+	ArtifactChunkData,
+	ArtifactStatus,
 	// Visualization types
 	VisualizationType,
 	VisualizationChunkData,

@@ -74,6 +74,8 @@ export interface ChatMessage extends MessageData {
   pendingToolApproval?: import("./streaming").ToolApprovalData;
   /** Inline media (images/videos) to render within message content */
   medias?: import("./streaming").MediaChunkData[];
+  /** Downloadable artifacts (PDFs, HTMLs) produced by tool calls in this message */
+  artifacts?: import("./streaming").ArtifactChunkData[];
   /** Wall-clock execution time in seconds (persisted after streaming completes) */
   executionTime?: number;
 }

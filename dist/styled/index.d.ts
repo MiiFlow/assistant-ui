@@ -1,14 +1,14 @@
-export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-DqGDUV_0.js';
+export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-XVZqMpVW.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
-import react__default, { ReactNode } from 'react';
-import { A as Attachment, S as SourceReference } from '../message-BaOE69YA.js';
-export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-BaOE69YA.js';
-import { S as StreamingChunk, P as PlanData, C as ClarificationData, T as ToolApprovalData, V as VisualizationChunkData, d as VisualizationActionEvent, M as MediaChunkData, e as ChartVisualizationData, f as VisualizationConfig, g as TableVisualizationData, h as CardVisualizationData, K as KpiVisualizationData, i as CodePreviewVisualizationData, F as FormVisualizationData, E as Event, j as EventStatus } from '../streaming-C9pfmetN.js';
-export { k as ChunkType, l as ClaudeToolChunkData, m as EventType, n as FileOperationChunkData, o as FollowupAction, O as ObservationEvent, p as ParallelSubtaskData, q as PlanningEvent, r as ProgressData, s as SearchResultsChunkData, t as StreamingMessage, u as SubTaskData, v as SubagentChunkData, w as SubagentInfo, x as SubtaskEvent, y as TerminalChunkData, z as ThinkingEvent, A as ToolEvent, B as VisualizationType, W as WaveData, D as WebOperationChunkData } from '../streaming-C9pfmetN.js';
+import react__default, { ComponentType, ReactNode } from 'react';
+import { A as Attachment, S as SourceReference } from '../message-BrHFdwb2.js';
+export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-BrHFdwb2.js';
+import { S as StreamingChunk, P as PlanData, C as ClarificationData, T as ToolApprovalData, V as VisualizationChunkData, d as VisualizationActionEvent, M as MediaChunkData, e as ChartVisualizationData, f as VisualizationConfig, g as TableVisualizationData, h as CardVisualizationData, K as KpiVisualizationData, i as CodePreviewVisualizationData, F as FormVisualizationData, A as ArtifactChunkData, E as Event, j as EventStatus } from '../streaming-DURrv9_E.js';
+export { k as ArtifactStatus, l as ChunkType, m as ClaudeToolChunkData, n as EventType, o as FileOperationChunkData, p as FollowupAction, O as ObservationEvent, q as ParallelSubtaskData, r as PlanningEvent, s as ProgressData, t as SearchResultsChunkData, u as StreamingMessage, v as SubTaskData, w as SubagentChunkData, x as SubagentInfo, y as SubtaskEvent, z as TerminalChunkData, B as ThinkingEvent, D as ToolEvent, G as VisualizationType, W as WaveData, H as WebOperationChunkData } from '../streaming-DURrv9_E.js';
 import { z, ZodSchema } from 'zod';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
 export { B as BrandingData } from '../branding-SzYU4ncD.js';
-export { u as useComposer, g as useMessage } from '../avatar-CbqRSZez.js';
+export { u as useComposer, g as useMessage } from '../avatar-C13xc3tA.js';
 
 interface LoadingDotsProps {
     /** Size variant */
@@ -408,6 +408,62 @@ declare function getVisualization(type: string): VisualizationEntry | undefined;
  */
 declare function getRegisteredTypes(): string[];
 
+interface ArtifactInlineCardProps {
+    artifact: ArtifactChunkData;
+    isStreaming?: boolean;
+    onOpen?: (artifact: ArtifactChunkData) => void;
+}
+/**
+ * Unstyled primitive inline card. The app layer (`web/`) registers a
+ * MUI-skinned version via `registerArtifact`; this primitive is the fallback
+ * shipped with the chat-ui package so headless / embedded consumers still
+ * render something when a tool emits an artifact.
+ */
+declare function ArtifactInlineCard({ artifact, isStreaming, onOpen, }: ArtifactInlineCardProps): react_jsx_runtime.JSX.Element;
+
+interface ArtifactListProps {
+    artifacts: ArtifactChunkData[];
+    isStreaming?: boolean;
+    onOpen?: (artifact: ArtifactChunkData) => void;
+}
+/**
+ * Renders one inline card per artifact using the registered renderer when
+ * available; falls back to the unstyled `ArtifactInlineCard` otherwise.
+ */
+declare function ArtifactList({ artifacts, isStreaming, onOpen, }: ArtifactListProps): react_jsx_runtime.JSX.Element | null;
+
+/**
+ * Shape of a registered artifact type.
+ *
+ * Artifacts have a dual UI:
+ *  - `InlineCard` is rendered inside the message body (compact, clickable).
+ *  - `Viewer` is rendered inside the side-panel drawer (full preview).
+ *
+ * The app layer (`web/`) supplies MUI-skinned implementations; the unstyled
+ * primitive `ArtifactInlineCard` is used as a fallback for headless consumers
+ * (e.g. the embedded widget) that do not register MUI artifacts.
+ */
+interface ArtifactEntry {
+    type: string;
+    label: string;
+    icon?: ComponentType<{
+        className?: string;
+    }>;
+    InlineCard: ComponentType<{
+        artifact: ArtifactChunkData;
+        isStreaming?: boolean;
+        onOpen?: (artifact: ArtifactChunkData) => void;
+    }>;
+    Viewer?: ComponentType<{
+        artifact: ArtifactChunkData;
+    }>;
+    /** Optional description shown when no entry is registered for this type. */
+    fallback?: ReactNode;
+}
+declare function registerArtifact(type: string, entry: ArtifactEntry): void;
+declare function getArtifact(type: string): ArtifactEntry | undefined;
+declare function getRegisteredArtifactTypes(): string[];
+
 interface EventContentProps {
     event: Event;
     className?: string;
@@ -494,4 +550,4 @@ interface TimelineItemProps {
  */
 declare function TimelineItem({ status, isLast, badgeSize, children, className, }: TimelineItemProps): react_jsx_runtime.JSX.Element;
 
-export { Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, ClaudeToolPreview, type ClaudeToolPreviewProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FileOperationPreview, type FileOperationPreviewProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SearchResultsView, type SearchResultsViewProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TerminalOutput, type TerminalOutputProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, ToolApprovalPanel, type ToolApprovalPanelProps, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, WebOperationPreview, type WebOperationPreviewProps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, formVisualizationSchema, getRegisteredTypes, getVisualization, kpiVisualizationSchema, registerVisualization, tableVisualizationSchema };
+export { ArtifactChunkData, type ArtifactEntry, ArtifactInlineCard, type ArtifactInlineCardProps, ArtifactList, type ArtifactListProps, Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, ClaudeToolPreview, type ClaudeToolPreviewProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FileOperationPreview, type FileOperationPreviewProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SearchResultsView, type SearchResultsViewProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TerminalOutput, type TerminalOutputProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, ToolApprovalPanel, type ToolApprovalPanelProps, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, WebOperationPreview, type WebOperationPreviewProps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, formVisualizationSchema, getArtifact, getRegisteredArtifactTypes, getRegisteredTypes, getVisualization, kpiVisualizationSchema, registerArtifact, registerVisualization, tableVisualizationSchema };

@@ -59,6 +59,8 @@ export type {
   VisualizationData,
   VisualizationChunkData,
   MediaChunkData,
+  ArtifactChunkData,
+  ArtifactStatus,
   // Event timeline types
   EventStatus,
   EventType,

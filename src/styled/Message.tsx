@@ -37,6 +37,7 @@ import { ReasoningPanel } from "./ReasoningPanel";
 import { StreamingText } from "./StreamingText";
 import { SuggestedActions } from "./SuggestedActions";
 import { VisualizationRenderer } from "./visualizations";
+import { ArtifactList } from "./artifacts";
 import { parseContentWithInlineMarkers } from "../utils/inline-markers";
 import { useStreamingMinHeight } from "../hooks/use-streaming-min-height";
 
@@ -244,6 +245,10 @@ export interface MessageProps {
 	visualizations?: VisualizationChunkData[];
 	/** Inline media (images/videos) to render within message content */
 	medias?: MediaChunkData[];
+	/** Inline downloadable artifacts (PDFs, HTMLs, ...) */
+	artifacts?: import("../types").ArtifactChunkData[];
+	/** Callback when a user clicks an artifact inline card */
+	onArtifactOpen?: (artifact: import("../types").ArtifactChunkData) => void;
 	/** Base font size multiplier for markdown rendering */
 	baselineFontSize?: number;
 	/** Total execution time in seconds (persisted from streaming wall-clock) */
@@ -291,6 +296,8 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			citations,
 			visualizations,
 			medias,
+			artifacts,
+			onArtifactOpen,
 			baselineFontSize,
 			executionTime,
 			pendingClarification,
@@ -663,6 +670,17 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 											</div>
 										));
 									})()}
+
+									{/* Downloadable artifacts (PDFs, HTMLs) */}
+									{artifacts && artifacts.length > 0 && (
+										<div className="mt-2">
+											<ArtifactList
+												artifacts={artifacts}
+												isStreaming={isStreaming}
+												onOpen={onArtifactOpen}
+											/>
+										</div>
+									)}
 
 									{/* Citations */}
 									{citations && citations.length > 0 && (
