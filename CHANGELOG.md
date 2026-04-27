@@ -1,5 +1,16 @@
 # @miiflow/assistant-ui
 
+## 0.7.0
+
+### Features
+
+- **Artifact rendering**: New `styled/artifacts/` module with `ArtifactInlineCard`, `ArtifactList`, and a pluggable artifact `registry`. `Message` renders artifact attachments inline; streaming types (`types/streaming.ts`) gain artifact event variants so the agent's `ArtifactResult` marker (PDF, HTML, etc.) flows end-to-end.
+- **Message feedback actions**: `MessageActionBar` gains `onReportIncorrect` and `onConfirmCorrect` handlers, with a portaled feedback popover offering category chips ("Incorrect or incomplete", "Wrong data", "Bad recommendation", etc.) plus free-text details. Wires the chat UI into the mistake-recording / hybrid-memory pipeline.
+
+### Bug Fixes
+
+- **`KpiVisualization` numeric change rendering**: Distinguish `0` / `null` / `undefined` for `metric.change`; numeric values now render with a signed prefix (`+1.2`), and `0` no longer hides the trend chip.
+
 ## 0.6.0
 
 ### Features
