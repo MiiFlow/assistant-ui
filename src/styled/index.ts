@@ -34,7 +34,13 @@ export { WelcomeScreen, type WelcomeScreenProps } from "./WelcomeScreen";
 export { ClarificationPanel, type ClarificationPanelProps } from "./ClarificationPanel";
 
 // Tool approval panel
-export { ToolApprovalPanel, type ToolApprovalPanelProps } from "./ToolApprovalPanel";
+export {
+  ToolApprovalPanel,
+  type ToolApprovalPanelProps,
+  type ToolApprovalSlots,
+  type ApprovalButtonSlotProps,
+  type ApprovalChatInputSlotProps,
+} from "./ToolApprovalPanel";
 
 // Citation sources
 export { CitationSources, type CitationSourcesProps, InlineCitation, type InlineCitationProps, SourceDetailModal, type SourceDetailModalProps } from "./CitationSources";

@@ -31,6 +31,30 @@ export function useBrandingCSSVars(
       vars["--chat-message-font-size"] = `${branding.messageFontSize}px`;
     }
 
+    if (branding?.fontFamily) {
+      vars["--chat-font-family"] = branding.fontFamily;
+    }
+
+    if (branding?.approvalAccentColor) {
+      vars["--chat-approval-accent"] = branding.approvalAccentColor;
+      vars["--chat-approval-accent-soft"] = branding.approvalAccentColor;
+    }
+
+    if (branding?.approveButtonColor) {
+      vars["--chat-approve-bg"] = branding.approveButtonColor;
+      vars["--chat-approve-bg-hover"] =
+        branding.approveButtonHoverColor || branding.approveButtonColor;
+    }
+
+    if (branding?.rejectButtonHoverColor) {
+      vars["--chat-reject-bg-hover"] = branding.rejectButtonHoverColor;
+    }
+
+    if (branding?.clarificationAccentColor) {
+      vars["--chat-clarification-accent"] = branding.clarificationAccentColor;
+      vars["--chat-clarification-accent-soft"] = branding.clarificationAccentColor;
+    }
+
     return vars as React.CSSProperties;
   }, [branding, overrides?.iconColor]);
 }

@@ -1,20 +1,28 @@
 import { useState, useCallback } from "react";
-import { MessageCircle, Send } from "lucide-react";
+import { Check, ChevronDown, HelpCircle, Send } from "lucide-react";
 import { cn } from "../utils/cn";
 import type { ClarificationData } from "../types";
 
 export interface ClarificationPanelProps {
   clarification: ClarificationData;
-  onSubmit: (response: string) => void;
+  onSubmit?: (response: string) => void;
   onOptionSelect?: (option: string) => void;
   disabled?: boolean;
   loading?: boolean;
   className?: string;
+  /**
+   * When set, renders a read-only "answered" state showing the user's response
+   * inline with the question. Used in scrolled-back chat history so a past
+   * clarification still shows what was asked and answered.
+   */
+  answer?: string;
 }
 
 /**
  * Stateless clarification panel - displays when the AI agent needs user input.
  * Orange left-border panel with question, radio options, and free-text input.
+ *
+ * If `answer` is provided, switches to a read-only "answered" view.
  */
 export function ClarificationPanel({
   clarification,
@@ -23,12 +31,14 @@ export function ClarificationPanel({
   disabled = false,
   loading = false,
   className,
+  answer,
 }: ClarificationPanelProps) {
   const [freeTextInput, setFreeTextInput] = useState("");
+  const isAnswered = typeof answer === "string" && answer.length > 0;
 
   const handleSubmit = useCallback(
     (responseText: string) => {
-      if (!responseText.trim()) return;
+      if (!responseText.trim() || !onSubmit) return;
       setFreeTextInput("");
       onSubmit(responseText.trim());
     },
@@ -51,20 +61,56 @@ export function ClarificationPanel({
   const hasOptions = clarification.options && clarification.options.length > 0;
   const showFreeText = clarification.allowFreeText !== false;
 
+  if (isAnswered) {
+    return (
+      <div className={cn("mx-4 mb-3 flex justify-end font-sans", className)}>
+        <details className="group max-w-[85%]">
+          <summary
+            className={cn(
+              "flex items-center justify-end gap-1.5 cursor-pointer select-none",
+              "text-xs text-gray-600 dark:text-gray-300",
+              "hover:text-gray-900 dark:hover:text-gray-100 transition-colors",
+              "list-none [&::-webkit-details-marker]:hidden"
+            )}
+          >
+            <Check
+              size={12}
+              strokeWidth={2.75}
+              className="text-emerald-600 dark:text-emerald-500"
+            />
+            <span>Clarification answered</span>
+            <ChevronDown
+              size={12}
+              className="text-gray-400 transition-transform group-open:rotate-180"
+            />
+          </summary>
+          <div className="mt-2 text-right">
+            <p className="text-sm text-gray-700 dark:text-gray-200">
+              {clarification.question}
+            </p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">
+              {answer}
+            </p>
+          </div>
+        </details>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
-        "mx-4 mb-3 px-4 py-3",
-        "bg-orange-50/60 dark:bg-orange-950/20",
-        "border-l-[3px] border-orange-400",
+        "mx-4 mb-3 px-4 py-3 font-sans",
+        "bg-[color-mix(in_oklab,var(--chat-clarification-accent,#f97316)_12%,transparent)]",
+        "border-l-[3px] border-[var(--chat-clarification-accent,#f97316)]",
         "rounded-r-lg",
         className
       )}
     >
       {/* Question row */}
       <div className={cn("flex items-start gap-2", (hasOptions || showFreeText) && "mb-2")}>
-        <span className="text-orange-600 mt-0.5">
-          <MessageCircle size={14} />
+        <span className="text-[var(--chat-clarification-accent,#f97316)] mt-0.5">
+          <HelpCircle size={14} />
         </span>
         <p className="text-sm font-medium">{clarification.question}</p>
       </div>
@@ -75,7 +121,7 @@ export function ClarificationPanel({
           {clarification.options!.map((option, index) => (
             <label
               key={index}
-              className="flex items-center gap-2 py-0.5 cursor-pointer text-sm hover:bg-orange-100/50 dark:hover:bg-orange-900/20 rounded px-1 -mx-1"
+              className="flex items-center gap-2 py-0.5 cursor-pointer text-sm hover:bg-[color-mix(in_oklab,var(--chat-clarification-accent,#f97316)_18%,transparent)] rounded px-1 -mx-1"
             >
               <input
                 type="radio"
@@ -83,7 +129,7 @@ export function ClarificationPanel({
                 value={option}
                 onChange={handleOptionChange}
                 disabled={disabled || loading}
-                className="accent-orange-500 w-3.5 h-3.5"
+                className="accent-[var(--chat-clarification-accent,#f97316)] w-3.5 h-3.5"
               />
               {option}
             </label>
@@ -93,7 +139,7 @@ export function ClarificationPanel({
 
       {/* Free text input */}
       {showFreeText && (
-        <div className="flex items-center ml-5 bg-white dark:bg-gray-900 rounded border border-orange-200 dark:border-orange-800 px-3 py-1">
+        <div className="flex items-center ml-5 bg-white dark:bg-gray-900 rounded border border-[color-mix(in_oklab,var(--chat-clarification-accent,#f97316)_30%,transparent)] px-3 py-1">
           <input
             type="text"
             value={freeTextInput}
@@ -109,7 +155,7 @@ export function ClarificationPanel({
             className={cn(
               "p-1 rounded transition-colors",
               freeTextInput.trim()
-                ? "text-orange-600 hover:text-orange-700"
+                ? "text-[var(--chat-clarification-accent,#f97316)] hover:text-[var(--chat-clarification-accent-soft,#fdba74)]"
                 : "text-gray-300"
             )}
           >

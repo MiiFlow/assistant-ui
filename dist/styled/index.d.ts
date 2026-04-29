@@ -1,13 +1,13 @@
 export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-XVZqMpVW.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
-import react__default, { ComponentType, ReactNode } from 'react';
+import react__default, { ReactNode, ComponentType } from 'react';
 import { A as Attachment, S as SourceReference } from '../message-BrHFdwb2.js';
 export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-BrHFdwb2.js';
 import { S as StreamingChunk, P as PlanData, C as ClarificationData, T as ToolApprovalData, V as VisualizationChunkData, d as VisualizationActionEvent, M as MediaChunkData, e as ChartVisualizationData, f as VisualizationConfig, g as TableVisualizationData, h as CardVisualizationData, K as KpiVisualizationData, i as CodePreviewVisualizationData, F as FormVisualizationData, A as ArtifactChunkData, E as Event, j as EventStatus } from '../streaming-DURrv9_E.js';
 export { k as ArtifactStatus, l as ChunkType, m as ClaudeToolChunkData, n as EventType, o as FileOperationChunkData, p as FollowupAction, O as ObservationEvent, q as ParallelSubtaskData, r as PlanningEvent, s as ProgressData, t as SearchResultsChunkData, u as StreamingMessage, v as SubTaskData, w as SubagentChunkData, x as SubagentInfo, y as SubtaskEvent, z as TerminalChunkData, B as ThinkingEvent, D as ToolEvent, G as VisualizationType, W as WaveData, H as WebOperationChunkData } from '../streaming-DURrv9_E.js';
 import { z, ZodSchema } from 'zod';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
-export { B as BrandingData } from '../branding-SzYU4ncD.js';
+export { B as BrandingData } from '../branding-Dz09eSZs.js';
 export { u as useComposer, g as useMessage } from '../avatar-C13xc3tA.js';
 
 interface LoadingDotsProps {
@@ -103,31 +103,70 @@ declare function ReasoningPanel({ isStreaming, chunks, plan, executionTimeline, 
 
 interface ClarificationPanelProps {
     clarification: ClarificationData;
-    onSubmit: (response: string) => void;
+    onSubmit?: (response: string) => void;
     onOptionSelect?: (option: string) => void;
     disabled?: boolean;
     loading?: boolean;
     className?: string;
+    /**
+     * When set, renders a read-only "answered" state showing the user's response
+     * inline with the question. Used in scrolled-back chat history so a past
+     * clarification still shows what was asked and answered.
+     */
+    answer?: string;
 }
 /**
  * Stateless clarification panel - displays when the AI agent needs user input.
  * Orange left-border panel with question, radio options, and free-text input.
+ *
+ * If `answer` is provided, switches to a read-only "answered" view.
  */
-declare function ClarificationPanel({ clarification, onSubmit, onOptionSelect, disabled, loading, className, }: ClarificationPanelProps): react_jsx_runtime.JSX.Element;
+declare function ClarificationPanel({ clarification, onSubmit, onOptionSelect, disabled, loading, className, answer, }: ClarificationPanelProps): react_jsx_runtime.JSX.Element;
 
+interface ApprovalButtonSlotProps {
+    onClick: () => void;
+    disabled?: boolean;
+    children: ReactNode;
+}
+interface ApprovalChatInputSlotProps {
+    value: string;
+    onChange: (value: string) => void;
+    onSubmit: () => void;
+    onCancel: () => void;
+    placeholder: string;
+    disabled?: boolean;
+    autoFocus?: boolean;
+}
+interface ToolApprovalSlots {
+    AllowButton?: ComponentType<ApprovalButtonSlotProps>;
+    RejectButton?: ComponentType<ApprovalButtonSlotProps>;
+    ChatButton?: ComponentType<ApprovalButtonSlotProps>;
+    SendButton?: ComponentType<ApprovalButtonSlotProps>;
+    CancelButton?: ComponentType<ApprovalButtonSlotProps>;
+    ChatInput?: ComponentType<ApprovalChatInputSlotProps>;
+}
 interface ToolApprovalPanelProps {
     approval: ToolApprovalData;
     onApprove: (modifiedInputs: Record<string, unknown>) => void;
     onReject: (reason?: string) => void;
     disabled?: boolean;
     className?: string;
+    /**
+     * Per-action component overrides. Pass any subset; unspecified slots fall
+     * back to the library's default Tailwind-styled renderings. Use this to
+     * align buttons and input with a host app's brand system.
+     */
+    slots?: ToolApprovalSlots;
 }
 /**
- * Tool approval panel - displays when the AI agent needs user approval before
- * executing a tool. Shows tool summary, editable parameters, and approve/reject actions.
- * Amber left-border panel (distinguished from orange clarification panel).
+ * Tool approval — rendered as an inline assistant turn rather than a card.
+ * The agent's question reads as plain prose; actions sit beneath as a primary
+ * pill, a quiet secondary pill, and a text link for free-text redirect.
+ *
+ * Buttons and the chat input are slottable via the `slots` prop so host apps
+ * can swap in their own brand-aligned components.
  */
-declare function ToolApprovalPanel({ approval, onApprove, onReject, disabled, className, }: ToolApprovalPanelProps): react_jsx_runtime.JSX.Element;
+declare function ToolApprovalPanel({ approval, onApprove, onReject, disabled, className, slots, }: ToolApprovalPanelProps): react_jsx_runtime.JSX.Element;
 
 interface CitationSourcesProps {
     sources: SourceReference[];
@@ -550,4 +589,4 @@ interface TimelineItemProps {
  */
 declare function TimelineItem({ status, isLast, badgeSize, children, className, }: TimelineItemProps): react_jsx_runtime.JSX.Element;
 
-export { ArtifactChunkData, type ArtifactEntry, ArtifactInlineCard, type ArtifactInlineCardProps, ArtifactList, type ArtifactListProps, Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, ClaudeToolPreview, type ClaudeToolPreviewProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FileOperationPreview, type FileOperationPreviewProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SearchResultsView, type SearchResultsViewProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TerminalOutput, type TerminalOutputProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, ToolApprovalPanel, type ToolApprovalPanelProps, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, WebOperationPreview, type WebOperationPreviewProps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, formVisualizationSchema, getArtifact, getRegisteredArtifactTypes, getRegisteredTypes, getVisualization, kpiVisualizationSchema, registerArtifact, registerVisualization, tableVisualizationSchema };
+export { type ApprovalButtonSlotProps, type ApprovalChatInputSlotProps, ArtifactChunkData, type ArtifactEntry, ArtifactInlineCard, type ArtifactInlineCardProps, ArtifactList, type ArtifactListProps, Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, ClaudeToolPreview, type ClaudeToolPreviewProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FileOperationPreview, type FileOperationPreviewProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SearchResultsView, type SearchResultsViewProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TerminalOutput, type TerminalOutputProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, ToolApprovalPanel, type ToolApprovalPanelProps, type ToolApprovalSlots, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, WebOperationPreview, type WebOperationPreviewProps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, formVisualizationSchema, getArtifact, getRegisteredArtifactTypes, getRegisteredTypes, getVisualization, kpiVisualizationSchema, registerArtifact, registerVisualization, tableVisualizationSchema };

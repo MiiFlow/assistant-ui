@@ -1,7 +1,7 @@
 import * as react from 'react';
 import { RefObject, KeyboardEvent } from 'react';
 import { b as StreamingOptions, a as StreamChunk } from '../streaming-DURrv9_E.js';
-import { B as BrandingData } from '../branding-SzYU4ncD.js';
+import { B as BrandingData } from '../branding-Dz09eSZs.js';
 
 interface UseAutoScrollOptions {
     /** Whether auto-scroll is enabled */

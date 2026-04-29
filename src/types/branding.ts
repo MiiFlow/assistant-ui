@@ -5,6 +5,7 @@
 export interface BrandingData {
   customName?: string;
   messageFontSize?: number;
+  fontFamily?: string;
   welcomeMessage?: string;
   chatboxPlaceholder?: string;
   backgroundBubbleColor?: string;
@@ -14,4 +15,9 @@ export interface BrandingData {
   presetQuestions?: string[];
   chatbotLogo?: string;
   assistantAvatar?: string;
+  approvalAccentColor?: string;
+  approveButtonColor?: string;
+  approveButtonHoverColor?: string;
+  rejectButtonHoverColor?: string;
+  clarificationAccentColor?: string;
 }
