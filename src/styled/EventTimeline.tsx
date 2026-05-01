@@ -5,7 +5,7 @@ import type { Event, EventStatus, StreamingChunk } from "../types";
 /**
  * Internal tools that should be hidden from users
  */
-const INTERNAL_TOOLS = ["create_plan", "unknown"];
+const INTERNAL_TOOLS = ["create_plan", "tool_search", "unknown"];
 
 function isInternalTool(toolName?: string): boolean {
   if (!toolName) return false;

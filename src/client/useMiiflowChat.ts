@@ -381,6 +381,16 @@ async function parseSSEStream(
               currentChunkType = "answer";
             }
 
+            // Any text the model streamed before this tool call was preamble
+            // narration for the call ("Let me pull X..."), not part of the
+            // final answer. Clear the answer buffer so it doesn't bleed into
+            // — and concatenate with — the actual final-answer text streamed
+            // on the closing turn. The orchestrator can't know mid-stream
+            // whether text is preamble or answer; the tool call announcement
+            // is the earliest reliable signal that everything before it on
+            // this turn was preamble.
+            assistantContent = "";
+
             chunks.push({
               type: "tool",
               content: "",

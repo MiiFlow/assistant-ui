@@ -6,6 +6,18 @@ import { EventTimeline } from "./EventTimeline";
 import type { PlanData, StreamingChunk, Event, EventStatus, SubTaskData } from "../types";
 
 /**
+ * Internal tools that should be hidden from users — kept in sync with
+ * EventTimeline.INTERNAL_TOOLS. `tool_search` is the deferred-tool
+ * discovery meta-tool, an implementation detail users shouldn't see.
+ */
+const INTERNAL_TOOLS = ["create_plan", "tool_search", "unknown"];
+
+function isInternalTool(toolName?: string): boolean {
+  if (!toolName) return false;
+  return INTERNAL_TOOLS.includes(toolName.toLowerCase().trim());
+}
+
+/**
  * Convert streaming chunks to Events for a specific subtask
  */
 function convertChunksToEvents(chunks: StreamingChunk[]): Event[] {
@@ -22,6 +34,8 @@ function convertChunksToEvents(chunks: StreamingChunk[]): Event[] {
         content: chunk.content,
       });
     } else if (chunk.type === "tool") {
+      if (isInternalTool(chunk.toolName)) return;
+
       const status: EventStatus =
         chunk.status === "executing"
           ? "running"

@@ -161,12 +161,19 @@ function getMultiAgentStatus(chunks: StreamingChunk[]) {
 	};
 }
 
+// Internal tools hidden from users — kept in sync with EventTimeline /
+// PlanTimeline. tool_search is the deferred-tool discovery meta-tool.
+const INTERNAL_TOOLS = new Set(["create_plan", "tool_search", "unknown"]);
+
 function convertTimelineToChunks(timeline: any[]): StreamingChunk[] {
 	const chunks: StreamingChunk[] = [];
 	timeline.forEach((item) => {
 		if (item.type === "thought" && item.thought) {
 			chunks.push({ type: "thinking", content: item.thought, subtaskId: item.subtask_id });
 		} else if (item.type === "tool") {
+			const toolName = (item.tool || "").toLowerCase().trim();
+			if (INTERNAL_TOOLS.has(toolName)) return;
+
 			chunks.push({
 				type: "tool",
 				content: "",
@@ -528,15 +535,19 @@ export function ReasoningPanel({
 			return `Parallel execution (Wave ${currentWave + 1}/${totalWaves})`;
 		}
 
-		// Default
-		if (lastChunk?.toolDescription) return lastChunk.toolDescription;
-		if (lastChunk?.toolName) return lastChunk.toolName;
+		// Default — but skip the internal tool_search meta-tool's labels so
+		// users don't see "tool_search" or its description as live status.
+		const lastToolName = lastChunk?.toolName?.toLowerCase().trim();
+		const lastIsInternal = !!lastToolName && INTERNAL_TOOLS.has(lastToolName);
+		if (!lastIsInternal && lastChunk?.toolDescription) return lastChunk.toolDescription;
+		if (!lastIsInternal && lastChunk?.toolName) return lastChunk.toolName;
 		switch (lastChunk?.type) {
 			case "planning":
 				return "Planning...";
 			case "thinking":
 				return "Thinking...";
 			case "tool":
+				if (lastIsInternal) return "Thinking...";
 				return lastChunk.toolName || "Using tool...";
 			case "subtask":
 				return `Executing subtask ${lastChunk.subtaskId || ""}...`;
