@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { Check, ChevronDown, HelpCircle, Send } from "lucide-react";
 import { cn } from "../utils/cn";
+import { MarkdownContent } from "./MarkdownContent";
 import type { ClarificationData } from "../types";
 
 export interface ClarificationPanelProps {
@@ -85,9 +86,9 @@ export function ClarificationPanel({
             />
           </summary>
           <div className="mt-2 text-right">
-            <p className="text-sm text-gray-700 dark:text-gray-200">
+            <MarkdownContent className="text-sm text-gray-700 dark:text-gray-200 text-left">
               {clarification.question}
-            </p>
+            </MarkdownContent>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-words">
               {answer}
             </p>
@@ -112,7 +113,9 @@ export function ClarificationPanel({
         <span className="text-[var(--chat-clarification-accent,#f97316)] mt-0.5">
           <HelpCircle size={14} />
         </span>
-        <p className="text-sm font-medium">{clarification.question}</p>
+        <MarkdownContent className="text-sm font-medium flex-1 min-w-0">
+          {clarification.question}
+        </MarkdownContent>
       </div>
 
       {/* Options as radio buttons */}
