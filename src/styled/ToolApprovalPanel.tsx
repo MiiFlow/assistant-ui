@@ -253,7 +253,12 @@ export function ToolApprovalPanel({
 				"text-[var(--chat-text,#1c1917)] dark:text-[var(--chat-text-dark,#fafaf9)]",
 				className,
 			)}>
-			<p className="text-base leading-relaxed">{summary}</p>
+			{/* Tool description can be long when the LLM emits a verbose
+			    summary; cap with internal scroll so the action buttons below
+			    stay reachable. */}
+			<div className="max-h-[40vh] overflow-y-auto pr-1">
+				<p className="text-base leading-relaxed">{summary}</p>
+			</div>
 
 			{mode === "idle" ? (
 				<>
@@ -278,7 +283,7 @@ export function ToolApprovalPanel({
 								{detailsOpen ? "Hide details" : "Show details"}
 							</button>
 							{detailsOpen && (
-								<dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs opacity-70">
+								<dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs opacity-70 max-h-[40vh] overflow-y-auto pr-1">
 									{inputEntries.map(([key, value]) => (
 										<div key={key} className="contents">
 											<dt className="font-mono text-[11px] pt-0.5 self-start">{key}</dt>

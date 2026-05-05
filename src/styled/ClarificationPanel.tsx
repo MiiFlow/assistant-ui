@@ -108,14 +108,20 @@ export function ClarificationPanel({
         className
       )}
     >
-      {/* Question row */}
+      {/* Question row — capped height + internal scroll so a long multi-part
+          question (e.g. an LLM that emits a numbered list of sub-questions
+          with bullet sub-options) doesn't push the options/input off-screen
+          and break the chat layout. The cap is generous (40vh) so short
+          questions still render at natural size. */}
       <div className={cn("flex items-start gap-2", (hasOptions || showFreeText) && "mb-2")}>
-        <span className="text-[var(--chat-clarification-accent,#f97316)] mt-0.5">
+        <span className="text-[var(--chat-clarification-accent,#f97316)] mt-0.5 flex-shrink-0">
           <HelpCircle size={14} />
         </span>
-        <MarkdownContent className="text-sm font-medium flex-1 min-w-0">
-          {clarification.question}
-        </MarkdownContent>
+        <div className="flex-1 min-w-0 max-h-[40vh] overflow-y-auto pr-1">
+          <MarkdownContent className="text-sm font-medium">
+            {clarification.question}
+          </MarkdownContent>
+        </div>
       </div>
 
       {/* Options as radio buttons */}
