@@ -23,6 +23,10 @@
 			"types": "./dist/client/index.d.ts",
 			"default": "./dist/client/index.js"
 		},
+		"./composer": {
+			"types": "./dist/composer/index.d.ts",
+			"default": "./dist/composer/index.js"
+		},
 		"./styles.css": "./dist/styles.css",
 		"./styles-no-preflight.css": "./dist/styles-no-preflight.css"
 	},
@@ -49,7 +53,17 @@
 	"peerDependencies": {
 		"react": ">=18.0.0",
 		"react-dom": ">=18.0.0",
-		"zod": ">=3.0.0"
+		"zod": ">=3.0.0",
+		"lexical": ">=0.20.0",
+		"@lexical/react": ">=0.20.0"
+	},
+	"peerDependenciesMeta": {
+		"lexical": {
+			"optional": true
+		},
+		"@lexical/react": {
+			"optional": true
+		}
 	},
 	"dependencies": {
 		"clsx": "^2.1.1",

@@ -1,6 +1,11 @@
 import { forwardRef, useCallback, useRef, useState, useEffect } from "react";
 import { ArrowUp, Paperclip, X, FileText, Image, Loader2, AlertCircle, Square } from "lucide-react";
 import { cn } from "../utils/cn";
+import {
+  LexicalChatInput,
+  type CommandProvider,
+  type LexicalChatInputHandle,
+} from "../composer";
 
 // ============================================================================
 // File upload constants (matching in-house backend)
@@ -182,6 +187,8 @@ export interface MessageComposerProps {
   isStreaming?: boolean;
   /** Callback to stop the current streaming response */
   onStopStreaming?: () => void;
+  /** Optional slash-command typeahead provider (e.g. for skill picker). */
+  commandProvider?: CommandProvider | null;
 }
 
 /**
@@ -205,14 +212,15 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       centered = false,
       isStreaming = false,
       onStopStreaming,
+      commandProvider,
     },
     ref,
   ) => {
-    const [inputText, setInputText] = useState("");
+    const [hasText, setHasText] = useState(false);
     const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const inputRef = useRef<LexicalChatInputHandle>(null);
     const dragCounterRef = useRef(0);
     const isSubmittingRef = useRef(false);
 
@@ -222,19 +230,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       .filter((a) => a.status === "uploaded" && a.attachmentId)
       .map((a) => a.attachmentId!);
     const hasAttachments = uploadedIds.length > 0 || attachments.some((a) => a.status === "pending");
-    const hasContent = inputText.trim().length > 0 || hasAttachments;
-
-    // Auto-resize textarea
-    const adjustHeight = useCallback(() => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      textarea.style.height = "auto";
-      textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px";
-    }, []);
-
-    useEffect(() => {
-      adjustHeight();
-    }, [inputText, adjustHeight]);
+    const hasContent = hasText || hasAttachments;
 
     const processFiles = useCallback(
       async (files: File[]) => {
@@ -287,48 +283,39 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       [allowedFileTypes, maxFileSize, onUploadFile, onAttach],
     );
 
-    const handleSubmit = useCallback(async () => {
-      if (!hasContent || isSubmitDisabled || isAnyUploading || isSubmittingRef.current) return;
-      // Lock immediately to prevent double-send race condition
-      isSubmittingRef.current = true;
+    const submitWithText = useCallback(
+      async (text: string) => {
+        if (!hasContent && text.trim().length === 0) return;
+        if (isSubmitDisabled || isAnyUploading || isSubmittingRef.current) return;
+        isSubmittingRef.current = true;
 
-      const text = inputText;
-      const rawFiles = attachments
-        .filter((a) => a.status !== "error")
-        .map((a) => a.file);
-      const savedAttachments = attachments;
+        const rawFiles = attachments
+          .filter((a) => a.status !== "error")
+          .map((a) => a.file);
+        const savedAttachments = attachments;
 
-      // Clear state immediately
-      setInputText("");
-      setAttachments([]);
+        inputRef.current?.clear();
+        setHasText(false);
+        setAttachments([]);
 
-      try {
-        if (onUploadFile && uploadedIds.length > 0) {
-          await onSubmit(text, undefined, uploadedIds);
-        } else {
-          await onSubmit(text, rawFiles.length > 0 ? rawFiles : undefined);
-        }
-      } catch {
-        // Restore on error
-        setInputText(text);
-        setAttachments(savedAttachments);
-      } finally {
-        isSubmittingRef.current = false;
-      }
-    }, [inputText, attachments, hasContent, isSubmitDisabled, isAnyUploading, onSubmit, onUploadFile, uploadedIds]);
-
-    const handleKeyDown = useCallback(
-      (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        // Enter → submit, Shift+Enter → newline
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          if (!isSubmitDisabled && !isAnyUploading) {
-            handleSubmit();
+        try {
+          if (onUploadFile && uploadedIds.length > 0) {
+            await onSubmit(text, undefined, uploadedIds);
+          } else {
+            await onSubmit(text, rawFiles.length > 0 ? rawFiles : undefined);
           }
+        } catch {
+          setAttachments(savedAttachments);
+        } finally {
+          isSubmittingRef.current = false;
         }
       },
-      [handleSubmit, isSubmitDisabled, isAnyUploading],
+      [attachments, hasContent, isSubmitDisabled, isAnyUploading, onSubmit, onUploadFile, uploadedIds],
     );
+
+    const handleSendButtonClick = useCallback(() => {
+      inputRef.current?.submit();
+    }, []);
 
     const handleFileSelect = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -342,7 +329,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     );
 
     const handlePaste = useCallback(
-      (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      (e: React.ClipboardEvent<HTMLDivElement>) => {
         if (!supportsAttachments || isSubmitting) return;
         const clipboardData = e.clipboardData;
         if (!clipboardData) return;
@@ -512,27 +499,20 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
               </button>
             )}
 
-            {/* Textarea */}
-            <div className="flex-1 min-w-0 flex items-center">
-              <textarea
-                ref={textareaRef}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onPaste={handlePaste}
-                disabled={isSubmitDisabled}
+            {/* Lexical-based input with optional slash-command picker */}
+            <div className="flex-1 min-w-0" onPaste={handlePaste}>
+              <LexicalChatInput
+                ref={inputRef}
                 placeholder={placeholder}
-                rows={1}
-                className={cn(
-                  "w-full resize-none outline-none",
-                  "p-0 border-0 shadow-none",
-                  "min-h-[24px] max-h-[200px]",
+                disabled={isSubmitDisabled}
+                commandProvider={commandProvider ?? null}
+                inputClassName={cn(
                   "text-sm leading-relaxed",
                   "text-gray-900 dark:text-zinc-100",
                   "placeholder:text-gray-400 dark:placeholder:text-zinc-500",
-                  "bg-transparent",
-                  "disabled:opacity-50 disabled:cursor-not-allowed",
                 )}
+                onChange={({ text }) => setHasText(text.trim().length > 0)}
+                onSubmit={({ text }) => submitWithText(text)}
               />
             </div>
 
@@ -560,7 +540,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
             ) : (
               <button
                 type="button"
-                onClick={handleSubmit}
+                onClick={handleSendButtonClick}
                 disabled={!hasContent || isSubmitDisabled || isAnyUploading}
                 className={cn(
                   "flex-shrink-0",

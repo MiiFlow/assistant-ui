@@ -31,6 +31,7 @@ export default defineConfig({
     "hooks/index": "src/hooks/index.ts",
     "context/index": "src/context/index.ts",
     "client/index": "src/client/index.ts",
+    "composer/index": "src/composer/index.ts",
   },
   format: ["esm"],
   dts: true,
@@ -53,6 +54,8 @@ export default defineConfig({
     /^react-syntax-highlighter\//,
     "clsx",
     "tailwind-merge",
+    "lexical",
+    /^@lexical\//,
   ],
   esbuildPlugins: [noMuiPlugin],
   define: {

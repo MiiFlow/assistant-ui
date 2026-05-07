@@ -1,6 +1,11 @@
 import { motion } from "framer-motion";
 import { MessageCircleQuestion, Paperclip, X } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+	LexicalChatInput,
+	type CommandProvider,
+	type LexicalChatInputHandle,
+} from "../composer";
 import { cn } from "../utils/cn";
 import { Avatar } from "./Avatar";
 
@@ -19,6 +24,8 @@ export interface WelcomeScreenProps {
 	supportsAttachments?: boolean;
 	/** Override the default plain-text input with a custom composer (e.g. chat-ui MessageComposer) */
 	composerSlot?: ReactNode;
+	/** Optional slash-command typeahead provider (e.g. for skill picker). */
+	commandProvider?: CommandProvider | null;
 	/** Additional CSS classes for the outer wrapper */
 	className?: string;
 	/** Assistant avatar image URL — when provided, welcome text renders in message format */
@@ -76,38 +83,29 @@ function DefaultInput({
 	onSubmit,
 	disabled,
 	supportsAttachments,
+	commandProvider,
 }: {
 	placeholder: string;
 	onSubmit: (msg: string, files?: File[]) => void;
 	disabled?: boolean;
 	supportsAttachments?: boolean;
+	commandProvider?: CommandProvider | null;
 }) {
-	const [value, setValue] = useState("");
+	const [hasText, setHasText] = useState(false);
 	const [files, setFiles] = useState<File[]>([]);
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const inputRef = useRef<LexicalChatInputHandle>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	// Auto-resize
-	useEffect(() => {
-		if (textareaRef.current) {
-			textareaRef.current.style.height = "auto";
-			textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
-		}
-	}, [value]);
-
-	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-		if (e.key === "Enter" && !e.shiftKey) {
-			e.preventDefault();
-			handleSubmit();
-		}
-	};
-
-	const handleSubmit = () => {
-		if ((!value.trim() && files.length === 0) || disabled) return;
-		onSubmit(value.trim(), files.length > 0 ? files : undefined);
-		setValue("");
-		setFiles([]);
-	};
+	const handleSubmit = useCallback(
+		(text: string) => {
+			if ((!text.trim() && files.length === 0) || disabled) return;
+			onSubmit(text.trim(), files.length > 0 ? files : undefined);
+			inputRef.current?.clear();
+			setHasText(false);
+			setFiles([]);
+		},
+		[disabled, files, onSubmit],
+	);
 
 	const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
 		if (e.target.files) {
@@ -120,8 +118,10 @@ function DefaultInput({
 		setFiles((prev) => prev.filter((_, i) => i !== index));
 	};
 
+	const canSubmit = (hasText || files.length > 0) && !disabled;
+
 	return (
-		<form
+		<div
 			className={cn(
 				"w-full relative mx-auto",
 				"rounded-2xl overflow-hidden",
@@ -133,10 +133,6 @@ function DefaultInput({
 				backgroundColor: "var(--chat-composer-bg, #ffffff)",
 				border: "1px solid var(--chat-composer-border, rgba(0,0,0,0.06))",
 				boxShadow: "var(--chat-composer-shadow, 0 8px 30px rgba(0,0,0,0.08))",
-			}}
-			onSubmit={(e) => {
-				e.preventDefault();
-				handleSubmit();
 			}}>
 			{/* File previews */}
 			{files.length > 0 && (
@@ -182,36 +178,24 @@ function DefaultInput({
 					</button>
 				)}
 
-				<textarea
-					ref={textareaRef}
-					value={value}
-					onChange={(e) => setValue(e.target.value)}
-					onKeyDown={handleKeyDown}
-					disabled={disabled}
-					rows={1}
+				<LexicalChatInput
+					ref={inputRef}
 					placeholder={placeholder}
+					disabled={disabled}
+					commandProvider={commandProvider ?? null}
 					className={cn(
-						"flex-1 text-sm sm:text-base",
-						"border-none bg-transparent",
-						"text-gray-900 dark:text-white",
-						"focus:outline-none focus:ring-0 resize-none",
-						"py-4 sm:py-5",
+						"flex-1",
 						supportsAttachments ? "pl-1" : "pl-4 sm:pl-6",
-						"placeholder:text-gray-400 dark:placeholder:text-zinc-500",
-						"disabled:opacity-50 disabled:cursor-not-allowed",
-						"max-h-[200px] overflow-y-auto",
+						"py-4 sm:py-5 pr-1",
 					)}
-					style={{
-						padding: "1rem 0.25rem",
-						border: "none",
-						background: "transparent",
-						outline: "none",
-						resize: "none",
-					}}
+					inputClassName="text-sm sm:text-base text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-500"
+					onChange={({ text }) => setHasText(text.trim().length > 0)}
+					onSubmit={({ text }) => handleSubmit(text)}
 				/>
 				<button
-					type="submit"
-					disabled={(!value.trim() && files.length === 0) || !!disabled}
+					type="button"
+					onClick={() => inputRef.current?.submit()}
+					disabled={!canSubmit}
 					className={cn(
 						"mr-3 flex-shrink-0",
 						"w-9 h-9 rounded-lg",
@@ -250,7 +234,7 @@ function DefaultInput({
 			{supportsAttachments && (
 				<input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} className="hidden" />
 			)}
-		</form>
+		</div>
 	);
 }
 
@@ -346,6 +330,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 			welcomeText = "How can I help you today?",
 			supportsAttachments,
 			composerSlot,
+			commandProvider,
 			className,
 			assistantAvatar,
 			assistantName,
@@ -422,6 +407,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 								placeholder={placeholder}
 								onSubmit={(msg, files) => onSubmit?.(msg, files)}
 								supportsAttachments={supportsAttachments}
+								commandProvider={commandProvider ?? null}
 							/>
 						)}
 					</div>

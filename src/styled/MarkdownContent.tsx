@@ -1,10 +1,55 @@
-import { useState, useCallback } from "react";
+import { Children, Fragment, isValidElement, cloneElement, useState, useCallback, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Check, Copy, Link as LinkIcon } from "lucide-react";
+import { CommandTokenView } from "../composer/CommandTokenView";
+import { findInlineCommandTokens } from "../composer/CommandTokenNode";
 import { cn } from "../utils/cn";
+
+function splitTextWithCommandTokens(text: string): ReactNode[] {
+  const matches = findInlineCommandTokens(text);
+  if (matches.length === 0) return [text];
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  matches.forEach((m, i) => {
+    if (m.index > cursor) parts.push(text.slice(cursor, m.index));
+    parts.push(
+      <CommandTokenView key={`tok-${i}`} id={m.id} kind={m.kind} variant="chip" />,
+    );
+    cursor = m.endIndex;
+  });
+  if (cursor < text.length) parts.push(text.slice(cursor));
+  return parts;
+}
+
+/**
+ * Recursively walk children of a markdown-rendered element, splitting any
+ * string descendants on `/id:kind` matches and replacing matches with
+ * `CommandTokenChip`. Non-text children (e.g. <code>, <a>, <strong>) are
+ * preserved as-is so markdown formatting still works.
+ */
+function processInlineCommandTokens(children: ReactNode): ReactNode {
+  return Children.map(children, (child, idx) => {
+    if (typeof child === "string") {
+      const parts = splitTextWithCommandTokens(child);
+      if (parts.length === 1 && parts[0] === child) return child;
+      return <Fragment key={`text-${idx}`}>{parts}</Fragment>;
+    }
+    if (isValidElement(child)) {
+      // Don't descend into code spans / pre — tokens inside literal code
+      // should render verbatim.
+      const type = child.type as { name?: string; displayName?: string } | string | undefined;
+      const tagName = typeof type === "string" ? type : undefined;
+      if (tagName === "code" || tagName === "pre") return child;
+      const childChildren = (child.props as { children?: ReactNode }).children;
+      if (childChildren == null) return child;
+      return cloneElement(child, undefined, processInlineCommandTokens(childChildren));
+    }
+    return child;
+  });
+}
 
 // Language alias mapping
 const LANGUAGE_MAP: Record<string, string> = {
@@ -150,10 +195,10 @@ export function MarkdownContent({
           );
         },
         h4: ({ children }) => (
-          <h4 className="text-base font-medium mt-2 mb-1 first:mt-0" style={fontStyle}>{children}</h4>
+          <h4 className="text-base font-medium mt-2 mb-1 first:mt-0" style={fontStyle}>{processInlineCommandTokens(children)}</h4>
         ),
         p: ({ children }) => (
-          <p className="mb-2 last:mb-0 leading-relaxed" style={fontStyle}>{children}</p>
+          <p className="mb-2 last:mb-0 leading-relaxed" style={fontStyle}>{processInlineCommandTokens(children)}</p>
         ),
         a: ({ href, children }) => {
           const isImageUrl = href && /\.(png|jpe?g|gif|webp|svg)([?#]|$)/i.test(href);
@@ -185,10 +230,10 @@ export function MarkdownContent({
         ol: ({ children }) => (
           <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>
         ),
-        li: ({ children }) => <li className="leading-relaxed" style={fontStyle}>{children}</li>,
+        li: ({ children }) => <li className="leading-relaxed" style={fontStyle}>{processInlineCommandTokens(children)}</li>,
         blockquote: ({ children }) => (
           <blockquote className="border-l-2 border-gray-300 dark:border-gray-600 pl-3 my-2 italic text-chat-subtle" style={fontStyle}>
-            {children}
+            {processInlineCommandTokens(children)}
           </blockquote>
         ),
         code: ({ className: codeClassName, children }) => {
@@ -244,12 +289,12 @@ export function MarkdownContent({
         ),
         th: ({ children }) => (
           <th className="px-3 py-2 text-left text-sm font-medium" style={fontStyle}>
-            {children}
+            {processInlineCommandTokens(children)}
           </th>
         ),
         td: ({ children }) => (
           <td className="px-3 py-2 text-sm border-t border-gray-100 dark:border-gray-700" style={fontStyle}>
-            {children}
+            {processInlineCommandTokens(children)}
           </td>
         ),
         hr: () => <hr className="my-4 border-gray-200 dark:border-gray-700" />,
