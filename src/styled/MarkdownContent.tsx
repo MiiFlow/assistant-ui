@@ -8,6 +8,15 @@ import { CommandTokenView } from "../composer/CommandTokenView";
 import { findInlineCommandTokens } from "../composer/CommandTokenNode";
 import { cn } from "../utils/cn";
 
+// Chip kinds that are routing/behavior signals — not content. We strip them
+// from the rendered message so the bubble shows the user's words, not the
+// scaffolding.
+//
+// Visible kinds (ad-account, guideline) describe the scope or reference
+// material attached to the question — that's meaningful context the user
+// wants to see in their own bubble after sending.
+const HIDDEN_CHIP_KINDS = new Set<string>(["mode", "skill"]);
+
 function splitTextWithCommandTokens(text: string): ReactNode[] {
   const matches = findInlineCommandTokens(text);
   if (matches.length === 0) return [text];
@@ -15,6 +24,13 @@ function splitTextWithCommandTokens(text: string): ReactNode[] {
   let cursor = 0;
   matches.forEach((m, i) => {
     if (m.index > cursor) parts.push(text.slice(cursor, m.index));
+    if (HIDDEN_CHIP_KINDS.has(m.kind)) {
+      // Skip emitting a chip. Also consume one trailing space so we don't
+      // leave a double-space ("hello  world") where the chip used to sit.
+      cursor = m.endIndex;
+      if (text[cursor] === " ") cursor += 1;
+      return;
+    }
     parts.push(
       <CommandTokenView key={`tok-${i}`} id={m.id} kind={m.kind} variant="chip" />,
     );

@@ -4,7 +4,15 @@ import {
   MenuOption,
   type MenuTextMatch,
 } from "@lexical/react/LexicalTypeaheadMenuPlugin";
-import { $createTextNode, type TextNode } from "lexical";
+import {
+  $createTextNode,
+  $getRoot,
+  $isElementNode,
+  $isTextNode,
+  type ElementNode,
+  type LexicalNode,
+  type TextNode,
+} from "lexical";
 import {
   useCallback,
   useEffect,
@@ -15,7 +23,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
-import { $createCommandTokenNode } from "./CommandTokenNode";
+import { $createCommandTokenNode, $isCommandTokenNode } from "./CommandTokenNode";
 import { CommandTokenView } from "./CommandTokenView";
 import type { ChatComposerCommand, CommandProvider } from "./types";
 
@@ -113,6 +121,8 @@ export function CommandTokenPlugin({
     [triggerRegex],
   );
 
+  const singletonKinds = commandProvider?.singletonKinds;
+
   const onSelectOption = useCallback(
     (
       selectedOption: CommandTypeaheadOption,
@@ -120,10 +130,45 @@ export function CommandTokenPlugin({
       closeMenu: () => void,
     ) => {
       editor.update(() => {
+        const kind = selectedOption.command.kind;
+        const isSingleton = singletonKinds?.includes(kind) ?? false;
+
+        if (isSingleton) {
+          // Remove any existing chip of the same kind. Walking once with a
+          // collected list (rather than mutating during traversal) keeps the
+          // tree stable while we iterate.
+          const stale: { node: ReturnType<typeof $createCommandTokenNode>; index: number }[] = [];
+          const walk = (n: LexicalNode) => {
+            if ($isCommandTokenNode(n) && n.getCommandKind() === kind) {
+              stale.push({ node: n, index: 0 });
+              return;
+            }
+            if ($isElementNode(n)) {
+              for (const c of (n as ElementNode).getChildren()) walk(c);
+            }
+          };
+          walk($getRoot());
+          for (const entry of stale) {
+            // If the chip is followed by a single space, drop that too so
+            // we don't leave an orphan space where the chip used to sit.
+            const next = entry.node.getNextSibling();
+            entry.node.remove();
+            if (next && $isTextNode(next)) {
+              const nextText = next.getTextContent();
+              if (nextText.startsWith(" ")) {
+                const trimmed = nextText.slice(1);
+                if (trimmed.length === 0) next.remove();
+                else next.setTextContent(trimmed);
+              }
+            }
+          }
+        }
+
         const tokenNode = $createCommandTokenNode(
           selectedOption.command.id,
-          selectedOption.command.kind,
+          kind,
           selectedOption.command.label,
+          trigger,
         );
         const trailingSpace = $createTextNode(" ");
         if (nodeToReplace) {
@@ -133,7 +178,7 @@ export function CommandTokenPlugin({
         closeMenu();
       });
     },
-    [editor],
+    [editor, trigger, singletonKinds],
   );
 
   if (!commandProvider) return null;
@@ -264,8 +309,8 @@ function DefaultCommandMenu({
         left: 0,
         transform,
         zIndex: 99999,
-        minWidth: 260,
-        maxWidth: 360,
+        minWidth: 320,
+        maxWidth: 520,
         maxHeight: 280,
         overflowY: "auto",
         borderRadius: 8,

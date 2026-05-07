@@ -26,6 +26,9 @@ export interface WelcomeScreenProps {
 	composerSlot?: ReactNode;
 	/** Optional slash-command typeahead provider (e.g. for skill picker). */
 	commandProvider?: CommandProvider | null;
+	/** Multiple typeahead providers for distinct triggers (e.g. `/` skills +
+	 *  modes plus `@` ad accounts). Takes precedence over `commandProvider`. */
+	commandProviders?: CommandProvider[];
 	/** Additional CSS classes for the outer wrapper */
 	className?: string;
 	/** Assistant avatar image URL — when provided, welcome text renders in message format */
@@ -84,12 +87,14 @@ function DefaultInput({
 	disabled,
 	supportsAttachments,
 	commandProvider,
+	commandProviders,
 }: {
 	placeholder: string;
 	onSubmit: (msg: string, files?: File[]) => void;
 	disabled?: boolean;
 	supportsAttachments?: boolean;
 	commandProvider?: CommandProvider | null;
+	commandProviders?: CommandProvider[];
 }) {
 	const [hasText, setHasText] = useState(false);
 	const [files, setFiles] = useState<File[]>([]);
@@ -183,6 +188,7 @@ function DefaultInput({
 					placeholder={placeholder}
 					disabled={disabled}
 					commandProvider={commandProvider ?? null}
+					commandProviders={commandProviders}
 					className={cn(
 						"flex-1",
 						supportsAttachments ? "pl-1" : "pl-4 sm:pl-6",
@@ -331,6 +337,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 			supportsAttachments,
 			composerSlot,
 			commandProvider,
+			commandProviders,
 			className,
 			assistantAvatar,
 			assistantName,
@@ -408,6 +415,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 								onSubmit={(msg, files) => onSubmit?.(msg, files)}
 								supportsAttachments={supportsAttachments}
 								commandProvider={commandProvider ?? null}
+								commandProviders={commandProviders}
 							/>
 						)}
 					</div>

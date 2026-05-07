@@ -29,6 +29,13 @@ export interface CommandProvider {
    * on every query change while the menu is open.
    */
   fetch: (query: string) => ChatComposerCommand[] | Promise<ChatComposerCommand[]>;
+  /**
+   * Chip kinds that should have at most one instance per message. Picking
+   * a chip of a singleton kind removes any prior chip of the same kind from
+   * the editor before inserting the new one. Kinds not listed here stack
+   * (e.g. multiple `@ad-account` mentions in one message).
+   */
+  singletonKinds?: string[];
 }
 
 export interface ChatComposerSubmitPayload {

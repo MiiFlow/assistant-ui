@@ -189,6 +189,9 @@ export interface MessageComposerProps {
   onStopStreaming?: () => void;
   /** Optional slash-command typeahead provider (e.g. for skill picker). */
   commandProvider?: CommandProvider | null;
+  /** Multiple typeahead providers for distinct triggers (e.g. `/` skills +
+   *  modes plus `@` ad accounts). Takes precedence over `commandProvider`. */
+  commandProviders?: CommandProvider[];
 }
 
 /**
@@ -213,6 +216,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       isStreaming = false,
       onStopStreaming,
       commandProvider,
+      commandProviders,
     },
     ref,
   ) => {
@@ -506,6 +510,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                 placeholder={placeholder}
                 disabled={isSubmitDisabled}
                 commandProvider={commandProvider ?? null}
+                commandProviders={commandProviders}
                 inputClassName={cn(
                   "text-sm leading-relaxed",
                   "text-gray-900 dark:text-zinc-100",

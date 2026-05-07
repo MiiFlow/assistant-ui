@@ -17,24 +17,36 @@ export type SerializedCommandTokenNode = Spread<
     commandId: string;
     commandKind: string;
     commandLabel: string;
+    /** Trigger character that produced the chip (e.g. "/" or "@"). Optional in
+     * v1 payloads — defaulted to "/" on import for backwards compatibility. */
+    commandPrefix?: string;
     type: "command-token";
-    version: 1;
+    version: 1 | 2;
   },
   SerializedLexicalNode
 >;
 
 const TOKEN_DATA_ATTR = "data-chat-command-token";
+const DEFAULT_PREFIX = "/";
 
 export class CommandTokenNode extends DecoratorNode<ReactNode> {
   __id: string;
   __kind: string;
   __label: string;
+  __prefix: string;
 
-  constructor(id: string, kind: string, label: string, key?: NodeKey) {
+  constructor(
+    id: string,
+    kind: string,
+    label: string,
+    prefix: string = DEFAULT_PREFIX,
+    key?: NodeKey,
+  ) {
     super(key);
     this.__id = id;
     this.__kind = kind;
     this.__label = label;
+    this.__prefix = prefix;
   }
 
   static getType(): string {
@@ -42,7 +54,13 @@ export class CommandTokenNode extends DecoratorNode<ReactNode> {
   }
 
   static clone(node: CommandTokenNode): CommandTokenNode {
-    return new CommandTokenNode(node.__id, node.__kind, node.__label, node.__key);
+    return new CommandTokenNode(
+      node.__id,
+      node.__kind,
+      node.__label,
+      node.__prefix,
+      node.__key,
+    );
   }
 
   static importJSON(serialized: SerializedCommandTokenNode): CommandTokenNode {
@@ -50,6 +68,7 @@ export class CommandTokenNode extends DecoratorNode<ReactNode> {
       serialized.commandId,
       serialized.commandKind,
       serialized.commandLabel,
+      serialized.commandPrefix ?? DEFAULT_PREFIX,
     );
   }
 
@@ -59,8 +78,9 @@ export class CommandTokenNode extends DecoratorNode<ReactNode> {
       commandId: this.__id,
       commandKind: this.__kind,
       commandLabel: this.__label,
+      commandPrefix: this.__prefix,
       type: "command-token",
-      version: 1,
+      version: 2,
     };
   }
 
@@ -76,9 +96,13 @@ export class CommandTokenNode extends DecoratorNode<ReactNode> {
     return this.__label;
   }
 
-  /** Wire format. Backend parses `/${id}:${kind}` from the message body. */
+  getCommandPrefix(): string {
+    return this.__prefix;
+  }
+
+  /** Wire format. Backend parses `<prefix><id>:<kind>` from the message body. */
   getEncodedText(): string {
-    return `/${this.__id}:${this.__kind}`;
+    return `${this.__prefix}${this.__id}:${this.__kind}`;
   }
 
   createDOM(): HTMLElement {
@@ -96,6 +120,7 @@ export class CommandTokenNode extends DecoratorNode<ReactNode> {
     element.setAttribute(TOKEN_DATA_ATTR, "true");
     element.setAttribute("data-command-id", this.__id);
     element.setAttribute("data-command-kind", this.__kind);
+    element.setAttribute("data-command-prefix", this.__prefix);
     element.textContent = this.getEncodedText();
     return { element };
   }
@@ -140,16 +165,19 @@ function convertCommandTokenElement(domNode: HTMLElement): DOMConversionOutput |
   const id = domNode.getAttribute("data-command-id");
   const kind = domNode.getAttribute("data-command-kind");
   if (!id || !kind) return null;
-  const label = domNode.textContent?.replace(/^\//, "") ?? id;
-  return { node: $createCommandTokenNode(id, kind, label) };
+  const prefix = domNode.getAttribute("data-command-prefix") ?? DEFAULT_PREFIX;
+  const label =
+    domNode.textContent?.replace(new RegExp(`^[\\${prefix}]`), "") ?? id;
+  return { node: $createCommandTokenNode(id, kind, label, prefix) };
 }
 
 export function $createCommandTokenNode(
   id: string,
   kind: string,
   label: string,
+  prefix: string = DEFAULT_PREFIX,
 ): CommandTokenNode {
-  return new CommandTokenNode(id, kind, label);
+  return new CommandTokenNode(id, kind, label, prefix);
 }
 
 export function $isCommandTokenNode(
@@ -159,31 +187,35 @@ export function $isCommandTokenNode(
 }
 
 /**
- * Matches `/<id>:<kind>` substrings emitted by `CommandTokenNode.getEncodedText()`.
+ * Matches `<prefix><id>:<kind>` substrings emitted by `CommandTokenNode.getEncodedText()`,
+ * where `<prefix>` is `/` (skill / mode chips) or `@` (ad-account chips).
  *
  * Bounded by start-of-string, whitespace, or an opening bracket on the left,
  * and end-of-string, whitespace, or punctuation on the right — so it doesn't
- * fire on URLs like `https://example.com/path:foo`.
+ * fire on URLs like `https://example.com/path:foo` or emails like
+ * `user@host.com:port`.
  *
  * The id capture allows spaces (skill names may have them); the kind capture
- * is restricted to word characters.
+ * allows word chars and hyphens (e.g. `ad-account`).
  */
 export const COMMAND_TOKEN_REGEX =
-  /(^|\s|\(|\[)\/([^\n:]+?):(\w+)(?=$|[\s.,!?)\]])/g;
+  /(^|\s|\(|\[)([/@])([^\n:]+?):([\w-]+)(?=$|[\s.,!?)\]])/g;
 
 export interface InlineCommandTokenMatch {
   id: string;
   kind: string;
-  /** The full matched substring including the leading `/` (no leading boundary). */
+  /** Trigger character that introduced the chip (`/` or `@`). */
+  prefix: string;
+  /** The full matched substring including the leading prefix (no leading boundary). */
   raw: string;
-  /** Index in the original string where the leading `/` sits. */
+  /** Index in the original string where the leading prefix sits. */
   index: number;
   /** End index (exclusive) of the matched token. */
   endIndex: number;
 }
 
 /**
- * Find all `/id:kind` tokens in a plain-text string.
+ * Find all `<prefix><id>:<kind>` tokens in a plain-text string.
  *
  * Returns matches in document order. Use this when rendering message
  * history to replace token substrings with a visual chip.
@@ -194,11 +226,19 @@ export function findInlineCommandTokens(text: string): InlineCommandTokenMatch[]
   let m: RegExpExecArray | null;
   while ((m = COMMAND_TOKEN_REGEX.exec(text)) !== null) {
     const leading = m[1] ?? "";
-    const id = m[2];
-    const kind = m[3];
+    const prefix = m[2];
+    const id = m[3];
+    const kind = m[4];
     const start = m.index + leading.length;
     const raw = m[0].slice(leading.length);
-    matches.push({ id, kind, raw, index: start, endIndex: start + raw.length });
+    matches.push({
+      id,
+      kind,
+      prefix,
+      raw,
+      index: start,
+      endIndex: start + raw.length,
+    });
   }
   return matches;
 }

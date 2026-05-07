@@ -66,6 +66,13 @@ export interface LexicalChatInputProps {
    * a plain rich-text input.
    */
   commandProvider?: CommandProvider | null;
+  /**
+   * Multiple typeahead providers, one per trigger character (e.g. `/` for
+   * skills + modes, `@` for ad accounts). When supplied, this takes
+   * precedence over the singular `commandProvider`. Each provider mounts its
+   * own `CommandTokenPlugin` instance.
+   */
+  commandProviders?: CommandProvider[];
 }
 
 function readPayload(editor: LexicalEditor): ChatComposerSubmitPayload {
@@ -102,6 +109,7 @@ export const LexicalChatInput = forwardRef<LexicalChatInputHandle, LexicalChatIn
       onChange,
       onSubmit,
       commandProvider,
+      commandProviders,
     },
     ref,
   ) {
@@ -131,6 +139,7 @@ export const LexicalChatInput = forwardRef<LexicalChatInputHandle, LexicalChatIn
           onChange={onChange}
           onSubmit={onSubmit}
           commandProvider={commandProvider}
+          commandProviders={commandProviders}
           imperativeHandle={ref}
         >
           {children}
@@ -149,6 +158,7 @@ function ChatInputBody({
   onChange,
   onSubmit,
   commandProvider,
+  commandProviders,
   imperativeHandle,
 }: LexicalChatInputProps & {
   imperativeHandle: React.ForwardedRef<LexicalChatInputHandle>;
@@ -242,10 +252,25 @@ function ChatInputBody({
       />
       <OnChangePlugin onChange={handleChange} />
       <HistoryPlugin />
-      <CommandTokenPlugin
-        commandProvider={commandProvider ?? null}
-        onMenuStateChange={handleCommandMenuStateChange}
-      />
+      {(() => {
+        // Plural takes precedence; fall back to singular for back-compat.
+        // We mount one plugin per provider so different triggers (e.g. `/`
+        // and `@`) can each fire their own typeahead. The menu-open ref is
+        // shared so submit-on-Enter is gated whichever menu is open.
+        const providers =
+          commandProviders && commandProviders.length > 0
+            ? commandProviders
+            : commandProvider
+            ? [commandProvider]
+            : [];
+        return providers.map((p, i) => (
+          <CommandTokenPlugin
+            key={`${p.trigger ?? "/"}-${i}`}
+            commandProvider={p}
+            onMenuStateChange={handleCommandMenuStateChange}
+          />
+        ));
+      })()}
       {children}
     </div>
   );
