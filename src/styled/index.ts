@@ -45,21 +45,8 @@ export {
 // Citation sources
 export { CitationSources, type CitationSourcesProps, InlineCitation, type InlineCitationProps, SourceDetailModal, type SourceDetailModalProps } from "./CitationSources";
 
-// Claude SDK components
-export {
-  ClaudeToolPreview,
-  type ClaudeToolPreviewProps,
-  TerminalOutput,
-  type TerminalOutputProps,
-  FileOperationPreview,
-  type FileOperationPreviewProps,
-  SearchResultsView,
-  type SearchResultsViewProps,
-  WebOperationPreview,
-  type WebOperationPreviewProps,
-  SubagentPanel,
-  type SubagentPanelProps,
-} from "./claude-sdk";
+// Sub-assistant panel (nested rendering for sub-assistant runs)
+export { SubagentPanel, type SubagentPanelProps } from "./subagent/SubagentPanel";
 
 // Visualization components
 export {
@@ -109,6 +96,7 @@ export { convertChunkToEvent, convertTimelineToEvents, EventTimeline, type Event
 export { PlanTimeline, type PlanTimelineProps } from "./PlanTimeline";
 export { StatusBadge } from "./StatusBadge";
 export { Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps } from "./Timeline";
+export { TimelineRow, type TimelineRowProps } from "./TimelineRow";
 
 // Re-export context for convenience
 export { ChatProvider, useChatContext, type ChatContextValue, type ChatProviderProps } from "../context";
@@ -139,13 +127,8 @@ export type {
 	ParallelSubtaskData,
 	// Multi-agent types
 	SubagentInfo,
-	// Claude SDK chunk types
+	// Sub-assistant chunk type (nested execution)
 	SubagentChunkData,
-	FileOperationChunkData,
-	TerminalChunkData,
-	SearchResultsChunkData,
-	WebOperationChunkData,
-	ClaudeToolChunkData,
 	ClarificationData,
 	// Media types
 	MediaChunkData,

@@ -27,14 +27,8 @@ export type {
   ParallelSubtaskData,
   // Multi-agent types
   SubagentInfo,
-  // Claude SDK chunk types
-  SearchResultItem,
+  // Sub-assistant chunk type (nested rendering)
   SubagentChunkData,
-  FileOperationChunkData,
-  TerminalChunkData,
-  SearchResultsChunkData,
-  WebOperationChunkData,
-  ClaudeToolChunkData,
   ClarificationData,
   ToolApprovalData,
   // Visualization types

@@ -343,15 +343,8 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 				c.type === "subagent_complete" ||
 				c.type === "subagent_failed" ||
 				c.type === "synthesis" ||
-				// Claude SDK native types
-				c.type === "claude_thinking" ||
-				c.type === "subagent" ||
-				c.type === "file_operation" ||
-				c.type === "terminal" ||
-				c.type === "search_results" ||
-				c.type === "web_operation" ||
-				// Generic Claude tools (check for claudeToolData)
-				c.claudeToolData != null,
+				// Sub-assistant rendering (nested SubagentPanel)
+				c.type === "subagent",
 		);
 		const hasReasoningChunks = reasoningChunks && reasoningChunks.length > 0;
 		const hasCompletedReasoning =

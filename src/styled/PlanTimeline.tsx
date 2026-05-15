@@ -1,8 +1,6 @@
-import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "../utils/cn";
 import { Timeline, type TimelineItemData } from "./Timeline";
-import { EventTimeline } from "./EventTimeline";
+import { TimelineRow } from "./TimelineRow";
 import type { PlanData, StreamingChunk, Event, EventStatus, SubTaskData } from "../types";
 
 /**
@@ -61,71 +59,20 @@ interface SubtaskContentProps {
   executionChunks?: StreamingChunk[];
 }
 
-/**
- * Minimal inline content for each subtask — description + time, no card/border.
- */
 function SubtaskContent({ subtask, executionChunks = [] }: SubtaskContentProps) {
-  const [isExpanded, setIsExpanded] = useState(subtask.status === "running");
-  const isRunning = subtask.status === "running";
   const isFailed = subtask.status === "failed";
   const isCompleted = subtask.status === "completed";
-
-  // Auto-expand when running
-  if (isRunning && !isExpanded) {
-    setIsExpanded(true);
-  }
-
-  const hasExecutionDetails = executionChunks.length > 0;
   const events = convertChunksToEvents(executionChunks);
 
   return (
-    <div className="flex-1 min-w-0">
-      {/* Single row: description + execution time + expand chevron */}
-      <div
-        onClick={() => hasExecutionDetails && setIsExpanded(!isExpanded)}
-        className={cn(
-          "flex items-center gap-2 min-w-0",
-          hasExecutionDetails && "cursor-pointer"
-        )}
-      >
-        <span
-          className={cn(
-            "text-sm font-medium truncate",
-            isFailed ? "text-red-500" : "text-black/85"
-          )}
-        >
-          {subtask.description}
-        </span>
-
-        {/* Error inline */}
-        {isFailed && subtask.error && (
-          <span className="text-sm text-red-500 truncate flex-1">
-            {subtask.error}
-          </span>
-        )}
-
-        {/* Execution time inline (subtle, like "1.2s") */}
-        {isCompleted && subtask.execution_time != null && subtask.execution_time > 0 && (
-          <span className="text-xs text-black/40 shrink-0 tabular-nums">
-            {subtask.execution_time.toFixed(1)}s
-          </span>
-        )}
-
-        {/* Expand indicator */}
-        {hasExecutionDetails && (
-          <span className="text-black/40 shrink-0 flex items-center">
-            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </span>
-        )}
-      </div>
-
-      {/* Nested execution details */}
-      {hasExecutionDetails && isExpanded && (
-        <div className="mt-2 pl-2">
-          <EventTimeline events={events} />
-        </div>
-      )}
-    </div>
+    <TimelineRow
+      label={subtask.description}
+      description={isFailed ? subtask.error : undefined}
+      durationSeconds={isCompleted ? subtask.execution_time : undefined}
+      isFailed={isFailed}
+      defaultExpanded={subtask.status === "running"}
+      nestedEvents={events}
+    />
   );
 }
 
@@ -169,7 +116,7 @@ export function PlanTimeline({
   return (
     <div className={cn("space-y-2", className)}>
       {/* Simple header */}
-      <span className="text-sm text-black/50">Plan:</span>
+      <span className="text-sm text-[var(--chat-text-subtle)]">Plan:</span>
 
       {/* Subtask timeline */}
       <Timeline items={timelineItems} badgeSize={20} />

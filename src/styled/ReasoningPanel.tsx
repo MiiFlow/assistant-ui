@@ -1,32 +1,20 @@
 import {
-	FileText,
 	GitBranch,
-	Globe,
 	ListTodo,
-	Loader2,
-	Search,
 	Sparkle,
-	Terminal,
 	Users,
 	Wrench,
 	Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useScrollLock } from "../hooks/use-scroll-lock";
-import type { Event, PlanData, StreamingChunk, SubagentInfo } from "../types";
+import type { Event, EventStatus, PlanData, StreamingChunk, SubagentInfo } from "../types";
 import { beamerBarStyle, injectBeamerKeyframes } from "../utils/beamer";
 import { cn } from "../utils/cn";
 import { EventTimeline, convertChunkToEvent } from "./EventTimeline";
 import { PlanTimeline } from "./PlanTimeline";
 import { Timeline, type TimelineItemData } from "./Timeline";
-import {
-	ClaudeToolPreview,
-	FileOperationPreview,
-	SearchResultsView,
-	SubagentPanel,
-	TerminalOutput,
-	WebOperationPreview,
-} from "./claude-sdk";
+import { TimelineRow } from "./TimelineRow";
 
 /**
  * Hook for live duration counter
@@ -58,18 +46,8 @@ function useLiveStreamDuration(isStreaming: boolean): { display: string; finalSe
 	return { display: `${elapsed}`, finalSeconds: finalSecondsRef.current };
 }
 
-function hasClaudeSdkChunks(chunks: StreamingChunk[]): boolean {
-	return chunks.some(
-		(c) =>
-			c.orchestrator === "claude_agent_sdk" ||
-			c.type === "subagent" ||
-			c.type === "file_operation" ||
-			c.type === "terminal" ||
-			c.type === "search_results" ||
-			c.type === "web_operation" ||
-			c.type === "claude_text" ||
-			c.type === "claude_thinking",
-	);
+function hasSubagentChunks(chunks: StreamingChunk[]): boolean {
+	return chunks.some((c) => c.type === "subagent");
 }
 
 function hasParallelExecutionChunks(chunks: StreamingChunk[]): boolean {
@@ -163,7 +141,15 @@ function getMultiAgentStatus(chunks: StreamingChunk[]) {
 
 // Internal tools hidden from users — kept in sync with EventTimeline /
 // PlanTimeline. tool_search is the deferred-tool discovery meta-tool.
-const INTERNAL_TOOLS = new Set(["create_plan", "tool_search", "unknown"]);
+// Tools hidden from user-facing labels and timeline rendering. `dispatch_assistant`
+// is rendered as a SubagentPanel event inline (see EventTimeline.convertChunkToEvent),
+// so the raw tool call should not also appear as a "dispatch_assistant: …" label.
+const INTERNAL_TOOLS = new Set([
+	"create_plan",
+	"tool_search",
+	"unknown",
+	"dispatch_assistant",
+]);
 
 function convertTimelineToChunks(timeline: any[]): StreamingChunk[] {
 	const chunks: StreamingChunk[] = [];
@@ -200,86 +186,59 @@ function MultiAgentStatusPanel({ chunks }: { chunks: StreamingChunk[] }) {
 	const status = getMultiAgentStatus(chunks);
 	const subagentList = [...status.subagents.values()];
 
-	if (subagentList.length === 0) {
-		const isPlanning = chunks.some((c) => c.type === "multi_agent_planning");
-		const allocations = getSubagentAllocations(chunks);
+	const items: TimelineItemData[] = [];
 
-		if (allocations.length > 0) {
-			return (
-				<div className="flex items-center gap-2">
-					<Loader2 size={14} className="animate-spin text-gray-400" />
-					<span className="text-sm text-gray-500">Allocating agents: {allocations.map((a) => a.name).join(", ")}</span>
-				</div>
-			);
+	if (subagentList.length === 0) {
+		const allocations = getSubagentAllocations(chunks);
+		const isPlanning = chunks.some((c) => c.type === "multi_agent_planning");
+
+		if (allocations.length === 0 && !isPlanning) return null;
+
+		items.push({
+			id: "allocating",
+			status: "running",
+			content: (
+				<TimelineRow
+					label={allocations.length > 0 ? "Allocating agents" : "Planning agent allocation"}
+					description={allocations.length > 0 ? allocations.map((a) => a.name).join(", ") : undefined}
+				/>
+			),
+		});
+	} else {
+		subagentList.forEach((agent, index) => {
+			const agentStatus: EventStatus =
+				agent.status === "running"
+					? "running"
+					: agent.status === "completed"
+						? "completed"
+						: agent.status === "failed"
+							? "failed"
+							: "pending";
+
+			items.push({
+				id: agent.id || `agent-${index}`,
+				status: agentStatus,
+				content: (
+					<TimelineRow
+						label={agent.name}
+						description={agent.status === "failed" && agent.error ? agent.error : agent.task}
+						durationSeconds={agent.status === "completed" ? agent.executionTime : undefined}
+						isFailed={agent.status === "failed"}
+					/>
+				),
+			});
+		});
+
+		if (status.isSynthesizing) {
+			items.push({
+				id: "synthesis",
+				status: "running",
+				content: <TimelineRow label="Synthesizing results" />,
+			});
 		}
-		if (isPlanning) {
-			return (
-				<div className="flex items-center gap-2">
-					<Loader2 size={14} className="animate-spin text-gray-400" />
-					<span className="text-sm text-gray-500">Planning agent allocation...</span>
-				</div>
-			);
-		}
-		return null;
 	}
 
-	const items: TimelineItemData[] = subagentList.map((agent, index) => ({
-		id: agent.id || `agent-${index}`,
-		status:
-			agent.status === "running"
-				? "running"
-				: agent.status === "completed"
-					? "completed"
-					: agent.status === "failed"
-						? "failed"
-						: "pending",
-		content: (
-			<div className="flex items-center gap-2 min-w-0 flex-1">
-				<span className="text-sm font-medium">{agent.name}</span>
-				<span className={cn("text-sm flex-1 truncate", agent.status === "failed" ? "text-red-500" : "text-gray-500")}>
-					{agent.status === "failed" && agent.error ? agent.error : agent.task}
-				</span>
-				{agent.status === "completed" && agent.executionTime != null && (
-					<span className="text-xs text-gray-400 shrink-0">{agent.executionTime.toFixed(1)}s</span>
-				)}
-			</div>
-		),
-	}));
-
-	return (
-		<div className="space-y-2">
-			<span className="text-sm text-gray-500">{status.running === 0 ? "Agents:" : "Running agents:"}</span>
-			<Timeline items={items} badgeSize={16} />
-			{status.isSynthesizing && (
-				<div className="flex items-center gap-2">
-					<Sparkle size={14} className="text-gray-500" />
-					<span className="text-sm text-gray-500">Synthesizing results...</span>
-				</div>
-			)}
-		</div>
-	);
-}
-
-function ClaudeSdkChunksRenderer({ chunks }: { chunks: StreamingChunk[] }) {
-	return (
-		<div className="space-y-2">
-			{chunks.map((chunk, index) => {
-				if (chunk.type === "subagent" && chunk.subagentData)
-					return <SubagentPanel key={`subagent-${chunk.subagentData.subagentId}-${index}`} chunk={chunk} />;
-				if (chunk.type === "file_operation" && chunk.fileOperationData)
-					return <FileOperationPreview key={`file-op-${chunk.fileOperationData.toolUseId}-${index}`} chunk={chunk} />;
-				if (chunk.type === "terminal" && chunk.terminalData)
-					return <TerminalOutput key={`terminal-${chunk.terminalData.toolUseId}-${index}`} chunk={chunk} />;
-				if (chunk.type === "search_results" && chunk.searchResultsData)
-					return <SearchResultsView key={`search-${chunk.searchResultsData.toolUseId}-${index}`} chunk={chunk} />;
-				if (chunk.type === "web_operation" && chunk.webOperationData)
-					return <WebOperationPreview key={`web-op-${chunk.webOperationData.toolUseId}-${index}`} chunk={chunk} />;
-				if (chunk.claudeToolData)
-					return <ClaudeToolPreview key={`claude-tool-${chunk.claudeToolData.toolUseId}-${index}`} chunk={chunk} />;
-				return null;
-			})}
-		</div>
-	);
+	return <Timeline items={items} badgeSize={20} />;
 }
 
 export interface ReasoningPanelProps {
@@ -467,7 +426,7 @@ export function ReasoningPanel({
 	const isPlanningAction = lastChunk?.type === "planning";
 	const isParallelMode = hasParallelExecutionChunks(chunks);
 	const waveStatus = isParallelMode ? getWaveExecutionStatus(chunks) : null;
-	const isClaudeSdkMode = hasClaudeSdkChunks(chunks);
+	const hasSubagent = hasSubagentChunks(chunks);
 	const isMultiAgentMode = hasMultiAgentChunks(chunks);
 	const multiAgentStatus = isMultiAgentMode ? getMultiAgentStatus(chunks) : null;
 
@@ -497,27 +456,9 @@ export function ReasoningPanel({
 			if (total > 0) return `Multi-agent execution (${completed}/${total} complete)`;
 		}
 
-		// Claude SDK mode
-		if (isClaudeSdkMode) {
-			if (lastChunk?.type === "subagent" && lastChunk?.subagentData)
-				return `${lastChunk.subagentData.subagentType}: ${lastChunk.subagentData.description}`;
-			if (lastChunk?.type === "file_operation" && lastChunk?.fileOperationData) {
-				const op = lastChunk.fileOperationData.operation;
-				const file = lastChunk.fileOperationData.filePath.split("/").pop();
-				return `${op === "read" ? "Reading" : op === "edit" ? "Editing" : "Writing"} ${file}`;
-			}
-			if (lastChunk?.type === "terminal" && lastChunk?.terminalData) {
-				const cmd = lastChunk.terminalData.command;
-				return cmd.length > 40 ? `$ ${cmd.slice(0, 37)}...` : `$ ${cmd}`;
-			}
-			if (lastChunk?.type === "search_results" && lastChunk?.searchResultsData)
-				return `${lastChunk.searchResultsData.tool}: ${lastChunk.searchResultsData.pattern}`;
-			if (lastChunk?.type === "web_operation" && lastChunk?.webOperationData) {
-				return lastChunk.webOperationData.operation === "search"
-					? `Searching: ${lastChunk.webOperationData.query}`
-					: `Fetching: ${lastChunk.webOperationData.url?.slice(0, 40)}...`;
-			}
-		}
+		// Sub-assistant mode
+		if (hasSubagent && lastChunk?.type === "subagent" && lastChunk?.subagentData)
+			return `${lastChunk.subagentData.subagentType}: ${lastChunk.subagentData.description}`;
 
 		// Parallel mode
 		if (isParallelMode && waveStatus) {
@@ -571,14 +512,7 @@ export function ReasoningPanel({
 	// Mode-specific icon
 	const getIcon = () => {
 		if (isMultiAgentMode) return <Users size={14} />;
-		if (isClaudeSdkMode) {
-			if (lastChunk?.type === "subagent") return <GitBranch size={14} />;
-			if (lastChunk?.type === "file_operation") return <FileText size={14} />;
-			if (lastChunk?.type === "terminal") return <Terminal size={14} />;
-			if (lastChunk?.type === "search_results") return <Search size={14} />;
-			if (lastChunk?.type === "web_operation") return <Globe size={14} />;
-			return <Sparkle size={14} />;
-		}
+		if (hasSubagent) return <GitBranch size={14} />;
 		if (isParallelMode) return <Zap size={14} />;
 		if (isToolAction) return <Wrench size={14} />;
 		if (isPlanningAction) return <ListTodo size={14} />;
@@ -611,10 +545,16 @@ export function ReasoningPanel({
 					...(!isStreaming && { opacity: 0.6 }),
 				}}>
 				{isStreaming && <div style={beamerBarStyle} />}
-				<span className={cn("flex items-center text-gray-500")}>{isStreaming ? getIcon() : <Sparkle size={14} />}</span>
-				<span className={cn("text-sm font-normal text-gray-500 text-[var(--chat-text-subtle)]")}>{getLabel()}</span>
+				<span className="flex items-center text-[var(--chat-text-subtle)]">
+					{isStreaming ? getIcon() : <Sparkle size={14} />}
+				</span>
+				<span className="text-sm font-normal text-[var(--chat-text-subtle)]">
+					{getLabel()}
+				</span>
 				{isStreaming && parseInt(liveElapsed) > 0 && (
-					<span className="text-gray-500 font-normal tabular-nums text-sm">{liveElapsed}s</span>
+					<span className="text-[var(--chat-text-subtle)] font-normal tabular-nums text-sm">
+						{liveElapsed}s
+					</span>
 				)}
 			</div>
 
@@ -623,8 +563,6 @@ export function ReasoningPanel({
 					{isStreaming ? (
 						isMultiAgentMode ? (
 							<MultiAgentStatusPanel chunks={chunks} />
-						) : isClaudeSdkMode ? (
-							<ClaudeSdkChunksRenderer chunks={chunks} />
 						) : showPlanTimeline && activePlan ? (
 							<PlanTimeline plan={activePlan} streamingChunks={chunks} />
 						) : aggregatedPlanData?.subtasks?.length === 1 ? (

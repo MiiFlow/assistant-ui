@@ -3,9 +3,14 @@ import { EventContent } from "./EventContent";
 import type { Event, EventStatus, StreamingChunk } from "../types";
 
 /**
- * Internal tools that should be hidden from users
+ * Internal tools that should be hidden from users.
+ *
+ * `dispatch_assistant` is special: the call IS user-relevant, but it's
+ * rendered as a nested SubagentPanel via the dedicated "subagent" event
+ * type below. Hiding the raw tool-call chip avoids duplicate rendering of
+ * the same dispatch in two visual styles.
  */
-const INTERNAL_TOOLS = ["create_plan", "tool_search", "unknown"];
+const INTERNAL_TOOLS = ["create_plan", "tool_search", "unknown", "dispatch_assistant"];
 
 function isInternalTool(toolName?: string): boolean {
   if (!toolName) return false;
@@ -66,6 +71,27 @@ export function convertChunkToEvent(chunk: StreamingChunk, index: number): Event
       status,
       toolName: chunk.toolName || "Unknown Tool",
       toolDescription: chunk.toolDescription,
+    };
+  }
+
+  // Sub-assistant dispatch — render the SubagentPanel inline in the
+  // timeline at the position the dispatch was issued. Skip if subagentData
+  // is missing (defensive: should never happen for well-formed chunks).
+  if (chunk.type === "subagent" && chunk.subagentData) {
+    const status: EventStatus =
+      chunk.subagentData.status === "running"
+        ? "running"
+        : chunk.subagentData.status === "completed"
+          ? "completed"
+          : chunk.subagentData.status === "failed"
+            ? "failed"
+            : "pending";
+
+    return {
+      id: `subagent-${chunk.subagentData.subagentId}-${index}`,
+      type: "subagent",
+      status,
+      subagentData: chunk.subagentData,
     };
   }
 

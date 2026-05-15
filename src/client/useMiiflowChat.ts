@@ -12,12 +12,7 @@ import type {
   StreamingChunk,
   ClarificationData,
   ProgressData,
-  FileOperationChunkData,
-  TerminalChunkData,
-  SearchResultsChunkData,
-  WebOperationChunkData,
   SubagentChunkData,
-  ClaudeToolChunkData,
 } from "../types";
 import type { BrandingData } from "../types/branding";
 import type {
@@ -114,14 +109,8 @@ type ChunkType =
   | "subagent_complete"
   | "subagent_failed"
   | "synthesis"
-  // Claude SDK
-  | "claude_text"
-  | "claude_thinking"
-  | "subagent"
-  | "file_operation"
-  | "terminal"
-  | "search_results"
-  | "web_operation";
+  // Sub-assistant (nested rendering)
+  | "subagent";
 
 interface AccumulatedChunk {
   type: string;
@@ -152,15 +141,9 @@ interface AccumulatedChunk {
   maxReplans?: number;
   failureReason?: string;
   progress?: ProgressData;
-  // Claude SDK fields
-  orchestrator?: string;
   toolUseId?: string;
+  // Sub-assistant nested rendering
   subagentData?: SubagentChunkData;
-  fileOperationData?: FileOperationChunkData;
-  terminalData?: TerminalChunkData;
-  searchResultsData?: SearchResultsChunkData;
-  webOperationData?: WebOperationChunkData;
-  claudeToolData?: ClaudeToolChunkData;
 }
 
 // ============================================================================
@@ -785,295 +768,99 @@ async function parseSSEStream(
           }
 
           updateStreamingMessage();
-        }
-        // ============================================
-        // Claude SDK Native Event Handlers (Gap B)
-        // ============================================
-        else if (parsed.type === "claude_text") {
-          // Claude SDK text chunk — accumulate into assistant content
-          assistantContent += parsed.chunk || "";
+          updateStreamingMessage();
+        } else if (parsed.type === "subagent_dispatch") {
+          // Sub-assistant dispatch streaming. The backend fires four sub-events
+          // per dispatched child (start, progress*, complete | failed). For a
+          // depth-1 dispatch, the path is just [subagent_id] and the chunk
+          // lives at the top of `chunks[]`. For nested dispatches, the path
+          // is [root_child_id, ..., this_id] — we walk it to place the chunk
+          // inside the correct ancestor's `nestedChunks` array.
+          const subEvent: string = parsed.sub_event || "";
+          const path: string[] =
+            Array.isArray(parsed.subagent_path) && parsed.subagent_path.length > 0
+              ? (parsed.subagent_path as string[])
+              : [parsed.subagent_id || ""];
 
-          const existingTextChunk = chunks.find(
-            (c) => c.type === "claude_text"
-          );
-          if (existingTextChunk) {
-            existingTextChunk.content += parsed.chunk || "";
-          } else {
-            chunks.push({
-              type: "claude_text",
-              content: parsed.chunk || "",
-              orchestrator: "claude_agent_sdk",
-            } as AccumulatedChunk);
+          // Walk path. Each step either finds the existing chunk for that
+          // segment's id, or (only for the final segment on a "start" event)
+          // creates a new one.
+          let container: AccumulatedChunk[] = chunks;
+          let targetChunk: AccumulatedChunk | undefined;
+          let pathBroken = false;
+
+          for (let i = 0; i < path.length; i++) {
+            const segmentId = path[i];
+            const idx = container.findIndex(
+              (c) =>
+                c.type === "subagent" &&
+                c.subagentData?.subagentId === segmentId
+            );
+
+            if (i === path.length - 1) {
+              // Final segment: this is the target.
+              if (idx >= 0) {
+                targetChunk = container[idx];
+              } else if (subEvent === "start") {
+                const newChunk: AccumulatedChunk = {
+                  type: "subagent",
+                  content: "",
+                  subagentData: {
+                    subagentId: segmentId,
+                    subagentType: parsed.handle || "",
+                    description:
+                      parsed.description ||
+                      parsed.name ||
+                      parsed.handle ||
+                      "",
+                    status: "running",
+                    result: "",
+                    nestedChunks: [],
+                  },
+                };
+                container.push(newChunk);
+                targetChunk = newChunk;
+              } else {
+                // progress/complete/failed for an unknown subagent_id — the
+                // start event was probably dropped. Bail rather than create a
+                // ghost chunk.
+                pathBroken = true;
+              }
+            } else {
+              // Intermediate segment: must already exist.
+              if (idx < 0) {
+                pathBroken = true;
+                break;
+              }
+              // Descend into the intermediate's nestedChunks.
+              const inner = container[idx].subagentData;
+              if (!inner) {
+                pathBroken = true;
+                break;
+              }
+              container = inner.nestedChunks as AccumulatedChunk[];
+            }
           }
-          updateStreamingMessage();
-        } else if (parsed.type === "claude_thinking") {
-          // Claude SDK extended thinking
-          chunks.push({
-            type: "claude_thinking",
-            content: parsed.content || "",
-            orchestrator: "claude_agent_sdk",
-          } as AccumulatedChunk);
-          updateStreamingMessage();
-        } else if (parsed.type === "claude_file_read") {
-          const fileOpData: FileOperationChunkData = {
-            toolUseId: parsed.tool_use_id,
-            operation: "read",
-            filePath: parsed.file_path,
-            status: parsed.status,
-            content: parsed.content,
-            totalLines: parsed.total_lines,
-            language: parsed.language,
-            error: parsed.error,
-            durationMs: parsed.duration_ms,
-          };
-          const existingIdx = chunks.findIndex(
-            (c) =>
-              c.type === "file_operation" &&
-              c.toolUseId === parsed.tool_use_id
-          );
-          if (existingIdx >= 0) {
-            chunks[existingIdx].fileOperationData = fileOpData;
-          } else {
-            chunks.push({
-              type: "file_operation",
-              content: "",
-              toolUseId: parsed.tool_use_id,
-              fileOperationData: fileOpData,
-              orchestrator: "claude_agent_sdk",
-            } as AccumulatedChunk);
-          }
-          updateStreamingMessage();
-        } else if (parsed.type === "claude_file_edit") {
-          const fileEditData: FileOperationChunkData = {
-            toolUseId: parsed.tool_use_id,
-            operation: "edit",
-            filePath: parsed.file_path,
-            status: parsed.status,
-            oldString: parsed.old_string,
-            newString: parsed.new_string,
-            error: parsed.error,
-            durationMs: parsed.duration_ms,
-          };
-          const existingIdx = chunks.findIndex(
-            (c) =>
-              c.type === "file_operation" &&
-              c.toolUseId === parsed.tool_use_id
-          );
-          if (existingIdx >= 0) {
-            chunks[existingIdx].fileOperationData = fileEditData;
-          } else {
-            chunks.push({
-              type: "file_operation",
-              content: "",
-              toolUseId: parsed.tool_use_id,
-              fileOperationData: fileEditData,
-              orchestrator: "claude_agent_sdk",
-            } as AccumulatedChunk);
-          }
-          updateStreamingMessage();
-        } else if (parsed.type === "claude_file_write") {
-          const fileWriteData: FileOperationChunkData = {
-            toolUseId: parsed.tool_use_id,
-            operation: "write",
-            filePath: parsed.file_path,
-            status: parsed.status,
-            error: parsed.error,
-            durationMs: parsed.duration_ms,
-          };
-          const existingIdx = chunks.findIndex(
-            (c) =>
-              c.type === "file_operation" &&
-              c.toolUseId === parsed.tool_use_id
-          );
-          if (existingIdx >= 0) {
-            chunks[existingIdx].fileOperationData = fileWriteData;
-          } else {
-            chunks.push({
-              type: "file_operation",
-              content: "",
-              toolUseId: parsed.tool_use_id,
-              fileOperationData: fileWriteData,
-              orchestrator: "claude_agent_sdk",
-            } as AccumulatedChunk);
-          }
-          updateStreamingMessage();
-        } else if (parsed.type === "claude_bash") {
-          const termData: TerminalChunkData = {
-            toolUseId: parsed.tool_use_id,
-            command: parsed.command,
-            description: parsed.description,
-            status: parsed.status,
-            stdout: parsed.stdout,
-            stderr: parsed.stderr,
-            exitCode: parsed.exit_code,
-            durationMs: parsed.duration_ms,
-          };
-          const existingIdx = chunks.findIndex(
-            (c) =>
-              c.type === "terminal" && c.toolUseId === parsed.tool_use_id
-          );
-          if (existingIdx >= 0) {
-            chunks[existingIdx].terminalData = termData;
-          } else {
-            chunks.push({
-              type: "terminal",
-              content: "",
-              toolUseId: parsed.tool_use_id,
-              terminalData: termData,
-              orchestrator: "claude_agent_sdk",
-            } as AccumulatedChunk);
-          }
-          updateStreamingMessage();
-        } else if (parsed.type === "claude_search") {
-          const searchData: SearchResultsChunkData = {
-            toolUseId: parsed.tool_use_id,
-            tool: parsed.tool,
-            pattern: parsed.pattern,
-            path: parsed.path,
-            status: parsed.status,
-            results: (parsed.results || []).map((r: any) => ({
-              filePath: r.file_path,
-              lineNumber: r.line_number,
-              snippet: r.snippet,
-            })),
-            totalCount: parsed.total_count || 0,
-            error: parsed.error,
-            durationMs: parsed.duration_ms,
-          };
-          const existingIdx = chunks.findIndex(
-            (c) =>
-              c.type === "search_results" &&
-              c.toolUseId === parsed.tool_use_id
-          );
-          if (existingIdx >= 0) {
-            chunks[existingIdx].searchResultsData = searchData;
-          } else {
-            chunks.push({
-              type: "search_results",
-              content: "",
-              toolUseId: parsed.tool_use_id,
-              searchResultsData: searchData,
-              orchestrator: "claude_agent_sdk",
-            } as AccumulatedChunk);
-          }
-          updateStreamingMessage();
-        } else if (
-          parsed.type === "claude_web_search" ||
-          parsed.type === "claude_web_fetch"
-        ) {
-          const webOpData: WebOperationChunkData = {
-            toolUseId: parsed.tool_use_id,
-            operation:
-              parsed.type === "claude_web_search" ? "search" : "fetch",
-            query: parsed.query,
-            url: parsed.url,
-            status: parsed.status,
-            results: parsed.results,
-            content: parsed.content,
-            error: parsed.error,
-            durationMs: parsed.duration_ms,
-          };
-          const existingIdx = chunks.findIndex(
-            (c) =>
-              c.type === "web_operation" &&
-              c.toolUseId === parsed.tool_use_id
-          );
-          if (existingIdx >= 0) {
-            chunks[existingIdx].webOperationData = webOpData;
-          } else {
-            chunks.push({
-              type: "web_operation",
-              content: "",
-              toolUseId: parsed.tool_use_id,
-              webOperationData: webOpData,
-              orchestrator: "claude_agent_sdk",
-            } as AccumulatedChunk);
-          }
-          updateStreamingMessage();
-        } else if (parsed.type === "claude_subagent_start") {
-          const subData: SubagentChunkData = {
-            subagentId: parsed.subagent_id,
-            subagentType: parsed.subagent_type,
-            description: parsed.description,
-            prompt: parsed.prompt,
-            status: "running",
-            nestedChunks: [],
-          };
-          chunks.push({
-            type: "subagent",
-            content: "",
-            toolUseId: parsed.parent_tool_use_id,
-            subagentData: subData,
-            orchestrator: "claude_agent_sdk",
-          } as AccumulatedChunk);
-          updateStreamingMessage();
-        } else if (parsed.type === "claude_subagent_chunk") {
-          // Append to existing subagent's nested chunks
-          const subagentIdx = chunks.findIndex(
-            (c) =>
-              c.type === "subagent" &&
-              c.subagentData?.subagentId === parsed.subagent_id
-          );
-          if (subagentIdx >= 0 && chunks[subagentIdx].subagentData) {
-            chunks[subagentIdx].subagentData!.nestedChunks.push({
-              type: parsed.is_tool ? "tool" : "answer",
-              content: parsed.chunk || "",
-              toolName: parsed.tool_name,
-              orchestrator: "claude_agent_sdk",
-            } as unknown as StreamingChunk);
-          }
-          updateStreamingMessage();
-        } else if (parsed.type === "claude_subagent_complete") {
-          // Update existing subagent chunk with completion info
-          const subagentIdx = chunks.findIndex(
-            (c) =>
-              c.type === "subagent" &&
-              c.subagentData?.subagentId === parsed.subagent_id
-          );
-          if (subagentIdx >= 0 && chunks[subagentIdx].subagentData) {
-            chunks[subagentIdx].subagentData!.status = "completed";
-            chunks[subagentIdx].subagentData!.result = parsed.result;
-            chunks[subagentIdx].subagentData!.durationMs =
-              parsed.duration_ms;
-          }
-          updateStreamingMessage();
-        } else if (
-          parsed.type === "claude_tool_use" ||
-          parsed.type === "claude_tool_result"
-        ) {
-          // Generic Claude tool (MCP tools, etc.)
-          const claudeToolData: ClaudeToolChunkData = {
-            toolUseId: parsed.tool_use_id,
-            toolName: parsed.tool_name,
-            toolDescription: parsed.tool_description,
-            toolInput: parsed.tool_input,
-            status:
-              parsed.type === "claude_tool_use"
-                ? "pending"
-                : parsed.is_error
-                  ? "error"
-                  : "completed",
-            content: parsed.content,
-            isError: parsed.is_error,
-            durationMs: parsed.duration_ms,
-          };
-          const existingIdx = chunks.findIndex(
-            (c) => c.claudeToolData?.toolUseId === parsed.tool_use_id
-          );
-          if (existingIdx >= 0) {
-            chunks[existingIdx].claudeToolData = claudeToolData;
-          } else {
-            chunks.push({
-              type: "tool",
-              content: parsed.content || "",
-              toolUseId: parsed.tool_use_id,
-              toolName: parsed.tool_name,
-              toolDescription: parsed.tool_description,
-              status:
-                claudeToolData.status === "pending" ? "planned" : "completed",
-              claudeToolData,
-              orchestrator: "claude_agent_sdk",
-            } as AccumulatedChunk);
+
+          if (!pathBroken && targetChunk?.subagentData) {
+            const data = targetChunk.subagentData;
+            if (subEvent === "progress") {
+              const chunk = (parsed.chunk as string) || "";
+              data.result = (data.result || "") + chunk;
+            } else if (subEvent === "complete") {
+              data.status = "completed";
+              if (parsed.result) data.result = parsed.result as string;
+              if (parsed.duration_ms != null)
+                data.durationMs = parsed.duration_ms as number;
+            } else if (subEvent === "failed") {
+              data.status = "failed";
+              if (parsed.error)
+                data.result =
+                  (data.result || "") + `\n\nError: ${parsed.error}`;
+              else if (parsed.result) data.result = parsed.result as string;
+              if (parsed.duration_ms != null)
+                data.durationMs = parsed.duration_ms as number;
+            }
           }
           updateStreamingMessage();
         } else if (parsed.type === "clarification_needed") {

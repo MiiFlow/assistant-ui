@@ -87,7 +87,11 @@ const kpiMetricSchema = z.object({
 
 export const kpiVisualizationSchema = z.object({
 	metrics: z.array(kpiMetricSchema),
-	layout: z.enum(["row", "grid"]).nullish(),
+	// Must stay in sync with the backend tool schema (server/assistant/
+	// visualization/tools.py render_kpi.layout enum) and the KpiVisualization
+	// renderer's branch for "bento". Validator-side drift here silently
+	// flags valid backend payloads as "Invalid kpi visualization data".
+	layout: z.enum(["row", "grid", "bento"]).nullish(),
 });
 
 // ---------------------------------------------------------------------------

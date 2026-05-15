@@ -2,7 +2,9 @@ import { useEffect, useRef } from "react";
 import { Wrench } from "lucide-react";
 import { cn } from "../utils/cn";
 import { injectBeamerKeyframes, beamerBarStyle } from "../utils/beamer";
+import { convertChunkToEvent } from "./EventTimeline";
 import { MarkdownContent } from "./MarkdownContent";
+import { TimelineRow } from "./TimelineRow";
 import type { Event } from "../types";
 
 interface EventContentProps {
@@ -27,12 +29,12 @@ export function EventContent({ event, className, isRunning }: EventContentProps)
       <div
         ref={containerRef}
         className={cn(
-          "p-1 rounded transition-colors",
+          "p-1 rounded transition-colors min-w-0 max-w-full",
           "bg-black/[0.01] hover:bg-black/[0.02]",
           className
         )}
       >
-        <div className="text-[var(--chat-text-subtle)] leading-relaxed">
+        <div className="text-[var(--chat-text-subtle)] leading-relaxed min-w-0 max-w-full">
           <MarkdownContent className="text-[14px]">{event.content}</MarkdownContent>
         </div>
       </div>
@@ -44,12 +46,12 @@ export function EventContent({ event, className, isRunning }: EventContentProps)
       <div
         ref={containerRef}
         className={cn(
-          "p-1 rounded transition-colors",
+          "p-1 rounded transition-colors min-w-0 max-w-full",
           "bg-black/[0.01] hover:bg-black/[0.02]",
           className
         )}
       >
-        <div className="text-[var(--chat-text-subtle)] leading-relaxed">
+        <div className="text-[var(--chat-text-subtle)] leading-relaxed min-w-0 max-w-full">
           <MarkdownContent className="text-[14px]">{event.content}</MarkdownContent>
         </div>
       </div>
@@ -66,14 +68,17 @@ export function EventContent({ event, className, isRunning }: EventContentProps)
           overflow: "hidden",
           borderRadius: 4,
           ...(isRunning && {
-            backgroundColor: "rgba(0, 0, 0, 0.02)",
+            backgroundColor: "var(--chat-message-bg)",
             padding: "2px 4px",
           }),
         }}
       >
         {isRunning && <div style={beamerBarStyle} />}
-        <Wrench size={14} className="text-black/50 relative z-10 shrink-0" />
-        <span className="text-[14px] text-black/65 relative z-10">
+        <Wrench
+          size={14}
+          className="text-[var(--chat-text-subtle)] relative z-10 shrink-0"
+        />
+        <span className="text-[14px] text-[var(--chat-text)] relative z-10">
           {event.toolDescription || event.toolName}
         </span>
       </div>
@@ -82,34 +87,60 @@ export function EventContent({ event, className, isRunning }: EventContentProps)
 
   if (event.type === "observation") {
     const success = event.success !== false;
+    const accentVar = success ? "--chat-secondary" : "--chat-warning";
 
     return (
       <div
         ref={containerRef}
         className={cn(
           "px-3 py-1.5 rounded max-w-full overflow-auto",
-          success
-            ? "bg-green-50 border-l-[3px] border-green-400"
-            : "bg-yellow-50 border-l-[3px] border-yellow-400",
           className
         )}
+        style={{
+          borderLeft: `3px solid var(${accentVar})`,
+          backgroundColor: `color-mix(in srgb, var(${accentVar}) 6%, transparent)`,
+        }}
       >
         <span
-          className={cn(
-            "text-xs font-semibold uppercase tracking-wide block mb-1",
-            success ? "text-green-700" : "text-yellow-700"
-          )}
+          className="text-xs font-semibold uppercase tracking-wide block mb-1"
+          style={{ color: `var(${accentVar})` }}
         >
           {event.toolName} Result
         </span>
-        <div
-          className={cn(
-            success ? "text-green-900" : "text-yellow-900"
-          )}
-        >
+        <div className="text-[var(--chat-text)]">
           <MarkdownContent className="text-[14px]">{event.content}</MarkdownContent>
         </div>
       </div>
+    );
+  }
+
+  if (event.type === "subagent") {
+    const data = event.subagentData;
+    const nestedEvents: Event[] = (data.nestedChunks ?? [])
+      .map((c, i) => convertChunkToEvent(c, i))
+      .filter((e): e is Event => e !== null);
+    if (data.result && data.result.trim().length > 0) {
+      nestedEvents.push({
+        id: `result-${data.subagentId}`,
+        type: "thinking",
+        status: data.status === "failed" ? "failed" : "completed",
+        content: data.result,
+      });
+    }
+    const humanLabel = data.subagentType
+      .split(/[_-]+/)
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+    return (
+      <TimelineRow
+        label={humanLabel || "Sub-assistant"}
+        description={data.description || undefined}
+        durationSeconds={data.durationMs != null ? data.durationMs / 1000 : undefined}
+        isFailed={data.status === "failed"}
+        defaultExpanded={data.status === "running"}
+        nestedEvents={nestedEvents}
+      />
     );
   }
 

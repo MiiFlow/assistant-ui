@@ -68,8 +68,8 @@ export function Timeline({ items, badgeSize = 20, className }: TimelineProps) {
                         height: `calc(100% - ${badgeSize}px + 4px)`,
                         background: `repeating-linear-gradient(
                           180deg,
-                          rgb(99, 102, 241) 0px,
-                          rgb(99, 102, 241) 4px,
+                          var(--chat-primary) 0px,
+                          var(--chat-primary) 4px,
                           transparent 4px,
                           transparent 8px
                         )`,
@@ -105,7 +105,7 @@ export function Timeline({ items, badgeSize = 20, className }: TimelineProps) {
                   overflow: "hidden",
                   borderRadius: 4,
                   ...(item.status === "running" && {
-                    backgroundColor: "rgba(0, 0, 0, 0.02)",
+                    backgroundColor: "var(--chat-message-bg)",
                     padding: "2px 4px",
                   }),
                 }}
@@ -179,7 +179,7 @@ export function TimelineItem({
           ) : (
             // Static line for other states
             <div
-              className="absolute bg-[var(--chat-border)] opacity-30"
+              className="absolute bg-[var(--chat-border)]"
               style={{
                 left: badgeSize / 2 - 0.5,
                 top: badgeSize + 4,

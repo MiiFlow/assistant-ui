@@ -59,14 +59,8 @@ export type ChunkType =
   | "media"           // Inline media from image generation tools
   // Artifact (downloadable PDF / HTML produced by a tool)
   | "artifact"        // Persisted artifact with side-panel viewer
-  // Claude SDK native chunk types
+  // Sub-assistant rendering (nested SubagentPanel)
   | "subagent"        // Nested subagent execution
-  | "file_operation"  // Read/Write/Edit file operations
-  | "terminal"        // Bash command execution
-  | "search_results"  // Glob/Grep search results
-  | "web_operation"   // WebSearch/WebFetch operations
-  | "claude_text"     // Claude SDK text output
-  | "claude_thinking" // Claude SDK extended thinking
   // Suggested action (inline recommendation card)
   | "suggested_action_created"; // Agent recommended an action
 
@@ -149,14 +143,8 @@ export interface SubagentInfo {
 }
 
 // ============================================================================
-// Claude SDK Native Chunk Types
+// Sub-Assistant Chunk Type (nested rendering)
 // ============================================================================
-
-export interface SearchResultItem {
-  filePath: string;
-  lineNumber?: number;
-  snippet?: string;
-}
 
 export interface SubagentChunkData {
   subagentId: string;
@@ -167,66 +155,6 @@ export interface SubagentChunkData {
   result?: string;
   durationMs?: number;
   nestedChunks: StreamingChunk[];
-}
-
-export interface FileOperationChunkData {
-  toolUseId: string;
-  operation: "read" | "write" | "edit";
-  filePath: string;
-  status: "pending" | "completed" | "error";
-  content?: string;
-  totalLines?: number;
-  language?: string;
-  oldString?: string;
-  newString?: string;
-  error?: string;
-  durationMs?: number;
-}
-
-export interface TerminalChunkData {
-  toolUseId: string;
-  command: string;
-  description?: string;
-  status: "running" | "completed" | "failed";
-  stdout?: string;
-  stderr?: string;
-  exitCode?: number;
-  durationMs?: number;
-}
-
-export interface SearchResultsChunkData {
-  toolUseId: string;
-  tool: "glob" | "grep";
-  pattern: string;
-  path?: string;
-  status: "pending" | "completed" | "error";
-  results: SearchResultItem[];
-  totalCount: number;
-  error?: string;
-  durationMs?: number;
-}
-
-export interface WebOperationChunkData {
-  toolUseId: string;
-  operation: "search" | "fetch";
-  query?: string;
-  url?: string;
-  status: "pending" | "completed" | "error";
-  results?: string;
-  content?: string;
-  error?: string;
-  durationMs?: number;
-}
-
-export interface ClaudeToolChunkData {
-  toolUseId: string;
-  toolName: string;
-  toolDescription?: string;
-  toolInput?: Record<string, unknown>;
-  status: "pending" | "completed" | "error";
-  content?: string;
-  isError?: boolean;
-  durationMs?: number;
 }
 
 export interface ClarificationData {
@@ -336,11 +264,13 @@ export interface KpiMetric {
   changeLabel?: string;
   sparkline?: number[];
   color?: string;
+  // Bento layout only: marks the hero card. If unset, the first metric is hero.
+  prominence?: "primary" | "secondary";
 }
 
 export interface KpiVisualizationData {
   metrics: KpiMetric[];
-  layout?: "row" | "grid";
+  layout?: "row" | "grid" | "bento";
 }
 
 export interface CodePreviewVisualizationData {
@@ -516,16 +446,11 @@ export interface StreamingChunk {
   isSynthesis?: boolean;
 
   // Orchestrator context (for nested execution)
-  orchestrator?: "react" | "plan_execute" | "claude_agent_sdk";
+  orchestrator?: "react" | "plan_execute";
   parentSubtaskId?: number;
 
-  // Claude SDK Native Fields
+  // Sub-assistant nested rendering
   subagentData?: SubagentChunkData;
-  fileOperationData?: FileOperationChunkData;
-  terminalData?: TerminalChunkData;
-  searchResultsData?: SearchResultsChunkData;
-  webOperationData?: WebOperationChunkData;
-  claudeToolData?: ClaudeToolChunkData;
   clarificationData?: ClarificationData;
   toolApprovalData?: ToolApprovalData;
   visualizationData?: VisualizationChunkData;
@@ -544,7 +469,7 @@ export interface StreamingMessage {
   chunks?: StreamingChunk[];
 
   // Plan execution metadata
-  orchestratorType?: "react" | "plan_execute" | "claude_agent_sdk";
+  orchestratorType?: "react" | "plan_execute";
   executionPlan?: PlanData;
 
   // Parallel execution metadata
@@ -555,7 +480,7 @@ export interface StreamingMessage {
   // Follow-up actions
   suggestedActions?: FollowupAction[];
 
-  // Claude SDK specific
+  // Sub-assistant tracking
   activeSubagents?: Map<string, SubagentChunkData>;
 
   // Pending clarification
@@ -590,7 +515,13 @@ export interface FollowupAction {
 
 export type EventStatus = "pending" | "running" | "completed" | "failed";
 
-export type EventType = "thinking" | "planning" | "tool" | "observation" | "subtask";
+export type EventType =
+  | "thinking"
+  | "planning"
+  | "tool"
+  | "observation"
+  | "subtask"
+  | "subagent";
 
 export interface BaseEvent {
   id: string;
@@ -634,7 +565,24 @@ export interface SubtaskEvent extends BaseEvent {
   children?: Event[];
 }
 
-export type Event = ThinkingEvent | PlanningEvent | ToolEvent | ObservationEvent | SubtaskEvent;
+/**
+ * Sub-assistant dispatch event. Rendered inline in the parent's reasoning
+ * timeline at the position the dispatch was issued. Carries the full
+ * SubagentChunkData so the renderer can show name, description, status,
+ * and the streaming result without a separate lookup.
+ */
+export interface SubagentEvent extends BaseEvent {
+  type: "subagent";
+  subagentData: SubagentChunkData;
+}
+
+export type Event =
+  | ThinkingEvent
+  | PlanningEvent
+  | ToolEvent
+  | ObservationEvent
+  | SubtaskEvent
+  | SubagentEvent;
 
 // ============================================================================
 // Visualization Action Event (interaction callbacks)

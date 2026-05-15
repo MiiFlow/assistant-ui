@@ -1,14 +1,14 @@
-export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-CW1S9uQw.js';
+export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-BFSYHgT0.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode, ComponentType } from 'react';
-import { A as Attachment, S as SourceReference } from '../message-BrHFdwb2.js';
-export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-BrHFdwb2.js';
-import { S as StreamingChunk, P as PlanData, C as ClarificationData, T as ToolApprovalData, V as VisualizationChunkData, d as VisualizationActionEvent, M as MediaChunkData, e as ChartVisualizationData, f as VisualizationConfig, g as TableVisualizationData, h as CardVisualizationData, K as KpiVisualizationData, i as CodePreviewVisualizationData, F as FormVisualizationData, A as ArtifactChunkData, E as Event, j as EventStatus } from '../streaming-DURrv9_E.js';
-export { k as ArtifactStatus, l as ChunkType, m as ClaudeToolChunkData, n as EventType, o as FileOperationChunkData, p as FollowupAction, O as ObservationEvent, q as ParallelSubtaskData, r as PlanningEvent, s as ProgressData, t as SearchResultsChunkData, u as StreamingMessage, v as SubTaskData, w as SubagentChunkData, x as SubagentInfo, y as SubtaskEvent, z as TerminalChunkData, B as ThinkingEvent, D as ToolEvent, G as VisualizationType, W as WaveData, H as WebOperationChunkData } from '../streaming-DURrv9_E.js';
+import { A as Attachment, S as SourceReference } from '../message-B23NroH9.js';
+export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-B23NroH9.js';
+import { S as StreamingChunk, P as PlanData, C as ClarificationData, T as ToolApprovalData, V as VisualizationChunkData, d as VisualizationActionEvent, M as MediaChunkData, e as ChartVisualizationData, f as VisualizationConfig, g as TableVisualizationData, h as CardVisualizationData, K as KpiVisualizationData, i as CodePreviewVisualizationData, F as FormVisualizationData, A as ArtifactChunkData, E as Event, j as EventStatus } from '../streaming-uFcHaOgc.js';
+export { k as ArtifactStatus, l as ChunkType, m as EventType, n as FollowupAction, O as ObservationEvent, o as ParallelSubtaskData, p as PlanningEvent, q as ProgressData, r as StreamingMessage, s as SubTaskData, t as SubagentChunkData, u as SubagentInfo, v as SubtaskEvent, w as ThinkingEvent, x as ToolEvent, y as VisualizationType, W as WaveData } from '../streaming-uFcHaOgc.js';
 import { z, ZodSchema } from 'zod';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
 export { B as BrandingData } from '../branding-Dz09eSZs.js';
-export { u as useComposer, g as useMessage } from '../avatar-C13xc3tA.js';
+export { u as useComposer, g as useMessage } from '../avatar-BmCyUMw7.js';
 import '../types-Du00UBst.js';
 
 interface LoadingDotsProps {
@@ -193,34 +193,15 @@ interface InlineCitationProps {
 }
 declare function InlineCitation({ index, source }: InlineCitationProps): react_jsx_runtime.JSX.Element;
 
-interface ClaudeToolPreviewProps {
-    chunk: StreamingChunk;
-}
-declare function ClaudeToolPreview({ chunk }: ClaudeToolPreviewProps): react_jsx_runtime.JSX.Element | null;
-
-interface TerminalOutputProps {
-    chunk: StreamingChunk;
-}
-declare function TerminalOutput({ chunk }: TerminalOutputProps): react_jsx_runtime.JSX.Element | null;
-
-interface FileOperationPreviewProps {
-    chunk: StreamingChunk;
-}
-declare function FileOperationPreview({ chunk }: FileOperationPreviewProps): react_jsx_runtime.JSX.Element | null;
-
-interface SearchResultsViewProps {
-    chunk: StreamingChunk;
-}
-declare function SearchResultsView({ chunk }: SearchResultsViewProps): react_jsx_runtime.JSX.Element | null;
-
-interface WebOperationPreviewProps {
-    chunk: StreamingChunk;
-}
-declare function WebOperationPreview({ chunk }: WebOperationPreviewProps): react_jsx_runtime.JSX.Element | null;
-
 interface SubagentPanelProps {
     chunk: StreamingChunk;
 }
+/**
+ * Renders a single sub-assistant dispatch as one row in a `Timeline` —
+ * label + description + duration + chevron — matching plan subtasks and
+ * multi-agent rows. Nested chunks (thinking/tool/observation/sub-assistant)
+ * render as an indented `EventTimeline` underneath.
+ */
 declare function SubagentPanel({ chunk }: SubagentPanelProps): react_jsx_runtime.JSX.Element | null;
 
 declare const chartVisualizationSchema: z.ZodObject<{
@@ -327,6 +308,7 @@ declare const kpiVisualizationSchema: z.ZodObject<{
     layout: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
         row: "row";
         grid: "grid";
+        bento: "bento";
     }>>>;
 }, z.core.$strip>;
 declare const codePreviewVisualizationSchema: z.ZodObject<{
@@ -555,11 +537,16 @@ interface StatusBadgeProps {
     className?: string;
 }
 /**
- * Circular status badge with magical animations
- * - Pending: Dashed circle (muted)
- * - Running: Glowing orb with pulse effect
- * - Completed: Green check with pop + flash animation
- * - Failed: Red X
+ * Circular status badge driven by the chat-ui design tokens.
+ *
+ * - Pending: dashed circle (subtle)
+ * - Running: solid primary-fill dot with a quietly spinning loader
+ * - Completed: secondary-tinted check
+ * - Failed: error-tinted X
+ *
+ * Intentionally restrained — one shape per state, one motion per state.
+ * No gradient, no glow ring, no pulse: the parent timeline already
+ * conveys flow with the connector line and the optional row beamer.
  */
 declare function StatusBadge({ status, size, className }: StatusBadgeProps): react_jsx_runtime.JSX.Element;
 
@@ -590,4 +577,30 @@ interface TimelineItemProps {
  */
 declare function TimelineItem({ status, isLast, badgeSize, children, className, }: TimelineItemProps): react_jsx_runtime.JSX.Element;
 
-export { type ApprovalButtonSlotProps, type ApprovalChatInputSlotProps, ArtifactChunkData, type ArtifactEntry, ArtifactInlineCard, type ArtifactInlineCardProps, ArtifactList, type ArtifactListProps, Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, ClaudeToolPreview, type ClaudeToolPreviewProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FileOperationPreview, type FileOperationPreviewProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SearchResultsView, type SearchResultsViewProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TerminalOutput, type TerminalOutputProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, ToolApprovalPanel, type ToolApprovalPanelProps, type ToolApprovalSlots, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, WebOperationPreview, type WebOperationPreviewProps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, formVisualizationSchema, getArtifact, getRegisteredArtifactTypes, getRegisteredTypes, getVisualization, kpiVisualizationSchema, registerArtifact, registerVisualization, tableVisualizationSchema };
+interface TimelineRowProps {
+    /** Primary label — subtask description, agent name, or humanized handle. */
+    label: string;
+    /** Secondary text — task summary, self-description, or error message. */
+    description?: string;
+    /** Duration in seconds. Rendered right-aligned with tabular numerals. */
+    durationSeconds?: number;
+    /** Apply failed-state coloring to label/description. */
+    isFailed?: boolean;
+    /** Auto-expand the row when first rendered (e.g. when running). */
+    defaultExpanded?: boolean;
+    /** Nested events rendered in an indented body when expanded. */
+    nestedEvents?: Event[];
+    /** When true, the chevron is suppressed (used for non-expandable rows). */
+    hideChevron?: boolean;
+}
+/**
+ * Shared row content used by every reasoning-panel timeline:
+ * plan subtasks, multi-agent subagents, and sub-assistant dispatches.
+ *
+ * The leading status badge and connector are provided by the parent
+ * `Timeline`; this component only owns the label/description/duration row
+ * and the nested timeline that expands beneath it.
+ */
+declare function TimelineRow({ label, description, durationSeconds, isFailed, defaultExpanded, nestedEvents, hideChevron, }: TimelineRowProps): react_jsx_runtime.JSX.Element;
+
+export { type ApprovalButtonSlotProps, type ApprovalChatInputSlotProps, ArtifactChunkData, type ArtifactEntry, ArtifactInlineCard, type ArtifactInlineCardProps, ArtifactList, type ArtifactListProps, Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, TimelineRow, type TimelineRowProps, ToolApprovalPanel, type ToolApprovalPanelProps, type ToolApprovalSlots, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, formVisualizationSchema, getArtifact, getRegisteredArtifactTypes, getRegisteredTypes, getVisualization, kpiVisualizationSchema, registerArtifact, registerVisualization, tableVisualizationSchema };
