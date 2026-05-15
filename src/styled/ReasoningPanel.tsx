@@ -458,7 +458,7 @@ export function ReasoningPanel({
 
 		// Sub-assistant mode
 		if (hasSubagent && lastChunk?.type === "subagent" && lastChunk?.subagentData)
-			return `${lastChunk.subagentData.subagentType}: ${lastChunk.subagentData.description}`;
+			return lastChunk.subagentData.subagentType;
 
 		// Parallel mode
 		if (isParallelMode && waveStatus) {

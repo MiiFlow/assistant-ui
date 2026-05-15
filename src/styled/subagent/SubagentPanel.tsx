@@ -62,7 +62,6 @@ export function SubagentPanel({ chunk }: SubagentPanelProps) {
 			content: (
 				<TimelineRow
 					label={humanizeHandle(data.subagentType)}
-					description={data.description || undefined}
 					durationSeconds={data.durationMs != null ? data.durationMs / 1000 : undefined}
 					isFailed={data.status === "failed"}
 					defaultExpanded={data.status === "running"}

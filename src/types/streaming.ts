@@ -149,7 +149,6 @@ export interface SubagentInfo {
 export interface SubagentChunkData {
   subagentId: string;
   subagentType: string;
-  description: string;
   prompt?: string;
   status: "running" | "completed" | "failed";
   result?: string;
@@ -568,8 +567,8 @@ export interface SubtaskEvent extends BaseEvent {
 /**
  * Sub-assistant dispatch event. Rendered inline in the parent's reasoning
  * timeline at the position the dispatch was issued. Carries the full
- * SubagentChunkData so the renderer can show name, description, status,
- * and the streaming result without a separate lookup.
+ * SubagentChunkData so the renderer can show name, status, and the
+ * streaming result without a separate lookup.
  */
 export interface SubagentEvent extends BaseEvent {
   type: "subagent";

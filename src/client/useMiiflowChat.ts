@@ -808,11 +808,6 @@ async function parseSSEStream(
                   subagentData: {
                     subagentId: segmentId,
                     subagentType: parsed.handle || "",
-                    description:
-                      parsed.description ||
-                      parsed.name ||
-                      parsed.handle ||
-                      "",
                     status: "running",
                     result: "",
                     nestedChunks: [],
