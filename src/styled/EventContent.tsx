@@ -135,7 +135,6 @@ export function EventContent({ event, className, isRunning }: EventContentProps)
     return (
       <TimelineRow
         label={humanLabel || "Sub-assistant"}
-        description={data.description || undefined}
         durationSeconds={data.durationMs != null ? data.durationMs / 1000 : undefined}
         isFailed={data.status === "failed"}
         defaultExpanded={data.status === "running"}
