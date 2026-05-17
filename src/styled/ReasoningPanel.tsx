@@ -1,20 +1,10 @@
-import {
-	GitBranch,
-	ListTodo,
-	Sparkle,
-	Users,
-	Wrench,
-	Zap,
-} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useScrollLock } from "../hooks/use-scroll-lock";
-import type { Event, EventStatus, PlanData, StreamingChunk, SubagentInfo } from "../types";
-import { beamerBarStyle, injectBeamerKeyframes } from "../utils/beamer";
+import type { Event, PlanData, StreamingChunk } from "../types";
+import { injectBeamerKeyframes } from "../utils/beamer";
 import { cn } from "../utils/cn";
 import { EventTimeline, convertChunkToEvent } from "./EventTimeline";
 import { PlanTimeline } from "./PlanTimeline";
-import { Timeline, type TimelineItemData } from "./Timeline";
-import { TimelineRow } from "./TimelineRow";
 
 /**
  * Hook for live duration counter
@@ -50,100 +40,11 @@ function hasSubagentChunks(chunks: StreamingChunk[]): boolean {
 	return chunks.some((c) => c.type === "subagent");
 }
 
-function hasParallelExecutionChunks(chunks: StreamingChunk[]): boolean {
-	return chunks.some(
-		(c) =>
-			c.type === "wave_start" ||
-			c.type === "wave_complete" ||
-			c.type === "parallel_subtask_start" ||
-			c.type === "parallel_subtask_complete" ||
-			c.isParallel,
-	);
-}
-
-function getWaveExecutionStatus(chunks: StreamingChunk[]) {
-	const waveStartChunks = chunks.filter((c) => c.type === "wave_start" && c.waveData);
-	if (waveStartChunks.length === 0) return null;
-
-	const lastWaveStart = waveStartChunks[waveStartChunks.length - 1];
-	const currentWave = lastWaveStart.waveData?.waveNumber ?? 0;
-	const totalWaves = lastWaveStart.waveData?.totalWaves ?? 1;
-	const parallelCount = lastWaveStart.waveData?.parallelCount ?? 0;
-
-	const activeSubtasks: number[] = [];
-	const completedSubtasks: number[] = [];
-
-	chunks.forEach((c) => {
-		if (c.type === "parallel_subtask_start" && c.waveNumber === currentWave && c.subtaskId !== undefined) {
-			if (!completedSubtasks.includes(c.subtaskId)) activeSubtasks.push(c.subtaskId);
-		}
-		if (c.type === "parallel_subtask_complete" && c.waveNumber === currentWave && c.subtaskId !== undefined) {
-			completedSubtasks.push(c.subtaskId);
-			const idx = activeSubtasks.indexOf(c.subtaskId);
-			if (idx >= 0) activeSubtasks.splice(idx, 1);
-		}
-	});
-
-	return { currentWave, totalWaves, parallelCount, activeSubtasks, completedSubtasks };
-}
-
-function hasMultiAgentChunks(chunks: StreamingChunk[]): boolean {
-	return chunks.some(
-		(c) =>
-			c.type === "multi_agent_planning" ||
-			c.type === "multi_agent_planning_complete" ||
-			c.type === "subagent_start" ||
-			c.type === "subagent_complete" ||
-			c.type === "subagent_failed" ||
-			c.type === "synthesis" ||
-			c.isMultiAgent,
-	);
-}
-
-function getSubagentAllocations(chunks: StreamingChunk[]): { name: string; focus: string; query?: string }[] {
-	const planningChunk = chunks.find(
-		(c) => (c.type === "multi_agent_planning" || c.type === "multi_agent_planning_complete") && c.subagentAllocations,
-	);
-	return planningChunk?.subagentAllocations || [];
-}
-
-function getMultiAgentStatus(chunks: StreamingChunk[]) {
-	const subagents = new Map<string, SubagentInfo>();
-	let isSynthesizing = false;
-
-	getSubagentAllocations(chunks).forEach((alloc) => {
-		subagents.set(alloc.name, { name: alloc.name, task: alloc.query || alloc.focus, status: "pending" });
-	});
-
-	const statusOrder: Record<string, number> = { pending: 0, running: 1, completed: 2, failed: 2 };
-
-	chunks.forEach((c) => {
-		if (c.subagentInfo?.name) {
-			const key = c.subagentInfo.id || c.subagentInfo.name;
-			const existing = subagents.get(key);
-			if (!existing || (statusOrder[c.subagentInfo.status] ?? 0) >= (statusOrder[existing.status] ?? 0)) {
-				subagents.set(key, c.subagentInfo);
-			}
-		}
-		if (c.type === "synthesis") isSynthesizing = true;
-	});
-
-	const list = [...subagents.values()];
-	return {
-		subagents,
-		running: list.filter((s) => s.status === "running").length,
-		completed: list.filter((s) => s.status === "completed").length,
-		failed: list.filter((s) => s.status === "failed").length,
-		pending: list.filter((s) => s.status === "pending").length,
-		isSynthesizing,
-	};
-}
-
 // Internal tools hidden from users — kept in sync with EventTimeline /
 // PlanTimeline. tool_search is the deferred-tool discovery meta-tool.
-// Tools hidden from user-facing labels and timeline rendering. `dispatch_assistant`
-// is rendered as a SubagentPanel event inline (see EventTimeline.convertChunkToEvent),
-// so the raw tool call should not also appear as a "dispatch_assistant: …" label.
+// `dispatch_assistant` is rendered as a SubagentPanel event inline (see
+// EventTimeline.convertChunkToEvent), so the raw tool call should not also
+// appear as a "dispatch_assistant: …" label.
 const INTERNAL_TOOLS = new Set([
 	"create_plan",
 	"tool_search",
@@ -182,71 +83,13 @@ function convertTimelineToChunks(timeline: any[]): StreamingChunk[] {
 	return chunks;
 }
 
-function MultiAgentStatusPanel({ chunks }: { chunks: StreamingChunk[] }) {
-	const status = getMultiAgentStatus(chunks);
-	const subagentList = [...status.subagents.values()];
-
-	const items: TimelineItemData[] = [];
-
-	if (subagentList.length === 0) {
-		const allocations = getSubagentAllocations(chunks);
-		const isPlanning = chunks.some((c) => c.type === "multi_agent_planning");
-
-		if (allocations.length === 0 && !isPlanning) return null;
-
-		items.push({
-			id: "allocating",
-			status: "running",
-			content: (
-				<TimelineRow
-					label={allocations.length > 0 ? "Allocating agents" : "Planning agent allocation"}
-					description={allocations.length > 0 ? allocations.map((a) => a.name).join(", ") : undefined}
-				/>
-			),
-		});
-	} else {
-		subagentList.forEach((agent, index) => {
-			const agentStatus: EventStatus =
-				agent.status === "running"
-					? "running"
-					: agent.status === "completed"
-						? "completed"
-						: agent.status === "failed"
-							? "failed"
-							: "pending";
-
-			items.push({
-				id: agent.id || `agent-${index}`,
-				status: agentStatus,
-				content: (
-					<TimelineRow
-						label={agent.name}
-						description={agent.status === "failed" && agent.error ? agent.error : agent.task}
-						durationSeconds={agent.status === "completed" ? agent.executionTime : undefined}
-						isFailed={agent.status === "failed"}
-					/>
-				),
-			});
-		});
-
-		if (status.isSynthesizing) {
-			items.push({
-				id: "synthesis",
-				status: "running",
-				content: <TimelineRow label="Synthesizing results" />,
-			});
-		}
-	}
-
-	return <Timeline items={items} badgeSize={20} />;
-}
-
 export interface ReasoningPanelProps {
 	/** Whether currently streaming */
 	isStreaming?: boolean;
 	/** Streaming chunks */
 	chunks?: StreamingChunk[];
-	/** Execution plan for Plan & Execute mode */
+	/** Execution plan persisted on completed messages (historical messages only —
+	 *  new streams persist the plan as plain text without subtasks). */
 	plan?: PlanData;
 	/** Execution timeline (completed messages) */
 	executionTimeline?: any[];
@@ -269,6 +112,107 @@ function formatDuration(seconds: number): string {
 	return `${seconds.toFixed(1)}s`;
 }
 
+const MONO_STACK =
+	"ui-monospace, 'SFMono-Regular', 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace";
+
+/**
+ * Header indicator — bare, no surrounding tag.
+ *
+ * Streaming: three vertical bars (`mf-bars`) reading as an audio-meter
+ * for live activity. Completed: a small ink square anchoring the row.
+ * On the stream→complete transition (justCompleted) the dot briefly
+ * flashes activity color and emits a single sonar halo, then settles
+ * to muted. The halo + flash are one-time — once the parent flips
+ * justCompleted back to false they don't replay on re-renders.
+ *
+ * Both states are wrapped in a fixed 14×14 slot so the visible center
+ * lands on x=10, matching the body rail's center and the connector.
+ */
+function HeaderIndicator({
+	isStreaming,
+	justCompleted,
+}: {
+	isStreaming: boolean;
+	justCompleted: boolean;
+}) {
+	return (
+		<span
+			aria-hidden
+			style={{
+				position: "relative",
+				display: "inline-flex",
+				alignItems: "center",
+				justifyContent: "center",
+				width: 14,
+				height: 14,
+				flexShrink: 0,
+			}}
+		>
+			{isStreaming ? (
+				<span
+					style={{
+						display: "inline-flex",
+						alignItems: "flex-end",
+						gap: 1.5,
+						height: 10,
+					}}
+				>
+					{[0, 1, 2].map((i) => (
+						<span
+							key={i}
+							style={{
+								width: 1.5,
+								height: 10,
+								background: "var(--chat-activity, var(--chat-primary))",
+								transformOrigin: "bottom",
+								animation: "mf-bars 0.95s cubic-bezier(.16,1,.3,1) infinite",
+								animationDelay: `${i * 0.13}s`,
+								display: "inline-block",
+							}}
+						/>
+					))}
+				</span>
+			) : (
+				<>
+					<span
+						style={{
+							width: 5,
+							height: 5,
+							background: justCompleted
+								? "var(--chat-activity, var(--chat-primary))"
+								: "color-mix(in srgb, var(--chat-text) 42%, transparent)",
+							boxShadow:
+								"inset 0 0 0 0.5px color-mix(in srgb, var(--chat-text) 70%, transparent)",
+							transform: justCompleted ? "scale(1.18)" : "scale(1)",
+							transition:
+								"background 820ms cubic-bezier(.16,1,.3,1), transform 540ms cubic-bezier(.16,1,.3,1)",
+							display: "inline-block",
+						}}
+					/>
+					{justCompleted && (
+						<span
+							style={{
+								position: "absolute",
+								left: "50%",
+								top: "50%",
+								width: 14,
+								height: 14,
+								marginLeft: -7,
+								marginTop: -7,
+								borderRadius: "50%",
+								background:
+									"radial-gradient(closest-side, color-mix(in srgb, var(--chat-activity, var(--chat-primary)) 38%, transparent), transparent 70%)",
+								animation: "mf-halo-once 720ms cubic-bezier(.16,1,.3,1) forwards",
+								pointerEvents: "none",
+							}}
+						/>
+					)}
+				</>
+			)}
+		</span>
+	);
+}
+
 export function ReasoningPanel({
 	isStreaming = false,
 	chunks = [],
@@ -288,6 +232,21 @@ export function ReasoningPanel({
 	useEffect(() => {
 		injectBeamerKeyframes(containerRef.current);
 	}, []);
+
+	// One-shot completion delight. Fires only on the streaming→complete
+	// transition; cold loads (existing messages) skip the animation
+	// because prevStreaming was never `true` for this mount.
+	const prevStreamingRef = useRef<boolean | null>(null);
+	const [justCompleted, setJustCompleted] = useState(false);
+	useEffect(() => {
+		const justFinished = prevStreamingRef.current === true && isStreaming === false;
+		prevStreamingRef.current = isStreaming;
+		if (justFinished) {
+			setJustCompleted(true);
+			const t = setTimeout(() => setJustCompleted(false), 820);
+			return () => clearTimeout(t);
+		}
+	}, [isStreaming]);
 
 	// Scroll lock: prevent viewport jump when expanding/collapsing
 	const lockScroll = useScrollLock(containerRef, 300);
@@ -328,66 +287,6 @@ export function ReasoningPanel({
 		return [];
 	}, [isStreaming, executionTimeline]);
 
-	// Aggregate plan data from planning chunks
-	const aggregatedPlanData = useMemo(() => {
-		if (!isStreaming) return null;
-
-		const planningChunk = chunks.find((c) => c.planData !== undefined);
-		if (!planningChunk?.planData) return null;
-
-		const planClone = { ...planningChunk.planData };
-		const subtasks = [...(planClone.subtasks || [])];
-		let completedCount = 0;
-		let failedCount = 0;
-
-		chunks.forEach((chunk) => {
-			if (chunk.type === "parallel_subtask_start" && chunk.subtaskId !== undefined) {
-				const idx = subtasks.findIndex((st) => String(st.id) === String(chunk.subtaskId));
-				if (idx !== -1) subtasks[idx] = { ...subtasks[idx], status: "running" };
-			} else if (chunk.type === "parallel_subtask_complete" && chunk.subtaskId !== undefined) {
-				const idx = subtasks.findIndex((st) => String(st.id) === String(chunk.subtaskId));
-				if (idx !== -1) {
-					const st = { ...subtasks[idx] };
-					if (chunk.parallelSubtaskData?.success === false || chunk.success === false) {
-						st.status = "failed";
-						st.error = chunk.parallelSubtaskData?.error;
-						failedCount++;
-					} else {
-						st.status = "completed";
-						st.result = chunk.parallelSubtaskData?.result;
-						st.execution_time = chunk.parallelSubtaskData?.executionTime;
-						completedCount++;
-					}
-					subtasks[idx] = st;
-				}
-			} else if (chunk.type === "subtask" && chunk.subtaskId !== undefined) {
-				const idx = subtasks.findIndex((st) => String(st.id) === String(chunk.subtaskId));
-				if (idx !== -1) {
-					const st = { ...subtasks[idx] };
-					if (chunk.content.includes("✓ Completed")) {
-						st.status = "completed";
-						if (chunk.subtaskData?.execution_time) st.execution_time = chunk.subtaskData.execution_time;
-						completedCount++;
-					} else if (chunk.content.includes("✗ Failed")) {
-						st.status = "failed";
-						const m = chunk.content.match(/✗ Failed: (.*)/);
-						if (m) st.error = m[1];
-						failedCount++;
-					} else if (chunk.content.includes("→ **Subtask")) {
-						st.status = "running";
-					}
-					subtasks[idx] = st;
-				}
-			}
-		});
-
-		planClone.subtasks = subtasks;
-		planClone.completed_subtasks = completedCount;
-		planClone.failed_subtasks = failedCount;
-		planClone.progress_percentage = (completedCount / planClone.total_subtasks) * 100;
-		return planClone;
-	}, [isStreaming, chunks]);
-
 	// Calculate total execution time
 	const totalExecutionTime = useMemo(() => {
 		// Explicit prop takes highest priority (persisted wall-clock from streaming)
@@ -413,6 +312,51 @@ export function ReasoningPanel({
 		return 0;
 	}, [isStreaming, plan, executionTimeline, userMessageTimestamp, executionTime]);
 
+	// Aggregate a quiet summary preview for the collapsed completed-state
+	// header. Counts user-visible tools and lists subagent handles. Declared
+	// above the early-return below so the hook order stays stable.
+	const summaryPreview = useMemo(() => {
+		if (isStreaming) return null;
+		let toolCount = 0;
+		const subagentSlugs: string[] = [];
+
+		const visit = (name?: string) => {
+			if (!name) return;
+			const lower = name.toLowerCase().trim();
+			if (INTERNAL_TOOLS.has(lower)) return;
+			toolCount += 1;
+		};
+
+		// Count from chunks when available — chunks is what the timeline
+		// renders, and the message adapter populates it either from live
+		// in-memory chunks or by reconstructing from executionTimeline. Falling
+		// back to executionTimeline only when chunks is empty avoids the
+		// double-counting that produced e.g. "6 tools" above 3 rendered rows.
+		if (chunks.length > 0) {
+			for (const c of chunks) {
+				if (c.type === "tool") visit(c.toolName);
+				if (c.type === "subagent" && c.subagentData?.subagentType) {
+					subagentSlugs.push(c.subagentData.subagentType);
+				}
+			}
+		} else if (executionTimeline.length > 0) {
+			for (const item of executionTimeline) {
+				if (item.type === "tool") visit(item.tool as string | undefined);
+			}
+		}
+
+		const parts: string[] = [];
+		if (toolCount > 0) {
+			parts.push(`${toolCount} ${toolCount === 1 ? "tool" : "tools"}`);
+		}
+		if (subagentSlugs.length === 1) {
+			parts.push(`@${subagentSlugs[0]}`);
+		} else if (subagentSlugs.length > 1) {
+			parts.push(`${subagentSlugs.length} specialists`);
+		}
+		return parts.length > 0 ? parts.join(" · ") : null;
+	}, [isStreaming, chunks, executionTimeline]);
+
 	// Don't render if no content
 	if (!isStreaming) {
 		const hasContent = plan || executionTimeline.length > 0 || chunks.length > 0;
@@ -420,162 +364,189 @@ export function ReasoningPanel({
 		if (hasContent && completedEvents.length === 0 && !plan && executionTimeline.length === 0) return null;
 	}
 
-	// Detect modes
+	// Detect modes (used by getLabel; mode-specific iconography retired in
+	// favor of a category-neutral wave indicator).
 	const lastChunk = chunks.length > 0 ? chunks[chunks.length - 1] : null;
-	const isToolAction = lastChunk?.type === "tool" || !!lastChunk?.toolName;
-	const isPlanningAction = lastChunk?.type === "planning";
-	const isParallelMode = hasParallelExecutionChunks(chunks);
-	const waveStatus = isParallelMode ? getWaveExecutionStatus(chunks) : null;
 	const hasSubagent = hasSubagentChunks(chunks);
-	const isMultiAgentMode = hasMultiAgentChunks(chunks);
-	const multiAgentStatus = isMultiAgentMode ? getMultiAgentStatus(chunks) : null;
 
-	// Mode-specific label
-	const getLabel = () => {
-		if (!isStreaming) {
-			if (totalExecutionTime > 0) return `Thought for ${formatDuration(totalExecutionTime)}`;
-			// Fallback: use wall-clock elapsed time tracked by the component
-			if (wallClockSeconds > 0) return `Thought for ${formatDuration(wallClockSeconds)}`;
-			if (chunks.length > 0) return "Thought for a few seconds";
-			return "Thought for a few seconds";
-		}
-
-		// Multi-agent mode
-		if (isMultiAgentMode && multiAgentStatus) {
-			const { running, completed, failed, isSynthesizing } = multiAgentStatus;
-			if (isSynthesizing) return "Synthesizing results...";
-			if (lastChunk?.type === "multi_agent_planning") return "Planning subagent allocation...";
-			if (lastChunk?.type === "subagent_start" && lastChunk?.subagentInfo)
-				return `${lastChunk.subagentInfo.name}: ${lastChunk.subagentInfo.task?.slice(0, 30) || "working"}...`;
-			if (lastChunk?.type === "subagent_complete" && lastChunk?.subagentInfo)
-				return `${lastChunk.subagentInfo.name} complete`;
-			if (lastChunk?.type === "subagent_failed" && lastChunk?.subagentInfo)
-				return `${lastChunk.subagentInfo.name} failed`;
-			const total = running + completed + failed;
-			if (running > 0) return `${running} subagent${running > 1 ? "s" : ""} running (${completed}/${total} done)`;
-			if (total > 0) return `Multi-agent execution (${completed}/${total} complete)`;
-		}
-
-		// Sub-assistant mode
+	// Live operation label — only shown while streaming. Prefers the
+	// LLM-provided description; falls back to the raw tool name when
+	// absent, mirroring the body-row fallback.
+	const getLiveLabel = () => {
+		// Sub-assistant mode — subagent type slugs are presentation-grade
+		// handles (configured by the team), so they're safe to render.
 		if (hasSubagent && lastChunk?.type === "subagent" && lastChunk?.subagentData)
 			return lastChunk.subagentData.subagentType;
 
-		// Parallel mode
-		if (isParallelMode && waveStatus) {
-			const { currentWave, totalWaves, parallelCount, activeSubtasks, completedSubtasks } = waveStatus;
-			if (lastChunk?.type === "wave_start")
-				return `Wave ${currentWave + 1}/${totalWaves}: ${parallelCount} parallel subtasks`;
-			if (lastChunk?.type === "wave_complete")
-				return `Wave ${currentWave + 1} complete (${completedSubtasks.length} done)`;
-			if (lastChunk?.type === "parallel_subtask_start" && lastChunk?.parallelSubtaskData?.description) {
-				const desc = lastChunk.parallelSubtaskData.description;
-				return desc.length > 40 ? `${desc.slice(0, 37)}...` : desc;
-			}
-			if (activeSubtasks.length > 0)
-				return `Wave ${currentWave + 1}/${totalWaves}: ${activeSubtasks.length} running...`;
-			return `Parallel execution (Wave ${currentWave + 1}/${totalWaves})`;
-		}
-
-		// Default — but skip the internal tool_search meta-tool's labels so
-		// users don't see "tool_search" or its description as live status.
 		const lastToolName = lastChunk?.toolName?.toLowerCase().trim();
 		const lastIsInternal = !!lastToolName && INTERNAL_TOOLS.has(lastToolName);
 		if (!lastIsInternal && lastChunk?.toolDescription) return lastChunk.toolDescription;
 		if (!lastIsInternal && lastChunk?.toolName) return lastChunk.toolName;
 		switch (lastChunk?.type) {
 			case "planning":
-				return "Planning...";
+				return "Planning…";
 			case "thinking":
-				return "Thinking...";
+				return "Thinking…";
 			case "tool":
-				if (lastIsInternal) return "Thinking...";
-				return lastChunk.toolName || "Using tool...";
-			case "subtask":
-				return `Executing subtask ${lastChunk.subtaskId || ""}...`;
+				return "Thinking…";
 			case "observation":
-				return "Analyzing results...";
+				return "Analyzing results…";
 			case "progress":
-				return "Working...";
-			case "wave_start":
-				return `Starting parallel execution...`;
-			case "wave_complete":
-				return "Parallel wave complete";
-			case "parallel_subtask_start":
-				return `Running parallel subtask...`;
-			case "parallel_subtask_complete":
-				return "Parallel subtask complete";
+				return "Working…";
 			default:
-				return "Thinking...";
+				return "Thinking…";
 		}
 	};
 
-	// Mode-specific icon
-	const getIcon = () => {
-		if (isMultiAgentMode) return <Users size={14} />;
-		if (hasSubagent) return <GitBranch size={14} />;
-		if (isParallelMode) return <Zap size={14} />;
-		if (isToolAction) return <Wrench size={14} />;
-		if (isPlanningAction) return <ListTodo size={14} />;
-		return <Sparkle size={14} />;
-	};
+	// Effective completed duration — favors the explicit prop, then the
+	// computed total, then wall-clock fallback so the header always renders
+	// some time figure when the panel has finished.
+	const completedDuration =
+		totalExecutionTime > 0 ? totalExecutionTime : wallClockSeconds > 0 ? wallClockSeconds : 0;
 
-	// Determine what to show expanded
-	const shouldShowPlanTimeline = (planData: PlanData | null | undefined) => {
-		return planData?.subtasks && planData.subtasks.length >= 2;
-	};
-
-	const activePlan = isStreaming ? aggregatedPlanData : plan;
-	const showPlanTimeline = shouldShowPlanTimeline(activePlan);
+	const showPlanTimeline = plan?.subtasks && plan.subtasks.length >= 2;
 
 	return (
 		<div ref={containerRef} className={cn("max-w-full", className)}>
-			{/* Clickable header: icon + label + optional timer - matches on-platform MUI approach */}
+			{/* Clickable header: indicator + (live op | trace summary) + caret. */}
 			<div
 				onClick={() => setExpanded(!isExpanded)}
 				style={{
 					position: "relative",
 					display: "inline-flex",
 					alignItems: "center",
-					gap: 6,
-					padding: "4px 6px",
-					overflow: "hidden",
-					borderRadius: 8,
+					gap: 8,
+					padding: "3px 8px 3px 3px",
+					borderRadius: 4,
 					cursor: "pointer",
-					transition: "opacity 0.2s",
-					...(!isStreaming && { opacity: 0.6 }),
+					transition: "background-color 220ms cubic-bezier(.16,1,.3,1)",
+					background: isStreaming
+						? "color-mix(in srgb, var(--chat-activity, var(--chat-primary)) 6%, transparent)"
+						: "transparent",
 				}}>
-				{isStreaming && <div style={beamerBarStyle} />}
-				<span className="flex items-center text-[var(--chat-text-subtle)]">
-					{isStreaming ? getIcon() : <Sparkle size={14} />}
-				</span>
-				<span className="text-sm font-normal text-[var(--chat-text-subtle)]">
-					{getLabel()}
-				</span>
-				{isStreaming && parseInt(liveElapsed) > 0 && (
-					<span className="text-[var(--chat-text-subtle)] font-normal tabular-nums text-sm">
-						{liveElapsed}s
+				<HeaderIndicator isStreaming={isStreaming} justCompleted={justCompleted} />
+
+				{/* Streaming: current operation in prose + tabular timer. */}
+				{isStreaming && (
+					<>
+						<span
+							style={{
+								fontSize: 13.5,
+								lineHeight: 1.35,
+								fontWeight: 500,
+								letterSpacing: "-0.005em",
+								color: "color-mix(in srgb, var(--chat-text) 86%, transparent)",
+								maxWidth: 520,
+								overflow: "hidden",
+								textOverflow: "ellipsis",
+								whiteSpace: "nowrap",
+							}}
+						>
+							{getLiveLabel()}
+						</span>
+						{parseInt(liveElapsed) > 0 && (
+							<span
+								className="tabular-nums"
+								style={{
+									fontFamily: MONO_STACK,
+									fontSize: 11,
+									color:
+										"color-mix(in srgb, var(--chat-activity, var(--chat-primary)) 75%, var(--chat-text))",
+									fontVariantNumeric: "tabular-nums",
+									letterSpacing: "0.02em",
+									fontWeight: 600,
+								}}
+							>
+								{liveElapsed}s
+							</span>
+						)}
+					</>
+				)}
+
+				{/* Completed: clean ops · duration in mono. */}
+				{!isStreaming && (summaryPreview || completedDuration > 0) && (
+					<span
+						style={{
+							display: "inline-flex",
+							alignItems: "center",
+							gap: 6,
+							fontFamily: MONO_STACK,
+							fontSize: 11.5,
+							fontWeight: 500,
+							letterSpacing: "0.005em",
+							color: "color-mix(in srgb, var(--chat-text) 55%, transparent)",
+							fontVariantNumeric: "tabular-nums",
+							fontVariantLigatures: "none",
+						}}
+					>
+						{summaryPreview && <span>{summaryPreview}</span>}
+						{summaryPreview && completedDuration > 0 && (
+							<span
+								aria-hidden
+								style={{
+									width: 2,
+									height: 2,
+									borderRadius: "50%",
+									background: "color-mix(in srgb, var(--chat-text) 28%, transparent)",
+									display: "inline-block",
+								}}
+							/>
+						)}
+						{completedDuration > 0 && <span>{formatDuration(completedDuration)}</span>}
 					</span>
 				)}
+
+				{/* Sharp expand caret — silent affordance, rotates on toggle. */}
+				<span
+					aria-hidden
+					style={{
+						display: "inline-flex",
+						alignItems: "center",
+						justifyContent: "center",
+						width: 12,
+						height: 12,
+						marginLeft: 1,
+						color: "color-mix(in srgb, var(--chat-text) 38%, transparent)",
+						fontSize: 11,
+						lineHeight: 1,
+						transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+						transition: "transform 240ms cubic-bezier(.16,1,.3,1)",
+					}}
+				>
+					›
+				</span>
+
 			</div>
 
 			{isExpanded && (
-				<div className="mt-3 animate-fade-in">
+				<div
+					className="animate-fade-in"
+					style={{ position: "relative", marginTop: 6 }}
+				>
+					{/* Continuous hairline connector: rail extends from the header
+					    pill down to the first body row's badge center. left=9.5
+					    puts the 1px line's center at x=10, matching both the
+					    header dot center and the body rail center. */}
+					<div
+						aria-hidden
+						style={{
+							position: "absolute",
+							left: 9.5,
+							top: -6,
+							width: 1,
+							height: 10,
+							background: "color-mix(in srgb, var(--chat-text) 10%, transparent)",
+							pointerEvents: "none",
+						}}
+					/>
 					{isStreaming ? (
-						isMultiAgentMode ? (
-							<MultiAgentStatusPanel chunks={chunks} />
-						) : showPlanTimeline && activePlan ? (
-							<PlanTimeline plan={activePlan} streamingChunks={chunks} />
-						) : aggregatedPlanData?.subtasks?.length === 1 ? (
-							<EventTimeline events={streamingEvents} />
-						) : aggregatedPlanData?.subtasks?.length === 0 ? null : (
-							<EventTimeline events={streamingEvents} />
-						)
+						<EventTimeline events={streamingEvents} />
 					) : // Completed mode
 					plan ? (
-						plan.subtasks?.length === 0 ? null : plan.subtasks?.length === 1 ? (
-							<EventTimeline events={completedEvents} />
-						) : (
+						plan.subtasks?.length === 0 ? null : showPlanTimeline ? (
 							<PlanTimeline plan={plan} streamingChunks={completedChunks} />
+						) : (
+							<EventTimeline events={completedEvents} />
 						)
 					) : (
 						<EventTimeline events={completedEvents} />

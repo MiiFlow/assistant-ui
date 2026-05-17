@@ -322,28 +322,16 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 		const isAssistant = participantRole === "assistant";
 		const isStreaming = message.isStreaming;
 
-		// Filter reasoning chunks for display
-		// Includes all reasoning-related types: ReAct, Parallel Plan, Multi-Agent, Claude SDK
+		// Filter reasoning chunks for display.
+		// `subtask` is kept to replay historical (pre-unified-ReAct) messages.
 		const reasoningChunks = reasoning?.filter(
 			(c) =>
-				// Legacy ReAct types
 				c.type === "thinking" ||
 				c.type === "tool" ||
 				c.type === "observation" ||
 				c.type === "planning" ||
 				c.type === "subtask" ||
-				// Parallel Plan execution (wave-based)
-				c.type === "wave_start" ||
-				c.type === "wave_complete" ||
-				c.type === "parallel_subtask_start" ||
-				c.type === "parallel_subtask_complete" ||
-				// Multi-Agent execution (miiflow-llm)
-				c.type === "multi_agent_planning" ||
-				c.type === "subagent_start" ||
-				c.type === "subagent_complete" ||
-				c.type === "subagent_failed" ||
-				c.type === "synthesis" ||
-				// Sub-assistant rendering (nested SubagentPanel)
+				// Sub-assistant dispatch (dispatch_assistant)
 				c.type === "subagent",
 		);
 		const hasReasoningChunks = reasoningChunks && reasoningChunks.length > 0;

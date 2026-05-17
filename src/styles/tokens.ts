@@ -48,6 +48,15 @@ export const chatTokens = {
     error: "var(--chat-error, #B1001B)",
     warning: "var(--chat-warning, #DD9652)",
 
+    /**
+     * Accent for in-progress / live indicators in the reasoning panel:
+     * running halo, animated caret, header wave, rail-flow gradient, and
+     * active-row wash. Falls back to --chat-primary so existing usage is
+     * unchanged. Override independently when the brand primary is neutral
+     * and would otherwise blend into completed-state visuals.
+     */
+    activity: "var(--chat-activity, var(--chat-primary, #106997))",
+
     // Message backgrounds
     messageBg: "var(--chat-message-bg, rgba(0, 0, 0, 0.03))",
     userMessageBg: "var(--chat-user-message-bg, var(--chat-primary, #106997))",

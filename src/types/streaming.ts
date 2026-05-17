@@ -26,7 +26,12 @@ export interface StreamingOptions {
 // ============================================================================
 
 /**
- * Extended chunk types for agentic streaming
+ * Extended chunk types for agentic streaming.
+ *
+ * `subtask` / `progress` / structured `planning` chunks are retained for
+ * historical messages persisted before the unified-ReAct migration. New
+ * streams emit `planning` only as plain text (enter_plan_mode / exit_plan_mode)
+ * and route sub-agent work through the `subagent` chunk type.
  */
 export type ChunkType =
   | "content"         // Regular content
@@ -34,21 +39,9 @@ export type ChunkType =
   | "tool"            // Tool planned/executing
   | "observation"     // Tool result
   | "answer"          // Final answer
-  | "planning"        // Plan creation (Plan & Execute)
-  | "subtask"         // Subtask execution (Plan & Execute)
-  | "progress"        // Progress update (Plan & Execute)
-  // Parallel Plan execution (wave-based)
-  | "wave_start"      // Start of parallel execution wave
-  | "wave_complete"   // End of parallel execution wave
-  | "parallel_subtask_start"    // Individual subtask in wave started
-  | "parallel_subtask_complete" // Individual subtask in wave completed
-  // Multi-Agent execution (miiflow-llm)
-  | "multi_agent_planning"          // Lead agent planning subagents
-  | "multi_agent_planning_complete" // Planning complete with subagent allocations
-  | "subagent_start"                // Individual subagent started
-  | "subagent_complete"             // Individual subagent completed
-  | "subagent_failed"               // Individual subagent failed
-  | "synthesis"                     // Synthesizing results from subagents
+  | "planning"        // enter_plan_mode / exit_plan_mode chunk (historical: structured plan)
+  | "subtask"         // Subtask execution (historical Plan & Execute)
+  | "progress"        // Progress update
   // Clarification request
   | "clarification_needed"          // Agent needs user input to continue
   // Tool approval request
@@ -60,7 +53,7 @@ export type ChunkType =
   // Artifact (downloadable PDF / HTML produced by a tool)
   | "artifact"        // Persisted artifact with side-panel viewer
   // Sub-assistant rendering (nested SubagentPanel)
-  | "subagent"        // Nested subagent execution
+  | "subagent"        // Nested subagent execution (dispatch_assistant tool)
   // Suggested action (inline recommendation card)
   | "suggested_action_created"; // Agent recommended an action
 
@@ -100,46 +93,6 @@ export interface ProgressData {
   total: number;
   percentage: number;
   waveNumber?: number;
-}
-
-// ============================================================================
-// Parallel Execution Types (wave-based)
-// ============================================================================
-
-export interface WaveData {
-  waveNumber: number;
-  subtaskIds: number[];
-  parallelCount: number;
-  totalWaves: number;
-  startTime?: number;
-  executionTime?: number;
-  success?: boolean;
-  completedIds?: number[];
-}
-
-export interface ParallelSubtaskData {
-  subtaskId: number;
-  waveNumber: number;
-  description?: string;
-  success?: boolean;
-  result?: string;
-  error?: string;
-  executionTime?: number;
-}
-
-// ============================================================================
-// Multi-Agent Types
-// ============================================================================
-
-export interface SubagentInfo {
-  id?: string;
-  name: string;
-  role?: string;
-  task?: string;
-  status: "pending" | "running" | "completed" | "failed";
-  result?: string;
-  error?: string;
-  executionTime?: number;
 }
 
 // ============================================================================
@@ -417,32 +370,12 @@ export interface StreamingChunk {
   success?: boolean;
   status?: "planned" | "executing" | "completed";
 
-  // Plan & Execute fields
+  // Historical Plan & Execute fields (kept for replaying pre-migration messages)
   subtaskId?: number;
   sequence?: number;
   subtaskData?: SubTaskData;
   planData?: PlanData;
   progress?: ProgressData;
-  isReplan?: boolean;
-
-  // Parallel Plan (wave-based) fields
-  waveData?: WaveData;
-  parallelSubtaskData?: ParallelSubtaskData;
-  waveNumber?: number;
-  isParallel?: boolean;
-
-  // Multi-Agent (miiflow-llm) fields
-  isMultiAgent?: boolean;
-  subagentInfo?: SubagentInfo;
-  subagentAllocations?: { name: string; focus: string; query?: string }[];
-
-  // Replanning context
-  replanAttempt?: number;
-  maxReplans?: number;
-  failureReason?: string;
-
-  // Synthesis phase
-  isSynthesis?: boolean;
 
   // Orchestrator context (for nested execution)
   orchestrator?: "react" | "plan_execute";
@@ -470,11 +403,6 @@ export interface StreamingMessage {
   // Plan execution metadata
   orchestratorType?: "react" | "plan_execute";
   executionPlan?: PlanData;
-
-  // Parallel execution metadata
-  isParallelExecution?: boolean;
-  waveData?: Record<number, WaveData>;
-  currentWaveNumber?: number;
 
   // Follow-up actions
   suggestedActions?: FollowupAction[];
@@ -527,6 +455,13 @@ export interface BaseEvent {
   type: EventType;
   status: EventStatus;
   timestamp?: number;
+  /**
+   * Elapsed wall-clock duration for this event in seconds. Populated by
+   * `convertTimelineToEvents` from pairwise timeline timestamps; left
+   * undefined for live streaming chunks (no per-chunk arrival time is
+   * carried through the stream).
+   */
+  durationSeconds?: number;
 }
 
 export interface ThinkingEvent extends BaseEvent {

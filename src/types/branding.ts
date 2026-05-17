@@ -20,4 +20,12 @@ export interface BrandingData {
   approveButtonHoverColor?: string;
   rejectButtonHoverColor?: string;
   clarificationAccentColor?: string;
+  /**
+   * Accent color used for in-progress / live indicators in the reasoning
+   * panel: the running-state halo, animated caret, header wave, rail-flow
+   * gradient, and active-row wash. Defaults to `backgroundBubbleColor`
+   * (i.e. `--chat-primary`); set this independently when the brand
+   * primary is neutral, so activity stays distinguishable.
+   */
+  activityAccentColor?: string;
 }

@@ -55,6 +55,13 @@ export function useBrandingCSSVars(
       vars["--chat-clarification-accent-soft"] = branding.clarificationAccentColor;
     }
 
+    // Activity accent is independent of brand primary so callers whose
+    // primary is neutral can still surface a vivid in-progress signal in
+    // the reasoning panel. Unset → falls back to --chat-primary at usage.
+    if (branding?.activityAccentColor) {
+      vars["--chat-activity"] = branding.activityAccentColor;
+    }
+
     return vars as React.CSSProperties;
   }, [branding, overrides?.iconColor]);
 }

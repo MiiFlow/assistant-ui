@@ -1,14 +1,14 @@
-export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-BeqkG4Ir.js';
+export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-C91_sR2U.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode, ComponentType } from 'react';
-import { A as Attachment, S as SourceReference } from '../message-DLCSyw7Y.js';
-export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-DLCSyw7Y.js';
-import { S as StreamingChunk, P as PlanData, C as ClarificationData, T as ToolApprovalData, V as VisualizationChunkData, d as VisualizationActionEvent, M as MediaChunkData, e as ChartVisualizationData, f as VisualizationConfig, g as TableVisualizationData, h as CardVisualizationData, K as KpiVisualizationData, i as CodePreviewVisualizationData, F as FormVisualizationData, A as ArtifactChunkData, E as Event, j as EventStatus } from '../streaming-Dsn0-q7L.js';
-export { k as ArtifactStatus, l as ChunkType, m as EventType, n as FollowupAction, O as ObservationEvent, o as ParallelSubtaskData, p as PlanningEvent, q as ProgressData, r as StreamingMessage, s as SubTaskData, t as SubagentChunkData, u as SubagentInfo, v as SubtaskEvent, w as ThinkingEvent, x as ToolEvent, y as VisualizationType, W as WaveData } from '../streaming-Dsn0-q7L.js';
+import { A as Attachment, S as SourceReference } from '../message-CXR79XEX.js';
+export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-CXR79XEX.js';
+import { S as StreamingChunk, P as PlanData, C as ClarificationData, T as ToolApprovalData, V as VisualizationChunkData, d as VisualizationActionEvent, M as MediaChunkData, e as ChartVisualizationData, f as VisualizationConfig, g as TableVisualizationData, h as CardVisualizationData, K as KpiVisualizationData, i as CodePreviewVisualizationData, F as FormVisualizationData, A as ArtifactChunkData, E as Event, j as EventStatus } from '../streaming-CE9i2L8q.js';
+export { k as ArtifactStatus, l as ChunkType, m as EventType, n as FollowupAction, O as ObservationEvent, o as PlanningEvent, p as ProgressData, q as StreamingMessage, r as SubTaskData, s as SubagentChunkData, t as SubtaskEvent, u as ThinkingEvent, v as ToolEvent, w as VisualizationType } from '../streaming-CE9i2L8q.js';
 import { z, ZodSchema } from 'zod';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
-export { B as BrandingData } from '../branding-Dz09eSZs.js';
-export { u as useComposer, g as useMessage } from '../avatar-weUVLXu4.js';
+export { B as BrandingData } from '../branding-NieTEGQf.js';
+export { u as useComposer, g as useMessage } from '../avatar-5oxmVS1J.js';
 import '../types-Du00UBst.js';
 
 interface LoadingDotsProps {
@@ -83,7 +83,8 @@ interface ReasoningPanelProps {
     isStreaming?: boolean;
     /** Streaming chunks */
     chunks?: StreamingChunk[];
-    /** Execution plan for Plan & Execute mode */
+    /** Execution plan persisted on completed messages (historical messages only —
+     *  new streams persist the plan as plain text without subtasks). */
     plan?: PlanData;
     /** Execution timeline (completed messages) */
     executionTimeline?: any[];
@@ -489,24 +490,38 @@ declare function getRegisteredArtifactTypes(): string[];
 interface EventContentProps {
     event: Event;
     className?: string;
-    /** When true, shows beamer scanning effect on tool items */
+    /** Active state — drives the trailing caret on tool calls. */
     isRunning?: boolean;
+    /**
+     * Slowest duration in the surrounding timeline. Used to scale this row's
+     * trailing micro-bar so the panel reads as a proportional trace.
+     */
+    maxDurationSeconds?: number;
 }
 /**
- * Renders content for different event types
- * - Thinking: Markdown content with subtle styling
- * - Planning: Markdown content with planning context
- * - Tool: Inline icon + text display with beamer effect when running
- * - Observation: Colored result panel
+ * Refreshed event content.
+ *
+ * - Thinking / planning render as prose at 78% ink with relaxed leading;
+ *   active rows bump to weight 500 so the eye lands on live content.
+ * - Tool calls render as an inline monospace tag. The redundant inner dot
+ *   is gone (the rail badge already conveys state at the same y); a soft
+ *   caret blinks at the trailing edge while running.
+ * - Completed rows get a right-aligned duration with a proportional micro-
+ *   bar — the panel reads as a tiny trace.
+ * - Observations use a quiet tinted background, no side-stripe.
  */
-declare function EventContent({ event, className, isRunning }: EventContentProps): react_jsx_runtime.JSX.Element | null;
+declare function EventContent({ event, className, isRunning, maxDurationSeconds, }: EventContentProps): react_jsx_runtime.JSX.Element | null;
 
 /**
  * Convert StreamingChunk to Event format
  */
 declare function convertChunkToEvent(chunk: StreamingChunk, index: number): Event | null;
 /**
- * Convert timeline items (from metadata) to Events
+ * Convert timeline items (from metadata) to Events.
+ *
+ * Computes pairwise `durationSeconds` from `item.timestamp` so completed
+ * timelines can show per-step trace bars. Falls back to undefined when
+ * timestamps are missing (e.g. tail events without a successor).
  */
 declare function convertTimelineToEvents(timeline: Array<Record<string, unknown>>): Event[];
 interface EventTimelineProps {
@@ -531,29 +546,24 @@ interface PlanTimelineProps {
  */
 declare function PlanTimeline({ plan, streamingChunks, className, }: PlanTimelineProps): react_jsx_runtime.JSX.Element;
 
-interface StatusBadgeProps {
-    status: EventStatus;
-    size?: number;
-    className?: string;
-}
-/**
- * Circular status badge driven by the chat-ui design tokens.
- *
- * - Pending: dashed circle (subtle)
- * - Running: solid primary-fill dot with a quietly spinning loader
- * - Completed: secondary-tinted check
- * - Failed: error-tinted X
- *
- * Intentionally restrained — one shape per state, one motion per state.
- * No gradient, no glow ring, no pulse: the parent timeline already
- * conveys flow with the connector line and the optional row beamer.
- */
-declare function StatusBadge({ status, size, className }: StatusBadgeProps): react_jsx_runtime.JSX.Element;
-
+type TimelineItemKind = "thinking" | "planning" | "tool" | "observation" | "subagent";
 interface TimelineItemData {
     id: string;
     status: EventStatus;
     content: ReactNode;
+    /**
+     * When true, the parent Timeline does not apply the running-state
+     * gradient wash to this row's content cell. Use for rows that own a
+     * nested timeline (e.g. subagents) — the wash bleeds behind the entire
+     * expanded body and reads as a card around the group.
+     */
+    bare?: boolean;
+    /**
+     * Semantic kind of this row. Drives adjacency-aware vertical spacing
+     * (consecutive thoughts pack tighter; tool/subagent boundaries breathe
+     * wider) and the StatusBadge marker variant (subagent gets a ring).
+     */
+    kind?: TimelineItemKind;
 }
 interface TimelineProps {
     items: TimelineItemData[];
@@ -561,8 +571,13 @@ interface TimelineProps {
     className?: string;
 }
 /**
- * Vertical timeline component
- * Displays items with status badges and connecting lines
+ * Vertical timeline — refreshed look.
+ *
+ * One unbroken hairline rail down the badge column with rail-anchored ink
+ * markers. The active segment carries a soft downward-flowing gradient
+ * slice; running rows get a left-anchored gradient wash on the content
+ * side. Spacing varies by adjacency so the panel reads like prose, not a
+ * uniform list.
  */
 declare function Timeline({ items, badgeSize, className }: TimelineProps): react_jsx_runtime.JSX.Element | null;
 interface TimelineItemProps {
@@ -573,9 +588,34 @@ interface TimelineItemProps {
     className?: string;
 }
 /**
- * Single timeline item (alternative API)
+ * Single timeline item (alternative API). Matches the refreshed look of
+ * the parent `Timeline`: hairline rail, ink-dot markers, no card chrome.
  */
 declare function TimelineItem({ status, isLast, badgeSize, children, className, }: TimelineItemProps): react_jsx_runtime.JSX.Element;
+
+interface StatusBadgeProps {
+    status: EventStatus;
+    size?: number;
+    className?: string;
+    /**
+     * Semantic kind of the row this badge marks. Each kind has a distinct
+     * marker geometry so the rail itself encodes event type at a glance —
+     * dot for thoughts (soft/prose), diamond for tool calls (geometric/
+     * action), ring for subagents (a dispatched thread). Shape, not just
+     * color, carries the categorical distinction.
+     */
+    kind?: TimelineItemKind;
+}
+/**
+ * Rail-anchored state marker.
+ *
+ * Shape carries state alongside color: running markers are visibly larger
+ * with a strong breathing halo, so a neutral activity color still reads
+ * as "in progress." Color comes from `--chat-activity` with a fallback to
+ * `--chat-primary`; callers whose primary is neutral can override the
+ * activity accent independently via `BrandingData.activityAccentColor`.
+ */
+declare function StatusBadge({ status, size, className, kind }: StatusBadgeProps): react_jsx_runtime.JSX.Element;
 
 interface TimelineRowProps {
     /** Primary label — subtask description, agent name, or humanized handle. */
@@ -597,9 +637,13 @@ interface TimelineRowProps {
  * Shared row content used by every reasoning-panel timeline:
  * plan subtasks, multi-agent subagents, and sub-assistant dispatches.
  *
- * The leading status badge and connector are provided by the parent
+ * The leading status marker and rail are provided by the parent
  * `Timeline`; this component only owns the label/description/duration row
  * and the nested timeline that expands beneath it.
+ *
+ * Refreshed look: the lucide chevron is replaced by a typographic caret
+ * that rotates on expand; the duration is rendered as a tabular-num pill
+ * with quiet weight so it reads as data, not chrome.
  */
 declare function TimelineRow({ label, description, durationSeconds, isFailed, defaultExpanded, nestedEvents, hideChevron, }: TimelineRowProps): react_jsx_runtime.JSX.Element;
 

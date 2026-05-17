@@ -99,17 +99,10 @@ type ChunkType =
   | "tool"
   | "observation"
   | "planning"
-  | "subtask"
   | "progress"
   | "clarification_needed"
   | "tool_approval_needed"
-  // Multi-Agent
-  | "multi_agent_planning"
-  | "subagent_start"
-  | "subagent_complete"
-  | "subagent_failed"
-  | "synthesis"
-  // Sub-assistant (nested rendering)
+  // Sub-assistant (nested rendering via dispatch_assistant)
   | "subagent";
 
 interface AccumulatedChunk {
@@ -121,25 +114,7 @@ interface AccumulatedChunk {
   success?: boolean;
   subtaskId?: number;
   clarificationData?: ClarificationData;
-  // Plan & Execute metadata
-  planData?: import("../types").PlanData;
-  subtaskData?: import("../types").SubTaskData;
-  isSynthesis?: boolean;
-  isReplan?: boolean;
-  // Parallel plan fields
-  waveData?: import("../types").WaveData;
-  parallelSubtaskData?: import("../types").ParallelSubtaskData;
-  waveNumber?: number;
-  isParallel?: boolean;
-  // Multi-Agent fields
-  isMultiAgent?: boolean;
-  subagentInfo?: import("../types").SubagentInfo;
-  subagentAllocations?: { name: string; focus: string; query?: string }[];
-  // Missing data fields (Gap C)
   toolArgs?: Record<string, unknown>;
-  replanAttempt?: number;
-  maxReplans?: number;
-  failureReason?: string;
   progress?: ProgressData;
   toolUseId?: string;
   // Sub-assistant nested rendering
@@ -219,19 +194,8 @@ async function parseSSEStream(
   let currentSuccess: boolean | undefined;
   let currentToolStatus: "planned" | "executing" | "completed" | undefined;
   let currentSubtaskId: number | undefined;
-  // Plan & Execute metadata (preserved through finalizeChunk)
-  let currentPlanData: import("../types").PlanData | undefined;
-  let currentSubtaskData: import("../types").SubTaskData | undefined;
-  let currentIsSynthesis: boolean | undefined;
-  let currentIsReplan: boolean | undefined;
-  // Missing data fields (Gap C)
   let currentToolArgs: Record<string, unknown> | undefined;
-  let currentReplanAttempt: number | undefined;
-  let currentMaxReplans: number | undefined;
-  let currentFailureReason: string | undefined;
   let currentProgress: ProgressData | undefined;
-  // Multi-agent tracking
-  let isMultiAgentMode = false;
 
   let lineBuffer = "";
 
@@ -247,14 +211,7 @@ async function parseSSEStream(
         success: currentSuccess,
         status: currentToolStatus,
         subtaskId: currentSubtaskId,
-        planData: currentPlanData,
-        subtaskData: currentSubtaskData,
-        isSynthesis: currentIsSynthesis,
-        isReplan: currentIsReplan,
         toolArgs: currentToolArgs,
-        replanAttempt: currentReplanAttempt,
-        maxReplans: currentMaxReplans,
-        failureReason: currentFailureReason,
         progress: currentProgress,
       });
       currentChunkContent = "";
@@ -263,14 +220,7 @@ async function parseSSEStream(
       currentSuccess = undefined;
       currentToolStatus = undefined;
       currentSubtaskId = undefined;
-      currentPlanData = undefined;
-      currentSubtaskData = undefined;
-      currentIsSynthesis = undefined;
-      currentIsReplan = undefined;
       currentToolArgs = undefined;
-      currentReplanAttempt = undefined;
-      currentMaxReplans = undefined;
-      currentFailureReason = undefined;
       currentProgress = undefined;
     }
   };
@@ -286,14 +236,7 @@ async function parseSSEStream(
         success: currentSuccess,
         status: currentToolStatus as StreamingChunk["status"],
         subtaskId: currentSubtaskId,
-        planData: currentPlanData,
-        subtaskData: currentSubtaskData,
-        isSynthesis: currentIsSynthesis,
-        isReplan: currentIsReplan,
         toolArgs: currentToolArgs,
-        replanAttempt: currentReplanAttempt,
-        maxReplans: currentMaxReplans,
-        failureReason: currentFailureReason,
         progress: currentProgress,
       });
     }
@@ -435,287 +378,18 @@ async function parseSSEStream(
             continue;
           }
 
-          // Handle wave/parallel execution events
-          if (parsed.is_wave_start) {
-            if (currentChunkContent || currentChunkType !== "answer") {
-              finalizeChunk();
-              currentChunkType = "answer";
-            }
-            chunks.push({
-              type: "wave_start",
-              content: "",
-              waveNumber: parsed.wave_number,
-              isParallel: true,
-              waveData: {
-                waveNumber: parsed.wave_number,
-                subtaskIds: parsed.subtask_ids || [],
-                parallelCount: parsed.parallel_count || 0,
-                totalWaves: parsed.total_waves || 1,
-              },
-            } as unknown as AccumulatedChunk);
-            updateStreamingMessage();
-            continue;
-          }
-
-          if (parsed.is_wave_complete) {
-            chunks.push({
-              type: "wave_complete",
-              content: "",
-              waveNumber: parsed.wave_number,
-              isParallel: true,
-              waveData: {
-                waveNumber: parsed.wave_number,
-                subtaskIds: [],
-                parallelCount: 0,
-                totalWaves: 0,
-                completedIds: parsed.completed_ids || [],
-                success: parsed.success,
-                executionTime: parsed.execution_time,
-              },
-            } as unknown as AccumulatedChunk);
-            updateStreamingMessage();
-            continue;
-          }
-
-          if (parsed.is_parallel_subtask_start) {
-            chunks.push({
-              type: "parallel_subtask_start",
-              content: "",
-              subtaskId: parsed.subtask_id,
-              waveNumber: parsed.wave_number,
-              isParallel: true,
-              parallelSubtaskData: {
-                subtaskId: parsed.subtask_id,
-                waveNumber: parsed.wave_number,
-                description: parsed.description,
-              },
-            } as unknown as AccumulatedChunk);
-            updateStreamingMessage();
-            continue;
-          }
-
-          if (parsed.is_parallel_subtask_complete) {
-            chunks.push({
-              type: "parallel_subtask_complete",
-              content: "",
-              subtaskId: parsed.subtask_id,
-              waveNumber: parsed.wave_number,
-              isParallel: true,
-              success: parsed.success,
-              parallelSubtaskData: {
-                subtaskId: parsed.subtask_id,
-                waveNumber: parsed.wave_number,
-                success: parsed.success,
-                result: parsed.result,
-                error: parsed.error,
-                executionTime: parsed.execution_time,
-              },
-            } as unknown as AccumulatedChunk);
-            updateStreamingMessage();
-            continue;
-          }
-
-          // ============================================
-          // Multi-Agent Event Handlers (miiflow-llm orchestrator)
-          // ============================================
-
-          if (parsed.is_multi_agent_planning) {
-            isMultiAgentMode = true;
-            if (currentChunkContent || currentChunkType !== "answer") {
-              finalizeChunk();
-              currentChunkType = "answer";
-            }
-            chunks.push({
-              type: "multi_agent_planning",
-              content: "",
-              isMultiAgent: true,
-            } as AccumulatedChunk);
-            updateStreamingMessage();
-            continue;
-          }
-
-          if (parsed.is_reasoning && parsed.reasoning_delta) {
-            // Multi-agent planning reasoning — accumulate into a thinking chunk
-            const existingIdx = chunks.findIndex(
-              (c) => c.type === "thinking" && c.isMultiAgent
-            );
-            if (existingIdx >= 0) {
-              chunks[existingIdx] = {
-                ...chunks[existingIdx],
-                content: (chunks[existingIdx].content || "") + parsed.reasoning_delta,
-              };
-            } else {
-              chunks.push({
-                type: "thinking",
-                content: parsed.reasoning_delta,
-                isMultiAgent: true,
-              } as AccumulatedChunk);
-            }
-            updateStreamingMessage();
-            continue;
-          }
-
-          if (parsed.is_multi_agent_planning_complete) {
-            // Update existing multi_agent_planning chunk with subagent allocations
-            const planningIdx = chunks.findIndex(
-              (c) => c.type === "multi_agent_planning" && c.isMultiAgent
-            );
-            if (planningIdx >= 0) {
-              chunks[planningIdx] = {
-                ...chunks[planningIdx],
-                subagentAllocations: parsed.subagents || [],
-              };
-            } else {
-              chunks.push({
-                type: "multi_agent_planning",
-                content: "",
-                isMultiAgent: true,
-                subagentAllocations: parsed.subagents || [],
-              } as AccumulatedChunk);
-            }
-            updateStreamingMessage();
-            continue;
-          }
-
-          if (parsed.is_multi_agent_execution_start) {
-            // No UI update needed — subagent_start events follow
-            continue;
-          }
-
-          if (parsed.is_subagent_start) {
-            chunks.push({
-              type: "subagent_start",
-              content: "",
-              isMultiAgent: true,
-              subagentInfo: {
-                id: parsed.subagent_id,
-                name: parsed.subagent_name,
-                task: parsed.task,
-                status: "running",
-              },
-            } as AccumulatedChunk);
-            updateStreamingMessage();
-            continue;
-          }
-
-          if (parsed.is_subagent_progress) {
-            // Update existing subagent chunk with progress
-            const subagentIndex = chunks.findIndex(
-              (c) =>
-                c.type === "subagent_start" &&
-                c.subagentInfo?.id === parsed.subagent_id
-            );
-            if (subagentIndex !== -1 && chunks[subagentIndex].subagentInfo) {
-              chunks[subagentIndex] = {
-                ...chunks[subagentIndex],
-                content: parsed.progress || "",
-              };
-            }
-            updateStreamingMessage();
-            continue;
-          }
-
-          if (parsed.is_subagent_complete) {
-            chunks.push({
-              type: "subagent_complete",
-              content: "",
-              isMultiAgent: true,
-              subagentInfo: {
-                id: parsed.subagent_id,
-                name: parsed.subagent_name,
-                status: "completed",
-                result: parsed.result,
-                executionTime: parsed.execution_time,
-              },
-            } as AccumulatedChunk);
-            updateStreamingMessage();
-            continue;
-          }
-
-          if (parsed.is_subagent_failed) {
-            chunks.push({
-              type: "subagent_failed",
-              content: "",
-              isMultiAgent: true,
-              subagentInfo: {
-                id: parsed.subagent_id,
-                name: parsed.subagent_name,
-                status: "failed",
-                error: parsed.error,
-              },
-            } as AccumulatedChunk);
-            updateStreamingMessage();
-            continue;
-          }
-
-          // Multi-agent synthesis (standalone) — creates synthesis chunk
-          if (parsed.is_synthesis_start && isMultiAgentMode) {
-            chunks.push({
-              type: "synthesis",
-              content: "",
-              isMultiAgent: true,
-              isSynthesis: true,
-            } as AccumulatedChunk);
-            updateStreamingMessage();
-            continue;
-          }
-
-          // Extract plan_data metadata when present
-          if (parsed.plan_data) {
-            const backendPlan = parsed.plan_data;
-            currentPlanData = {
-              goal: backendPlan.goal || "",
-              reasoning: backendPlan.reasoning || "",
-              subtasks: (backendPlan.subtasks || []).map((st: any) => ({
-                id: Number(st.id),
-                description: st.description,
-                required_tools: st.required_tools,
-                dependencies: st.dependencies,
-                status: "pending" as const,
-              })),
-              total_subtasks: backendPlan.subtasks?.length || 0,
-              completed_subtasks: 0,
-              failed_subtasks: 0,
-              progress_percentage: 0,
-            };
-          }
-
-          // Extract subtask_data metadata when present
-          if (parsed.subtask_data) {
-            currentSubtaskData = parsed.subtask_data;
-          }
-
-          // Track synthesis and replan flags
-          if (parsed.is_synthesis_start) {
-            currentIsSynthesis = true;
-          }
-          if (parsed.is_replan) {
-            currentIsReplan = true;
-          }
-
-          // Track missing data fields (Gap C)
           if (parsed.tool_args) currentToolArgs = parsed.tool_args;
-          if (parsed.replan_attempt !== undefined) currentReplanAttempt = parsed.replan_attempt;
-          if (parsed.max_replans !== undefined) currentMaxReplans = parsed.max_replans;
-          if (parsed.failure_reason) currentFailureReason = parsed.failure_reason;
           if (parsed.progress) currentProgress = parsed.progress;
 
-          // Determine chunk type
+          // Determine chunk type. Subtask/replan/plan-complete branches that
+          // existed for the legacy Plan & Execute orchestrator were removed in
+          // the unified-ReAct migration; `is_planning` now means
+          // `enter_plan_mode`/`exit_plan_mode` and emits a plain text chunk.
           let newChunkType: ChunkType = "answer";
           if (parsed.is_thinking) {
             newChunkType = "thinking";
-          } else if (
-            parsed.is_planning ||
-            parsed.is_plan_complete ||
-            parsed.is_replanning
-          ) {
+          } else if (parsed.is_planning) {
             newChunkType = "planning";
-          } else if (
-            parsed.is_subtask_start ||
-            parsed.is_subtask_complete ||
-            parsed.is_subtask_failed
-          ) {
-            newChunkType = "subtask";
           } else if (parsed.is_progress_update) {
             newChunkType = "progress";
           }
@@ -855,6 +529,69 @@ async function parseSSEStream(
               else if (parsed.result) data.result = parsed.result as string;
               if (parsed.duration_ms != null)
                 data.durationMs = parsed.duration_ms as number;
+            } else if (subEvent === "thinking") {
+              const delta = (parsed.chunk as string) || "";
+              if (delta) {
+                const nested = data.nestedChunks as AccumulatedChunk[];
+                const last = nested[nested.length - 1];
+                if (last && last.type === "thinking") {
+                  last.content = (last.content || "") + delta;
+                } else {
+                  nested.push({ type: "thinking", content: delta });
+                }
+              }
+            } else if (subEvent === "tool") {
+              const toolName = (parsed.tool_name as string) || "";
+              const toolDescription = parsed.tool_description as string | undefined;
+              const status = (parsed.status as
+                | "planned"
+                | "executing"
+                | "completed") || "planned";
+              const nested = data.nestedChunks as AccumulatedChunk[];
+              let toolIdx = -1;
+              for (let k = nested.length - 1; k >= 0; k--) {
+                if (nested[k].type === "tool" && nested[k].toolName === toolName) {
+                  toolIdx = k;
+                  break;
+                }
+              }
+              if (toolIdx >= 0) {
+                nested[toolIdx] = {
+                  ...nested[toolIdx],
+                  status,
+                  toolDescription:
+                    toolDescription || nested[toolIdx].toolDescription,
+                };
+              } else {
+                nested.push({
+                  type: "tool",
+                  content: "",
+                  toolName,
+                  toolDescription,
+                  status,
+                });
+              }
+            } else if (subEvent === "observation") {
+              const toolName = (parsed.tool_name as string) || "";
+              const success = parsed.success !== false;
+              const obsText = (parsed.chunk as string) || "";
+              const nested = data.nestedChunks as AccumulatedChunk[];
+              for (let k = nested.length - 1; k >= 0; k--) {
+                if (nested[k].type === "tool" && nested[k].toolName === toolName) {
+                  nested[k] = {
+                    ...nested[k],
+                    status: "completed",
+                    success,
+                  };
+                  break;
+                }
+              }
+              nested.push({
+                type: "observation",
+                content: obsText,
+                toolName,
+                success,
+              });
             }
           }
           updateStreamingMessage();

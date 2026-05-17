@@ -22,11 +22,6 @@ export type {
   StreamingChunk,
   StreamingMessage,
   FollowupAction,
-  // Parallel execution types
-  WaveData,
-  ParallelSubtaskData,
-  // Multi-agent types
-  SubagentInfo,
   // Sub-assistant chunk type (nested rendering)
   SubagentChunkData,
   ClarificationData,

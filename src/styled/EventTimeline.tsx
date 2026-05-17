@@ -100,12 +100,19 @@ export function convertChunkToEvent(chunk: StreamingChunk, index: number): Event
 }
 
 /**
- * Convert timeline items (from metadata) to Events
+ * Convert timeline items (from metadata) to Events.
+ *
+ * Computes pairwise `durationSeconds` from `item.timestamp` so completed
+ * timelines can show per-step trace bars. Falls back to undefined when
+ * timestamps are missing (e.g. tail events without a successor).
  */
 export function convertTimelineToEvents(timeline: Array<Record<string, unknown>>): Event[] {
   const events: Event[] = [];
+  const eventTimestamps: number[] = [];
 
   timeline.forEach((item, index) => {
+    const ts = typeof item.timestamp === "number" ? item.timestamp : undefined;
+
     if (item.type === "thought") {
       const thought = item.thought as string | undefined;
       if (!thought || thought.trim().length === 0) {
@@ -117,7 +124,9 @@ export function convertTimelineToEvents(timeline: Array<Record<string, unknown>>
         type: "thinking",
         status: "completed",
         content: thought,
+        timestamp: ts,
       });
+      eventTimestamps.push(ts ?? NaN);
     } else if (item.type === "tool") {
       const tool = (item.tool as string) || "Unknown Tool";
       if (isInternalTool(tool)) {
@@ -130,9 +139,26 @@ export function convertTimelineToEvents(timeline: Array<Record<string, unknown>>
         status: "completed",
         toolName: tool,
         toolDescription: item.tool_description as string | undefined,
+        timestamp: ts,
       });
+      eventTimestamps.push(ts ?? NaN);
     }
   });
+
+  // Pairwise duration: each event's duration = next event's timestamp - this one's.
+  // The last event has no successor, so its duration is left undefined.
+  for (let i = 0; i < events.length - 1; i++) {
+    const cur = eventTimestamps[i];
+    const next = eventTimestamps[i + 1];
+    if (Number.isFinite(cur) && Number.isFinite(next) && next > cur) {
+      const diff = next - cur;
+      // Timestamps may be epoch ms or seconds; normalize to seconds.
+      const seconds = diff > 1000 ? diff / 1000 : diff;
+      if (seconds > 0 && seconds < 3600) {
+        events[i].durationSeconds = seconds;
+      }
+    }
+  }
 
   return events;
 }
@@ -141,6 +167,23 @@ export interface EventTimelineProps {
   events: Event[];
   isStreaming?: boolean;
   className?: string;
+}
+
+function eventKind(event: Event): TimelineItemData["kind"] {
+  switch (event.type) {
+    case "thinking":
+      return "thinking";
+    case "planning":
+      return "planning";
+    case "tool":
+      return "tool";
+    case "observation":
+      return "observation";
+    case "subagent":
+      return "subagent";
+    default:
+      return undefined;
+  }
 }
 
 /**
@@ -152,11 +195,27 @@ export function EventTimeline({ events, className }: EventTimelineProps) {
     return null;
   }
 
-  // Convert events to timeline items
+  // Max duration across this timeline drives the proportional micro-bar.
+  const maxDurationSeconds = events.reduce(
+    (max, e) => (e.durationSeconds && e.durationSeconds > max ? e.durationSeconds : max),
+    0,
+  );
+
+  // Convert events to timeline items. Subagent rows own a nested timeline,
+  // so the parent's running-state wash would read as a card around the
+  // entire group — mark them `bare` to suppress it.
   const timelineItems: TimelineItemData[] = events.map((event) => ({
     id: event.id,
     status: event.status,
-    content: <EventContent event={event} isRunning={event.status === "running"} />,
+    kind: eventKind(event),
+    content: (
+      <EventContent
+        event={event}
+        isRunning={event.status === "running"}
+        maxDurationSeconds={maxDurationSeconds}
+      />
+    ),
+    bare: event.type === "subagent",
   }));
 
   return <Timeline items={timelineItems} badgeSize={20} className={className} />;

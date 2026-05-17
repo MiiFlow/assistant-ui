@@ -122,11 +122,6 @@ export type {
 	SubtaskEvent,
 	ThinkingEvent,
 	ToolEvent,
-	// Parallel execution types
-	WaveData,
-	ParallelSubtaskData,
-	// Multi-agent types
-	SubagentInfo,
 	// Sub-assistant chunk type (nested execution)
 	SubagentChunkData,
 	ClarificationData,
