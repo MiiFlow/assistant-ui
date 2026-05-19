@@ -128,6 +128,8 @@ export interface ToolApprovalData {
   toolInputs: Record<string, unknown>;
   toolSchema?: Record<string, unknown>;
   toolCallId?: string;
+  /** Human-readable tool identity surfaced in the approval eyebrow (e.g. "Yahoo Finance · Stock Basic Info"). Falls back to toolName when omitted. */
+  toolLabel?: string;
 }
 
 // ============================================================================

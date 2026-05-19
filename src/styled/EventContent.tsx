@@ -392,7 +392,7 @@ export function EventContent({
         durationSeconds={data.durationMs != null ? data.durationMs / 1000 : undefined}
         isRunning={data.status === "running"}
         isFailed={data.status === "failed"}
-        defaultExpanded={data.status === "running"}
+        defaultExpanded={false}
         nestedEvents={nestedEvents}
       />
     );

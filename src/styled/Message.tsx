@@ -759,9 +759,12 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 						</div>
 					)}
 
-					{/* Tool approval panel - when tool requires user approval */}
+					{/* Tool approval panel - when tool requires user approval. The
+					    gate is not a chat bubble; render it full-width within the
+					    message column so it reads as a decision moment rather than
+					    a stray suggestion. */}
 					{pendingToolApproval && !isStreaming && onToolApprove && onToolReject && (
-						<div className="w-full max-w-[80%]">
+						<div className="w-full">
 							<ToolApprovalPanel
 								approval={pendingToolApproval}
 								onApprove={onToolApprove}

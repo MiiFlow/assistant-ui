@@ -1,5 +1,24 @@
 # @miiflow/assistant-ui
 
+## 0.8.0
+
+### Features
+
+- **Refreshed tool approval UX**: `ToolApprovalPanel` redesigned with a raised CTA, pulsing header indicator, inline parameter-preview chips, keyboard shortcuts (Enter to approve, Escape to decline), and a `slots` prop for brand-aligned overrides. Approval panels now render full-width within the message column. A new `toolLabel` field on `ToolApprovalData` lets callers surface human-readable tool names.
+- **Skill tagging in the composer**: New `CommandTokenNode`, `CommandTokenPlugin`, and `CommandTokenView` in `composer/` enable inline skill invocation via `/id:kind` syntax. `ChatComposerCommand` and `CommandProvider` types drive typeahead-based skill selection.
+- **`@mode` / `@guideline` / `@ad_account` mentions**: Command-token system extended to recognize `@`-prefixed mentions in both composer input and rendered markdown (`MarkdownContent`, `MessageComposer`) so chips render consistently in drafts and history.
+- **Multi-agent handoff infrastructure**: `useMiiflowChat` reworked to support multi-agent orchestration with a new `SubagentChunkData` streaming event, subagent status tracking, and nested rendering via a `SubagentPanel` component.
+- **Reasoning panel revamp**: `ReasoningPanel` gains a `HeaderIndicator`, a one-shot halo animation on stream→complete, a "Thought for Xs" duration preview ahead of the summary, and renames output labels from "tools" to "sources" for clarity.
+- **Clarification panel scrolling + answered state**: Long multi-part questions now scroll within a `max-h-[40vh]` container. `onSubmit` is optional and a new `answer` prop renders a read-only "answered" state for history scrollback.
+- **Branding CSS variable expansion**: New customization points exposed via `useBrandingCSSVars` — `--chat-font-family`, `--chat-approval-accent`, `--chat-approve-bg`, `--chat-reject-bg-hover`, `--chat-clarification-accent`.
+- **Internal tools hidden from timelines**: `tool_search` and `create_plan` are now suppressed from `EventTimeline`, `PlanTimeline`, and `ReasoningPanel` to reduce cognitive load when agents discover or plan in the background.
+- **Preamble narration cleanup**: `useMiiflowChat` clears narration text emitted before a tool call so it isn't conflated with the final answer.
+
+### Bug Fixes
+
+- **Reasoning panel summary ordering**: "Thought for Xs" now precedes the summary preview in completed reasoning traces.
+- **Tool approval layout**: Removed the 80% max-width constraint that visually de-emphasized approval gates inside long messages.
+
 ## 0.7.0
 
 ### Features

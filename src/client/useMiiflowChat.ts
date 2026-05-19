@@ -637,6 +637,7 @@ async function parseSSEStream(
             toolInputs: parsed.tool_inputs || {},
             toolSchema: parsed.tool_schema,
             toolCallId: parsed.tool_call_id,
+            toolLabel: parsed.tool_label,
           };
 
           chunks.push({

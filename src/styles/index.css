@@ -42,6 +42,13 @@
 		--chat-composer-border: rgba(0, 0, 0, 0.06);
 		--chat-composer-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
 
+		/* Tool approval panel — raised CTA chrome. Warmed near-white surface
+		   with a tinted border and soft elevation so the gate reads as a
+		   decision moment rather than ambient assistant prose. */
+		--chat-approval-panel-bg: oklch(0.995 0.003 70);
+		--chat-approval-panel-border: oklch(0.86 0.005 70);
+		--chat-approval-panel-shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 8px 24px -12px rgba(0, 0, 0, 0.1);
+
 		/* Welcome screen halo effect */
 		--chat-halo-primary: rgba(16, 105, 151, 0.06);
 		--chat-halo-secondary: rgba(86, 193, 138, 0.03);
@@ -62,6 +69,11 @@
 		--chat-composer-bg: #27272a;
 		--chat-composer-border: rgba(255, 255, 255, 0.1);
 		--chat-composer-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+
+		/* Tool approval panel — dark counterparts */
+		--chat-approval-panel-bg: oklch(0.22 0.005 70);
+		--chat-approval-panel-border: oklch(0.36 0.005 70);
+		--chat-approval-panel-shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
 
 		/* Slightly stronger halo in dark mode */
 		--chat-halo-primary: rgba(16, 105, 151, 0.1);

@@ -64,7 +64,6 @@ export function SubagentPanel({ chunk }: SubagentPanelProps) {
 					label={humanizeHandle(data.subagentType)}
 					durationSeconds={data.durationMs != null ? data.durationMs / 1000 : undefined}
 					isFailed={data.status === "failed"}
-					defaultExpanded={data.status === "running"}
 					nestedEvents={nestedEvents}
 				/>
 			),

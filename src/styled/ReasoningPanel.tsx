@@ -313,12 +313,11 @@ export function ReasoningPanel({
 	}, [isStreaming, plan, executionTimeline, userMessageTimestamp, executionTime]);
 
 	// Aggregate a quiet summary preview for the collapsed completed-state
-	// header. Counts user-visible tools and lists subagent handles. Declared
-	// above the early-return below so the hook order stays stable.
+	// header. Counts user-visible tools only — subagent handles are omitted
+	// since the list can grow long and crowd the row.
 	const summaryPreview = useMemo(() => {
 		if (isStreaming) return null;
 		let toolCount = 0;
-		const subagentSlugs: string[] = [];
 
 		const visit = (name?: string) => {
 			if (!name) return;
@@ -335,9 +334,6 @@ export function ReasoningPanel({
 		if (chunks.length > 0) {
 			for (const c of chunks) {
 				if (c.type === "tool") visit(c.toolName);
-				if (c.type === "subagent" && c.subagentData?.subagentType) {
-					subagentSlugs.push(c.subagentData.subagentType);
-				}
 			}
 		} else if (executionTimeline.length > 0) {
 			for (const item of executionTimeline) {
@@ -345,16 +341,8 @@ export function ReasoningPanel({
 			}
 		}
 
-		const parts: string[] = [];
-		if (toolCount > 0) {
-			parts.push(`${toolCount} ${toolCount === 1 ? "tool" : "tools"}`);
-		}
-		if (subagentSlugs.length === 1) {
-			parts.push(`@${subagentSlugs[0]}`);
-		} else if (subagentSlugs.length > 1) {
-			parts.push(`${subagentSlugs.length} specialists`);
-		}
-		return parts.length > 0 ? parts.join(" · ") : null;
+		if (toolCount === 0) return null;
+		return `${toolCount} ${toolCount === 1 ? "source" : "sources"}`;
 	}, [isStreaming, chunks, executionTimeline]);
 
 	// Don't render if no content
@@ -479,8 +467,10 @@ export function ReasoningPanel({
 							fontVariantLigatures: "none",
 						}}
 					>
-						{summaryPreview && <span>{summaryPreview}</span>}
-						{summaryPreview && completedDuration > 0 && (
+						{completedDuration > 0 && (
+							<span>Thought for {formatDuration(completedDuration)}</span>
+						)}
+						{completedDuration > 0 && summaryPreview && (
 							<span
 								aria-hidden
 								style={{
@@ -492,7 +482,7 @@ export function ReasoningPanel({
 								}}
 							/>
 						)}
-						{completedDuration > 0 && <span>{formatDuration(completedDuration)}</span>}
+						{summaryPreview && <span>{summaryPreview}</span>}
 					</span>
 				)}
 
