@@ -47,6 +47,11 @@ import { compressImageIfNeeded } from "../utils/compress-image";
 const WS_HEARTBEAT_INTERVAL = 21000; // 21 seconds — matches web app
 const WS_RECONNECT_BASE_DELAY = 1000;
 const WS_RECONNECT_MAX_DELAY = 30000;
+// Stop reconnecting after this many consecutive handshake-time failures
+// (onclose before onopen) even with a freshly-refreshed session token, so a
+// permanently-broken tab doesn't hammer the server forever.
+const WS_MAX_AUTH_REFRESH_ATTEMPTS = 3;
+const WS_MIIFLOW_PROTOCOL = "miiflow.v1";
 
 function buildWebSocketUrl(config: MiiflowChatConfig, session: EmbedSession): string {
   if (config.webSocketUrl) {
@@ -54,7 +59,6 @@ function buildWebSocketUrl(config: MiiflowChatConfig, session: EmbedSession): st
     url.pathname = `/ws/assistant/thread/${session.config.thread_id}/`;
     url.searchParams.set("role", "user");
     url.searchParams.set("user_id", getOrCreateUserId());
-    url.searchParams.set("embed_token", session.token);
     return url.toString();
   }
 
@@ -63,7 +67,13 @@ function buildWebSocketUrl(config: MiiflowChatConfig, session: EmbedSession): st
   const origin = baseUrl.replace(/\/api$/, "");
   const wsOrigin = origin.replace(/^https:/, "wss:").replace(/^http:/, "ws:");
   const userId = getOrCreateUserId();
-  return `${wsOrigin}/ws/assistant/thread/${session.config.thread_id}/?role=user&user_id=${encodeURIComponent(userId)}&embed_token=${encodeURIComponent(session.token)}`;
+  return `${wsOrigin}/ws/assistant/thread/${session.config.thread_id}/?role=user&user_id=${encodeURIComponent(userId)}`;
+}
+
+function buildWebSocketProtocols(session: EmbedSession): string[] {
+  // Token travels in Sec-WebSocket-Protocol so it never appears in URLs or
+  // access logs. Server echoes back only WS_MIIFLOW_PROTOCOL.
+  return [WS_MIIFLOW_PROTOCOL, `embed-token.${session.token}`];
 }
 
 // ============================================================================
@@ -896,23 +906,31 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   useEffect(() => {
     if (!session) return;
 
-    const currentSession = session; // capture non-null for closure
-
     let ws: WebSocket | null = null;
     let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let reconnectAttempt = 0;
+    let authRefreshAttempts = 0;
     let disposed = false;
 
     function connect() {
       if (disposed) return;
 
-      const url = buildWebSocketUrl(configRef.current, currentSession);
-      ws = new WebSocket(url);
+      // Always read the latest session — sessionRef may have been refreshed
+      // since this effect first ran (token refresh, startNewThread, etc.).
+      const sess = sessionRef.current;
+      if (!sess) return;
+
+      const url = buildWebSocketUrl(configRef.current, sess);
+      const protocols = buildWebSocketProtocols(sess);
+      ws = new WebSocket(url, protocols);
+      let opened = false;
 
       ws.onopen = () => {
         console.log("[Miiflow] WebSocket connected");
+        opened = true;
         reconnectAttempt = 0;
+        authRefreshAttempts = 0;
 
         // Start heartbeat
         heartbeatTimer = setInterval(() => {
@@ -932,10 +950,13 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
                 const fallbackHandled = fallback ? await fallback(data.invocation) : false;
                 if (!fallbackHandled) {
                   // Send error back to backend so it doesn't hang waiting for result
-                  sendToolResult(configRef.current, currentSession, {
-                    invocation_id: data.invocation.invocation_id,
-                    error: `No handler found for tool '${data.invocation.tool_name}'`,
-                  }).catch(console.error);
+                  const replySession = sessionRef.current;
+                  if (replySession) {
+                    sendToolResult(configRef.current, replySession, {
+                      invocation_id: data.invocation.invocation_id,
+                      error: `No handler found for tool '${data.invocation.tool_name}'`,
+                    }).catch(console.error);
+                  }
                 }
               }
             }).catch(console.error);
@@ -950,15 +971,46 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           clearInterval(heartbeatTimer);
           heartbeatTimer = null;
         }
+        if (disposed) return;
 
-        if (!disposed) {
-          const delay = Math.min(
-            WS_RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttempt),
-            WS_RECONNECT_MAX_DELAY,
-          );
-          reconnectAttempt++;
-          reconnectTimer = setTimeout(connect, delay);
+        // Handshake-time failure (onclose before onopen) is almost always an
+        // auth rejection — most commonly an expired embed token. Refresh the
+        // session, then retry. Cap so a permanently-broken session eventually
+        // stops hammering the server.
+        if (!opened) {
+          if (authRefreshAttempts >= WS_MAX_AUTH_REFRESH_ATTEMPTS) {
+            console.error(
+              "[Miiflow] WebSocket giving up after repeated handshake failures",
+            );
+            return;
+          }
+          authRefreshAttempts++;
+          initSession(configRef.current)
+            .then((refreshed) => {
+              if (disposed) return;
+              sessionRef.current = refreshed;
+              setSession(refreshed);
+              reconnectTimer = setTimeout(connect, WS_RECONNECT_BASE_DELAY);
+            })
+            .catch((err) => {
+              if (disposed) return;
+              console.error("[Miiflow] Session refresh failed", err);
+              const delay = Math.min(
+                WS_RECONNECT_BASE_DELAY * Math.pow(2, authRefreshAttempts),
+                WS_RECONNECT_MAX_DELAY,
+              );
+              reconnectTimer = setTimeout(connect, delay);
+            });
+          return;
         }
+
+        // Normal mid-session drop — standard exponential backoff.
+        const delay = Math.min(
+          WS_RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttempt),
+          WS_RECONNECT_MAX_DELAY,
+        );
+        reconnectAttempt++;
+        reconnectTimer = setTimeout(connect, delay);
       };
 
       ws.onerror = () => {

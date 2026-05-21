@@ -1,5 +1,15 @@
 # @miiflow/assistant-ui
 
+## 0.8.1
+
+### Bug Fixes
+
+- **Embed WebSocket no longer reconnects forever with an expired token**: `useMiiflowChat`'s reconnect loop captured the session once and reused the same JWT on every retry, so once the token expired the client looped indefinitely with exponential-backoff-capped 403s (~one rejected handshake every 30s per stale tab). The reconnect path now reads the latest `sessionRef.current` on each attempt, detects handshake-time failures (`onclose` before `onopen`), refreshes the session via `initSession`, and caps consecutive auth refreshes at 3 before giving up.
+
+### Security
+
+- **Embed token no longer travels in the WebSocket URL**: `buildWebSocketUrl` previously appended `embed_token=<jwt>` as a query parameter, which leaked the JWT (and the tenant / assistant / thread IDs it carries) into server access logs and any intermediate proxies. The token is now passed via `Sec-WebSocket-Protocol` (`embed-token.<jwt>`) alongside a `miiflow.v1` marker protocol that the server echoes back. Requires server-side support for the new subprotocol; the server remains backward-compatible with older chat-ui versions that still send the token in the URL.
+
 ## 0.8.0
 
 ### Features
