@@ -35,32 +35,37 @@ export function ClarificationPanel({
   answer,
 }: ClarificationPanelProps) {
   const [freeTextInput, setFreeTextInput] = useState("");
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const isAnswered = typeof answer === "string" && answer.length > 0;
 
-  const handleSubmit = useCallback(
-    (responseText: string) => {
-      if (!responseText.trim() || !onSubmit) return;
-      setFreeTextInput("");
-      onSubmit(responseText.trim());
-    },
-    [onSubmit]
-  );
+  const submitCurrent = useCallback(() => {
+    if (!onSubmit) return;
+    const text = freeTextInput.trim();
+    const option = selectedOption;
+    if (!option && !text) return;
+    const responseText =
+      option && text ? `${option}\n\n${text}` : option ? option : text;
+    setFreeTextInput("");
+    setSelectedOption(null);
+    onSubmit(responseText);
+  }, [freeTextInput, selectedOption, onSubmit]);
 
   const handleOptionChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedOption = event.target.value;
-    onOptionSelect?.(selectedOption);
-    handleSubmit(selectedOption);
+    const option = event.target.value;
+    setSelectedOption(option);
+    onOptionSelect?.(option);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey && freeTextInput.trim()) {
+    if (e.key === "Enter" && !e.shiftKey && (freeTextInput.trim() || selectedOption)) {
       e.preventDefault();
-      handleSubmit(freeTextInput);
+      submitCurrent();
     }
   };
 
   const hasOptions = clarification.options && clarification.options.length > 0;
   const showFreeText = clarification.allowFreeText !== false;
+  const canSubmit = selectedOption !== null || freeTextInput.trim().length > 0;
 
   if (isAnswered) {
     return (
@@ -126,7 +131,7 @@ export function ClarificationPanel({
 
       {/* Options as radio buttons */}
       {hasOptions && (
-        <div className={cn("ml-5 space-y-1", showFreeText && "mb-2")}>
+        <div className={cn("ml-5 space-y-1", (showFreeText || hasOptions) && "mb-2")}>
           {clarification.options!.map((option, index) => (
             <label
               key={index}
@@ -136,6 +141,7 @@ export function ClarificationPanel({
                 type="radio"
                 name="clarification-option"
                 value={option}
+                checked={selectedOption === option}
                 onChange={handleOptionChange}
                 disabled={disabled || loading}
                 className="accent-[var(--chat-clarification-accent,#f97316)] w-3.5 h-3.5"
@@ -146,24 +152,24 @@ export function ClarificationPanel({
         </div>
       )}
 
-      {/* Free text input */}
-      {showFreeText && (
+      {/* Free text input + send */}
+      {showFreeText ? (
         <div className="flex items-center ml-5 bg-white dark:bg-gray-900 rounded border border-[color-mix(in_oklab,var(--chat-clarification-accent,#f97316)_30%,transparent)] px-3 py-1">
           <input
             type="text"
             value={freeTextInput}
             onChange={(e) => setFreeTextInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={hasOptions ? "Or type your response..." : "Type your response..."}
+            placeholder={hasOptions ? "Add a note or type your response..." : "Type your response..."}
             disabled={disabled || loading}
             className="flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400 disabled:opacity-50"
           />
           <button
-            onClick={() => handleSubmit(freeTextInput)}
-            disabled={!freeTextInput.trim() || disabled || loading}
+            onClick={submitCurrent}
+            disabled={!canSubmit || disabled || loading}
             className={cn(
               "p-1 rounded transition-colors",
-              freeTextInput.trim()
+              canSubmit
                 ? "text-[var(--chat-clarification-accent,#f97316)] hover:text-[var(--chat-clarification-accent-soft,#fdba74)]"
                 : "text-gray-300"
             )}
@@ -171,7 +177,22 @@ export function ClarificationPanel({
             <Send size={16} />
           </button>
         </div>
-      )}
+      ) : hasOptions ? (
+        <div className="ml-5 flex justify-end">
+          <button
+            onClick={submitCurrent}
+            disabled={!canSubmit || disabled || loading}
+            className={cn(
+              "p-1 rounded transition-colors",
+              canSubmit
+                ? "text-[var(--chat-clarification-accent,#f97316)] hover:text-[var(--chat-clarification-accent-soft,#fdba74)]"
+                : "text-gray-300"
+            )}
+          >
+            <Send size={16} />
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
