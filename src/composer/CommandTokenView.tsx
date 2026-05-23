@@ -24,6 +24,10 @@ export interface CommandTokenViewProps {
   description?: string;
   /** Optional leading icon (slotted before the label, after the tag). */
   icon?: ReactNode;
+  /** Optional override for the leading tag (where `kind` renders by default).
+   * When set, replaces the uppercase kind pill — e.g. swap "AD-ACCOUNT" for
+   * the platform logo. */
+  tag?: ReactNode;
   /** Compact inline pill ("chip") vs. full popover row ("row"). */
   variant?: "chip" | "row";
   /** When true, applies the row's "selected" styling. */
@@ -60,6 +64,7 @@ export function CommandTokenView({
   label,
   description,
   icon,
+  tag,
   variant = "chip",
   selected = false,
   onMouseEnter,
@@ -67,6 +72,16 @@ export function CommandTokenView({
   htmlId,
 }: CommandTokenViewProps) {
   const display = label ?? id;
+
+  // When the caller supplies a tag node (e.g. a platform logo for an
+  // ad-account chip), render it raw — no uppercase pill background. The
+  // default kind text still uses tagStyle.
+  const tagNode =
+    tag !== undefined ? (
+      <span style={{ display: "inline-flex", flexShrink: 0, alignItems: "center" }}>{tag}</span>
+    ) : (
+      <span style={tagStyle}>{kind}</span>
+    );
 
   if (variant === "chip") {
     return (
@@ -89,7 +104,7 @@ export function CommandTokenView({
           lineHeight: 1,
         }}
       >
-        <span style={tagStyle}>{kind}</span>
+        {tagNode}
         {icon && (
           <span style={{ display: "inline-flex", flexShrink: 0 }}>{icon}</span>
         )}

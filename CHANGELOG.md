@@ -1,5 +1,11 @@
 # @miiflow/assistant-ui
 
+## 0.9.0
+
+### Features
+
+- **`resolveCommandToken` provider prop**: New optional `ChatProvider` callback `resolveCommandToken(id, kind) => { label?, tag? }` lets the host app customize how inline command-token chips (e.g. `@<id>:ad-account` mentions) render in both the composer and rendered markdown. Returning `tag` replaces the default uppercase kind pill with a custom node (e.g. a platform logo); returning `label` overrides the id text. The wire format still only carries id + kind, so this is the integration point for resolving display info against the host's data layer.
+
 ## 0.8.1
 
 ### Bug Fixes

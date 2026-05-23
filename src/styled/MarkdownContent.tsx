@@ -1,4 +1,4 @@
-import { Children, Fragment, isValidElement, cloneElement, useState, useCallback, type ReactNode } from "react";
+import { Children, Fragment, isValidElement, cloneElement, useContext, useState, useCallback, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -6,7 +6,13 @@ import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/pris
 import { Check, Copy, Link as LinkIcon } from "lucide-react";
 import { CommandTokenView } from "../composer/CommandTokenView";
 import { findInlineCommandTokens } from "../composer/CommandTokenNode";
+import { ChatContext } from "../context/ChatProvider";
 import { cn } from "../utils/cn";
+
+type CommandTokenResolver = (
+  id: string,
+  kind: string,
+) => { label?: string; tag?: ReactNode } | undefined;
 
 // Chip kinds that are routing/behavior signals — not content. We strip them
 // from the rendered message so the bubble shows the user's words, not the
@@ -17,7 +23,10 @@ import { cn } from "../utils/cn";
 // wants to see in their own bubble after sending.
 const HIDDEN_CHIP_KINDS = new Set<string>(["mode", "skill"]);
 
-function splitTextWithCommandTokens(text: string): ReactNode[] {
+function splitTextWithCommandTokens(
+  text: string,
+  resolve?: CommandTokenResolver,
+): ReactNode[] {
   const matches = findInlineCommandTokens(text);
   if (matches.length === 0) return [text];
   const parts: ReactNode[] = [];
@@ -31,8 +40,16 @@ function splitTextWithCommandTokens(text: string): ReactNode[] {
       if (text[cursor] === " ") cursor += 1;
       return;
     }
+    const resolved = resolve?.(m.id, m.kind);
     parts.push(
-      <CommandTokenView key={`tok-${i}`} id={m.id} kind={m.kind} variant="chip" />,
+      <CommandTokenView
+        key={`tok-${i}`}
+        id={m.id}
+        kind={m.kind}
+        label={resolved?.label}
+        tag={resolved?.tag}
+        variant="chip"
+      />,
     );
     cursor = m.endIndex;
   });
@@ -46,10 +63,13 @@ function splitTextWithCommandTokens(text: string): ReactNode[] {
  * `CommandTokenChip`. Non-text children (e.g. <code>, <a>, <strong>) are
  * preserved as-is so markdown formatting still works.
  */
-function processInlineCommandTokens(children: ReactNode): ReactNode {
+function processInlineCommandTokens(
+  children: ReactNode,
+  resolve?: CommandTokenResolver,
+): ReactNode {
   return Children.map(children, (child, idx) => {
     if (typeof child === "string") {
-      const parts = splitTextWithCommandTokens(child);
+      const parts = splitTextWithCommandTokens(child, resolve);
       if (parts.length === 1 && parts[0] === child) return child;
       return <Fragment key={`text-${idx}`}>{parts}</Fragment>;
     }
@@ -61,7 +81,7 @@ function processInlineCommandTokens(children: ReactNode): ReactNode {
       if (tagName === "code" || tagName === "pre") return child;
       const childChildren = (child.props as { children?: ReactNode }).children;
       if (childChildren == null) return child;
-      return cloneElement(child, undefined, processInlineCommandTokens(childChildren));
+      return cloneElement(child, undefined, processInlineCommandTokens(childChildren, resolve));
     }
     return child;
   });
@@ -169,6 +189,13 @@ export function MarkdownContent({
     ? { fontSize: `${baselineFontSize}rem` }
     : undefined;
 
+  // Optional chip resolver from ChatProvider. Used to swap chip ids like
+  // `ad_acct_…` for the human-friendly account name and platform logo at
+  // render time — the wire format only carries `<id>:<kind>`. Undefined
+  // outside a chat context (e.g. MarkdownContent inside a card
+  // visualization).
+  const resolveCommandToken = useContext(ChatContext)?.resolveCommandToken;
+
   return (
     <ReactMarkdown
       className={cn("chat-prose", className)}
@@ -211,10 +238,10 @@ export function MarkdownContent({
           );
         },
         h4: ({ children }) => (
-          <h4 className="text-base font-medium mt-2 mb-1 first:mt-0" style={fontStyle}>{processInlineCommandTokens(children)}</h4>
+          <h4 className="text-base font-medium mt-2 mb-1 first:mt-0" style={fontStyle}>{processInlineCommandTokens(children, resolveCommandToken)}</h4>
         ),
         p: ({ children }) => (
-          <p className="mb-2 last:mb-0 leading-relaxed" style={fontStyle}>{processInlineCommandTokens(children)}</p>
+          <p className="mb-2 last:mb-0 leading-relaxed" style={fontStyle}>{processInlineCommandTokens(children, resolveCommandToken)}</p>
         ),
         a: ({ href, children }) => {
           const isImageUrl = href && /\.(png|jpe?g|gif|webp|svg)([?#]|$)/i.test(href);
@@ -246,10 +273,10 @@ export function MarkdownContent({
         ol: ({ children }) => (
           <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>
         ),
-        li: ({ children }) => <li className="leading-relaxed" style={fontStyle}>{processInlineCommandTokens(children)}</li>,
+        li: ({ children }) => <li className="leading-relaxed" style={fontStyle}>{processInlineCommandTokens(children, resolveCommandToken)}</li>,
         blockquote: ({ children }) => (
           <blockquote className="border-l-2 border-gray-300 dark:border-gray-600 pl-3 my-2 italic text-chat-subtle" style={fontStyle}>
-            {processInlineCommandTokens(children)}
+            {processInlineCommandTokens(children, resolveCommandToken)}
           </blockquote>
         ),
         code: ({ className: codeClassName, children }) => {
@@ -305,12 +332,12 @@ export function MarkdownContent({
         ),
         th: ({ children }) => (
           <th className="px-3 py-2 text-left text-sm font-medium" style={fontStyle}>
-            {processInlineCommandTokens(children)}
+            {processInlineCommandTokens(children, resolveCommandToken)}
           </th>
         ),
         td: ({ children }) => (
           <td className="px-3 py-2 text-sm border-t border-gray-100 dark:border-gray-700" style={fontStyle}>
-            {processInlineCommandTokens(children)}
+            {processInlineCommandTokens(children, resolveCommandToken)}
           </td>
         ),
         hr: () => <hr className="my-4 border-gray-200 dark:border-gray-700" />,

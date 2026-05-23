@@ -23,6 +23,15 @@ interface ChatContextValue {
     customData?: Record<string, unknown>;
     /** Callback when user interacts with a visualization (form submit, card action, etc.) */
     onVisualizationAction?: (event: VisualizationActionEvent) => void;
+    /** Resolve how to render an inline command-token chip (e.g. an
+     * `@<id>:ad-account` mention). Wire format only carries id + kind, so the
+     * host app supplies the display info. Returning `tag` replaces the default
+     * uppercase kind pill (e.g. a platform logo). Returning `label` overrides
+     * the id text. */
+    resolveCommandToken?: (id: string, kind: string) => {
+        label?: string;
+        tag?: ReactNode;
+    } | undefined;
 }
 declare const ChatContext: react.Context<ChatContextValue | null>;
 interface ChatProviderProps {
@@ -36,8 +45,12 @@ interface ChatProviderProps {
     onRetryLastMessage?: () => Promise<void>;
     customData?: Record<string, unknown>;
     onVisualizationAction?: (event: VisualizationActionEvent) => void;
+    resolveCommandToken?: (id: string, kind: string) => {
+        label?: string;
+        tag?: ReactNode;
+    } | undefined;
 }
-declare function ChatProvider({ children, messages, isStreaming, streamingMessageId, viewerRole, onSendMessage, onStopStreaming, onRetryLastMessage, customData, onVisualizationAction, }: ChatProviderProps): react_jsx_runtime.JSX.Element;
+declare function ChatProvider({ children, messages, isStreaming, streamingMessageId, viewerRole, onSendMessage, onStopStreaming, onRetryLastMessage, customData, onVisualizationAction, resolveCommandToken, }: ChatProviderProps): react_jsx_runtime.JSX.Element;
 declare function useChatContext(): ChatContextValue;
 
 export { ChatContext, type ChatContextValue, ChatProvider, type ChatProviderProps, useChatContext };
