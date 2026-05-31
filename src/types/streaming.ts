@@ -109,10 +109,22 @@ export interface SubagentChunkData {
   nestedChunks: StreamingChunk[];
 }
 
-export interface ClarificationData {
+export interface ClarificationQuestion {
   question: string;
-  options?: string[];
+  options: string[];
+  /** When true the user may pick several options (checkboxes). */
+  multiSelect?: boolean;
+}
+
+export interface ClarificationData {
+  /** Multiple-choice questions to put to the user (current shape). */
+  questions?: ClarificationQuestion[];
   context?: string;
+  /** @deprecated legacy single-question text, kept for rendering old history. */
+  question?: string;
+  /** @deprecated legacy single-question options. */
+  options?: string[];
+  /** @deprecated legacy free-text flag, no longer emitted. */
   allowFreeText?: boolean;
   subtaskId?: number;
   subtaskDescription?: string;

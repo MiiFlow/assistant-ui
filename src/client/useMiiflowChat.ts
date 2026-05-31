@@ -610,21 +610,29 @@ async function parseSSEStream(
           finalizeChunk();
 
           const clarificationData: ClarificationData = {
-            question: parsed.question || "",
-            options: parsed.options || [],
+            questions: (parsed.questions as ClarificationData["questions"]) || [],
             context: parsed.context,
-            allowFreeText: parsed.allow_free_text !== false,
             subtaskId: parsed.subtask_id,
             subtaskDescription: parsed.subtask_description,
             subagentName: parsed.subagent_name,
             subagentRole: parsed.subagent_role,
             toolCallId: parsed.tool_call_id,
+            // legacy single-question tolerance for old streams/history
+            question: (parsed.question as string) || undefined,
+            options: (parsed.options as string[]) || undefined,
           };
+
+          // Display string: prefer shared context, else the first question.
+          const clarificationText =
+            clarificationData.context ||
+            clarificationData.questions?.[0]?.question ||
+            clarificationData.question ||
+            "";
 
           // Add clarification chunk
           chunks.push({
             type: "clarification_needed",
-            content: clarificationData.question,
+            content: clarificationText,
             clarificationData,
             subtaskId: parsed.subtask_id,
           });
@@ -633,7 +641,7 @@ async function parseSSEStream(
 
           // Set as message body so user sees the question
           if (!assistantContent) {
-            assistantContent = clarificationData.question;
+            assistantContent = clarificationText;
           }
 
           updateStreamingMessage();

@@ -25,6 +25,7 @@ export type {
   // Sub-assistant chunk type (nested rendering)
   SubagentChunkData,
   ClarificationData,
+  ClarificationQuestion,
   ToolApprovalData,
   // Visualization types
   VisualizationType,
