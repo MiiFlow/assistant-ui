@@ -17,6 +17,9 @@ export type {
   BrandingData,
   SourceReference,
   SourceTypeConfig,
+  ClarificationData,
+  ClarificationQuestion,
+  ClarificationAnswer,
 } from "./types";
 
 // Context & Provider

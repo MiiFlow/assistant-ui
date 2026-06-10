@@ -1,14 +1,14 @@
-export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-BmLLpfPl.js';
+export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-DeL7F_uX.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode, ComponentType } from 'react';
-import { A as Attachment, S as SourceReference } from '../message-rztKtl_M.js';
-export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-rztKtl_M.js';
-import { S as StreamingChunk, P as PlanData, C as ClarificationData, T as ToolApprovalData, V as VisualizationChunkData, d as VisualizationActionEvent, M as MediaChunkData, e as ChartVisualizationData, f as VisualizationConfig, g as TableVisualizationData, h as CardVisualizationData, K as KpiVisualizationData, i as CodePreviewVisualizationData, F as FormVisualizationData, A as ArtifactChunkData, E as Event, j as EventStatus } from '../streaming-T0UsgHYs.js';
-export { k as ArtifactStatus, l as ChunkType, m as EventType, n as FollowupAction, O as ObservationEvent, o as PlanningEvent, p as ProgressData, q as StreamingMessage, r as SubTaskData, s as SubagentChunkData, t as SubtaskEvent, u as ThinkingEvent, v as ToolEvent, w as VisualizationType } from '../streaming-T0UsgHYs.js';
+import { A as Attachment, S as SourceReference } from '../message-BF20k5uZ.js';
+export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-BF20k5uZ.js';
+import { S as StreamingChunk, P as PlanData, C as ClarificationData, a as ClarificationAnswer, T as ToolApprovalData, V as VisualizationChunkData, f as VisualizationActionEvent, M as MediaChunkData, g as ChartVisualizationData, h as VisualizationConfig, i as TableVisualizationData, j as CardVisualizationData, K as KpiVisualizationData, k as CodePreviewVisualizationData, F as FormVisualizationData, A as ArtifactChunkData, E as Event, l as EventStatus } from '../streaming-mPuA7A3X.js';
+export { m as ArtifactStatus, n as ChunkType, o as EventType, p as FollowupAction, O as ObservationEvent, q as PlanningEvent, r as ProgressData, s as StreamingMessage, t as SubTaskData, u as SubagentChunkData, v as SubtaskEvent, w as ThinkingEvent, x as ToolEvent, y as VisualizationType } from '../streaming-mPuA7A3X.js';
 import { z, ZodSchema } from 'zod';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
 export { B as BrandingData } from '../branding-NieTEGQf.js';
-export { u as useComposer, g as useMessage } from '../avatar-CEti4z1e.js';
+export { u as useComposer, g as useMessage } from '../avatar-BT3fFFeG.js';
 import '../types-Du00UBst.js';
 
 interface LoadingDotsProps {
@@ -105,25 +105,31 @@ declare function ReasoningPanel({ isStreaming, chunks, plan, executionTimeline, 
 
 interface ClarificationPanelProps {
     clarification: ClarificationData;
-    onSubmit?: (response: string) => void;
+    /**
+     * Called on submit with both the human-readable text (for the transcript) AND
+     * the structured per-question answers (for deterministic server-side capture —
+     * no parsing of the text).
+     */
+    onSubmit?: (response: string, answers: ClarificationAnswer[]) => void;
+    /** Best-effort callback fired when an option is selected (legacy hook). */
     onOptionSelect?: (option: string) => void;
     disabled?: boolean;
     loading?: boolean;
     className?: string;
     /**
      * When set, renders a read-only "answered" state showing the user's response
-     * inline with the question. Used in scrolled-back chat history so a past
-     * clarification still shows what was asked and answered.
+     * inline. Used in scrolled-back chat history so a past clarification still
+     * shows what was answered.
      */
     answer?: string;
 }
 /**
- * Stateless clarification panel - displays when the AI agent needs user input.
- * Orange left-border panel with question, radio options, and free-text input.
+ * Clarification panel — displays when the agent needs the user to pick from
+ * one or more multiple-choice questions. Orange left-border panel.
  *
  * If `answer` is provided, switches to a read-only "answered" view.
  */
-declare function ClarificationPanel({ clarification, onSubmit, onOptionSelect, disabled, loading, className, answer, }: ClarificationPanelProps): react_jsx_runtime.JSX.Element;
+declare function ClarificationPanel({ clarification, onSubmit, onOptionSelect, disabled, loading, className, answer, }: ClarificationPanelProps): react_jsx_runtime.JSX.Element | null;
 
 interface ApprovalButtonSlotProps {
     onClick: () => void;

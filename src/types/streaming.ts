@@ -114,6 +114,34 @@ export interface ClarificationQuestion {
   options: string[];
   /** When true the user may pick several options (checkboxes). */
   multiSelect?: boolean;
+  /**
+   * Stable slug identifying the question's subject (e.g. "daily_budget"). Set by
+   * the agent; carried through so the answer is mapped back to it structurally —
+   * no parsing of formatted answer text.
+   */
+  key?: string;
+  /**
+   * When true the panel renders an inline "Other" choice with a text input so
+   * the user can type a custom value INSTEAD of picking an option. The typed
+   * value is submitted together with the other answers in one response — no
+   * extra "what would you like?" round trip.
+   */
+  allowFreeText?: boolean;
+  /** Wire-format aliases: the server emits snake_case question dicts verbatim.
+   * The panel resolves either casing — keep both for pass-through safety. */
+  multi_select?: boolean;
+  allow_free_text?: boolean;
+}
+
+/**
+ * A structured answer to one clarification question. Emitted by the panel and sent
+ * in the answer message metadata so the server records the established fact by
+ * (key, selected) deterministically instead of regex-parsing a "Q → A" string.
+ */
+export interface ClarificationAnswer {
+  key?: string;
+  question: string;
+  selected: string[];
 }
 
 export interface ClarificationData {
@@ -132,6 +160,8 @@ export interface ClarificationData {
   subagentRole?: string;
   // Tool call ID from the orchestrator for proper tool observation flow
   toolCallId?: string;
+  /** Durable checkpoint interrupt id — echo back as `interrupt_id` metadata on the answer so the server can reject a stale panel. */
+  interruptId?: string;
 }
 
 export interface ToolApprovalData {
@@ -140,8 +170,16 @@ export interface ToolApprovalData {
   toolInputs: Record<string, unknown>;
   toolSchema?: Record<string, unknown>;
   toolCallId?: string;
+  /** Durable checkpoint interrupt id — echo back as `interrupt_id` metadata on the answer so the server can reject a stale panel. */
+  interruptId?: string;
   /** Human-readable tool identity surfaced in the approval eyebrow (e.g. "Yahoo Finance · Stock Basic Info"). Falls back to toolName when omitted. */
   toolLabel?: string;
+  /**
+   * Opaque, host-app-interpreted preview payload. chat-ui only transports this —
+   * it never reads its shape. Used by host apps to render a specialized approval
+   * surface (e.g. an ad-mutation before/after diff) in place of the generic card.
+   */
+  preview?: unknown;
 }
 
 // ============================================================================

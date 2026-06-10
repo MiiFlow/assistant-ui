@@ -26,6 +26,7 @@ export type {
   SubagentChunkData,
   ClarificationData,
   ClarificationQuestion,
+  ClarificationAnswer,
   ToolApprovalData,
   // Visualization types
   VisualizationType,

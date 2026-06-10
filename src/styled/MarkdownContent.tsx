@@ -178,14 +178,17 @@ export interface MarkdownContentProps {
 export function MarkdownContent({
   children,
   className,
-  baselineFontSize = 1,
+  baselineFontSize,
   darkCodeTheme,
 }: MarkdownContentProps) {
   // Detect dark mode from CSS if not explicitly set
   const useDarkCode = darkCodeTheme ??
     (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
 
-  const fontStyle = baselineFontSize !== 1
+  // Apply whenever a baseline is provided — even 1 (16px). Without the
+  // inline style the text inherits the host font (e.g. MUI body1 at
+  // 0.875rem), so an explicit baseline must always win.
+  const fontStyle = baselineFontSize != null
     ? { fontSize: `${baselineFontSize}rem` }
     : undefined;
 

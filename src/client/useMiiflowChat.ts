@@ -617,6 +617,7 @@ async function parseSSEStream(
             subagentName: parsed.subagent_name,
             subagentRole: parsed.subagent_role,
             toolCallId: parsed.tool_call_id,
+            interruptId: parsed.interrupt_id,
             // legacy single-question tolerance for old streams/history
             question: (parsed.question as string) || undefined,
             options: (parsed.options as string[]) || undefined,
@@ -655,7 +656,10 @@ async function parseSSEStream(
             toolInputs: parsed.tool_inputs || {},
             toolSchema: parsed.tool_schema,
             toolCallId: parsed.tool_call_id,
+            interruptId: parsed.interrupt_id,
             toolLabel: parsed.tool_label,
+            // Opaque host-interpreted preview (e.g. ad-mutation diff). Transported as-is.
+            preview: parsed.tool_preview,
           };
 
           chunks.push({
