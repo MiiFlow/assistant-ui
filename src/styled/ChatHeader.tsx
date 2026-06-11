@@ -71,7 +71,7 @@ export function ChatHeader({
     <header
       className={cn(
         "flex items-center justify-between gap-3",
-        "px-4 py-3",
+        "px-4 py-2.5",
         "border-b border-[var(--chat-border)]",
         "bg-[var(--chat-header-bg,#ffffff)]",
         className
@@ -100,7 +100,7 @@ export function ChatHeader({
           {loading ? (
             <div className="h-5 w-24 bg-gray-200 rounded animate-pulse" />
           ) : (
-            <h1 className="text-lg font-semibold text-[var(--chat-text)] truncate">
+            <h1 className="text-base font-semibold text-[var(--chat-text)] truncate">
               {title}
             </h1>
           )}
@@ -139,7 +139,8 @@ export function ChatHeader({
                 className={cn(
                   "absolute right-0 top-full mt-1 z-50",
                   "min-w-[180px]",
-                  "bg-white rounded-lg shadow-lg",
+                  "bg-[var(--chat-composer-bg,#ffffff)] rounded-lg",
+                  "shadow-[0_1px_2px_rgba(29,32,51,0.04),0_8px_24px_-12px_rgba(29,32,51,0.24)]",
                   "border border-[var(--chat-border)]",
                   "py-1",
                   "animate-fade-in"

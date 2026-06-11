@@ -1,15 +1,32 @@
-export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-DeL7F_uX.js';
+export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-Cv9n6acc.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode, ComponentType } from 'react';
-import { A as Attachment, S as SourceReference } from '../message-BF20k5uZ.js';
-export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-BF20k5uZ.js';
-import { S as StreamingChunk, P as PlanData, C as ClarificationData, a as ClarificationAnswer, T as ToolApprovalData, V as VisualizationChunkData, f as VisualizationActionEvent, M as MediaChunkData, g as ChartVisualizationData, h as VisualizationConfig, i as TableVisualizationData, j as CardVisualizationData, K as KpiVisualizationData, k as CodePreviewVisualizationData, F as FormVisualizationData, A as ArtifactChunkData, E as Event, l as EventStatus } from '../streaming-mPuA7A3X.js';
-export { m as ArtifactStatus, n as ChunkType, o as EventType, p as FollowupAction, O as ObservationEvent, q as PlanningEvent, r as ProgressData, s as StreamingMessage, t as SubTaskData, u as SubagentChunkData, v as SubtaskEvent, w as ThinkingEvent, x as ToolEvent, y as VisualizationType } from '../streaming-mPuA7A3X.js';
+import { A as Attachment, S as SourceReference } from '../message-D0oMw3tR.js';
+export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-D0oMw3tR.js';
+import { S as StreamingChunk, P as PlanData, C as ClarificationData, a as ClarificationAnswer, T as ToolApprovalData, V as VisualizationChunkData, f as VisualizationActionEvent, M as MediaChunkData, g as ChartVisualizationData, h as VisualizationConfig, i as TableVisualizationData, j as CardVisualizationData, K as KpiVisualizationData, k as CodePreviewVisualizationData, F as FormVisualizationData, A as ArtifactChunkData, E as Event, l as EventStatus } from '../streaming-CmQo_OOA.js';
+export { m as ArtifactStatus, n as ChunkType, o as EventType, p as FollowupAction, O as ObservationEvent, q as PlanningEvent, r as ProgressData, s as StreamingMessage, t as SubTaskData, u as SubagentChunkData, v as SubtaskEvent, w as ThinkingEvent, x as ToolEvent, y as VisualizationType } from '../streaming-CmQo_OOA.js';
 import { z, ZodSchema } from 'zod';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
 export { B as BrandingData } from '../branding-NieTEGQf.js';
-export { u as useComposer, g as useMessage } from '../avatar-BT3fFFeG.js';
+export { u as useComposer, g as useMessage } from '../avatar-CD685KQV.js';
 import '../types-Du00UBst.js';
+
+/**
+ * Bottom toolbar row for composers: attach button, an Enter-to-send hint that
+ * fades in while the composer is focused (requires `group` on the shell), and
+ * a trailing slot for the send/stop button.
+ */
+declare function ComposerToolbar({ onAttachClick, disabled, hint, showHint, endSlot, className, }: {
+    /** Renders the "+" attach button when provided. */
+    onAttachClick?: () => void;
+    disabled?: boolean;
+    /** Keyboard hint shown while focused. Pass showHint={false} to hide. */
+    hint?: string;
+    showHint?: boolean;
+    /** Send / stop button. */
+    endSlot?: ReactNode;
+    className?: string;
+}): react_jsx_runtime.JSX.Element;
 
 interface LoadingDotsProps {
     /** Size variant */
@@ -659,4 +676,4 @@ interface TimelineRowProps {
  */
 declare function TimelineRow({ label, description, durationSeconds, isFailed, defaultExpanded, nestedEvents, hideChevron, }: TimelineRowProps): react_jsx_runtime.JSX.Element;
 
-export { type ApprovalButtonSlotProps, type ApprovalChatInputSlotProps, ArtifactChunkData, type ArtifactEntry, ArtifactInlineCard, type ArtifactInlineCardProps, ArtifactList, type ArtifactListProps, Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, CodePreviewVisualization, type CodePreviewVisualizationProps, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, TimelineRow, type TimelineRowProps, ToolApprovalPanel, type ToolApprovalPanelProps, type ToolApprovalSlots, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, formVisualizationSchema, getArtifact, getRegisteredArtifactTypes, getRegisteredTypes, getVisualization, kpiVisualizationSchema, registerArtifact, registerVisualization, tableVisualizationSchema };
+export { type ApprovalButtonSlotProps, type ApprovalChatInputSlotProps, ArtifactChunkData, type ArtifactEntry, ArtifactInlineCard, type ArtifactInlineCardProps, ArtifactList, type ArtifactListProps, Attachment, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, CodePreviewVisualization, type CodePreviewVisualizationProps, ComposerToolbar, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, TimelineRow, type TimelineRowProps, ToolApprovalPanel, type ToolApprovalPanelProps, type ToolApprovalSlots, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, formVisualizationSchema, getArtifact, getRegisteredArtifactTypes, getRegisteredTypes, getVisualization, kpiVisualizationSchema, registerArtifact, registerVisualization, tableVisualizationSchema };

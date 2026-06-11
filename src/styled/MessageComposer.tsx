@@ -1,11 +1,12 @@
 import { forwardRef, useCallback, useRef, useState, useEffect } from "react";
-import { ArrowUp, Paperclip, X, FileText, Image, Loader2, AlertCircle, Square } from "lucide-react";
+import { ArrowUp, X, FileText, Image, Loader2, AlertCircle, Square } from "lucide-react";
 import { cn } from "../utils/cn";
 import {
   LexicalChatInput,
   type CommandProvider,
   type LexicalChatInputHandle,
 } from "../composer";
+import { ComposerToolbar } from "./ComposerToolbar";
 
 // ============================================================================
 // File upload constants (matching in-house backend)
@@ -446,25 +447,17 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         <div
           className={cn(
             "mx-auto max-w-[900px]",
-            "bg-white dark:bg-zinc-800",
-            "transition-all duration-200",
-            centered
-              ? ""
-              : "rounded-xl border border-gray-200 dark:border-zinc-700 shadow-sm focus-within:shadow-md focus-within:border-gray-300 dark:focus-within:border-zinc-600",
-            isDragOver && "ring-2 ring-blue-400 border-blue-400",
+            "chat-composer-shell group",
+            centered ? "overflow-hidden" : "rounded-xl",
+            isDragOver &&
+              "ring-2 ring-[var(--chat-primary,#106997)] border-[var(--chat-primary,#106997)]",
           )}
-          style={centered ? {
-            borderRadius: "1rem",
-            overflow: "hidden",
-            backgroundColor: "var(--chat-composer-bg, #ffffff)",
-            border: "1px solid var(--chat-composer-border, rgba(0,0,0,0.06))",
-            boxShadow: "var(--chat-composer-shadow, 0 8px 30px rgba(0,0,0,0.08))",
-          } : undefined}
+          style={centered ? { borderRadius: "1rem", overflow: "hidden" } : undefined}
         >
           {/* Drag overlay */}
           {isDragOver && (
             <div className="px-3 pt-3 pb-0">
-              <div className="flex items-center justify-center py-4 rounded-lg border-2 border-dashed border-blue-300 bg-blue-50 dark:bg-blue-900/20 text-blue-500 text-sm">
+              <div className="flex items-center justify-center py-4 rounded-lg border-2 border-dashed border-[var(--chat-composer-border-focus,rgba(16,105,151,0.35))] bg-[var(--chat-panel-bg,rgba(0,0,0,0.02))] text-[var(--chat-primary,#106997)] text-sm">
                 Drop files here
               </div>
             </div>
@@ -473,96 +466,80 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
           {/* Attachment previews */}
           <AttachmentBar attachments={attachments} onRemove={handleRemoveAttachment} disabled={isSubmitting} />
 
-          {/* Main input row */}
+          {/* Text row */}
           <div
             className={cn(
-              "flex items-center gap-2",
-              centered ? "p-4" : "p-3",
+              centered ? "px-4 pt-3.5" : "px-3 pt-2.5",
               attachments.length > 0 && "pt-1.5",
             )}
-            style={centered ? { padding: "1rem" } : undefined}
+            onPaste={handlePaste}
           >
-            {/* Paperclip button */}
-            {supportsAttachments && (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isSubmitting}
-                className={cn(
-                  "flex-shrink-0",
-                  "w-8 h-8 rounded-lg",
-                  "flex items-center justify-center",
-                  "border border-gray-200 dark:border-zinc-600",
-                  "text-gray-500 dark:text-zinc-400",
-                  "hover:bg-gray-50 dark:hover:bg-zinc-700",
-                  "disabled:opacity-40 disabled:cursor-not-allowed",
-                  "transition-colors",
-                )}
-              >
-                <Paperclip size={16} />
-              </button>
-            )}
+            <LexicalChatInput
+              ref={inputRef}
+              placeholder={placeholder}
+              disabled={isSubmitDisabled}
+              commandProvider={commandProvider ?? null}
+              commandProviders={commandProviders}
+              inputClassName={cn(
+                "text-sm leading-relaxed",
+                "text-gray-900 dark:text-zinc-100",
+                "placeholder:text-gray-400 dark:placeholder:text-zinc-500",
+              )}
+              onChange={({ text }) => setHasText(text.trim().length > 0)}
+              onSubmit={({ text }) => submitWithText(text)}
+            />
+          </div>
 
-            {/* Lexical-based input with optional slash-command picker */}
-            <div className="flex-1 min-w-0" onPaste={handlePaste}>
-              <LexicalChatInput
-                ref={inputRef}
-                placeholder={placeholder}
-                disabled={isSubmitDisabled}
-                commandProvider={commandProvider ?? null}
-                commandProviders={commandProviders}
-                inputClassName={cn(
-                  "text-sm leading-relaxed",
-                  "text-gray-900 dark:text-zinc-100",
-                  "placeholder:text-gray-400 dark:placeholder:text-zinc-500",
-                )}
-                onChange={({ text }) => setHasText(text.trim().length > 0)}
-                onSubmit={({ text }) => submitWithText(text)}
-              />
-            </div>
-
-            {/* Send / Stop button */}
-            {isStreaming && onStopStreaming ? (
-              <div className="relative flex-shrink-0 w-9 h-9">
-                {/* Pulsing background glow */}
-                <span className="absolute inset-0 rounded-lg bg-gray-400 dark:bg-zinc-400"
-                  style={{ animation: "streaming-flash 3s ease-in-out infinite" }}
-                />
+          {/* Toolbar row */}
+          <ComposerToolbar
+            className={centered ? "px-2.5 pb-2.5 pt-1" : "px-2 pb-2 pt-1"}
+            onAttachClick={supportsAttachments ? () => fileInputRef.current?.click() : undefined}
+            disabled={isSubmitting}
+            endSlot={
+              isStreaming && onStopStreaming ? (
+                <div className="relative flex-shrink-0 w-8 h-8">
+                  {/* Pulsing background glow */}
+                  <span className="absolute inset-0 rounded-lg bg-gray-400 dark:bg-zinc-400"
+                    style={{ animation: "streaming-flash 3s ease-in-out infinite" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={onStopStreaming}
+                    aria-label="Stop generating"
+                    className={cn(
+                      "relative w-full h-full rounded-lg",
+                      "flex items-center justify-center",
+                      "bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900",
+                      "hover:bg-gray-700 dark:hover:bg-zinc-300",
+                      "transition-colors duration-200",
+                    )}
+                  >
+                    <Square size={14} fill="currentColor" />
+                  </button>
+                </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={onStopStreaming}
+                  onClick={handleSendButtonClick}
+                  disabled={!hasContent || isSubmitDisabled || isAnyUploading}
+                  aria-label="Send message"
                   className={cn(
-                    "relative w-full h-full rounded-lg",
+                    "flex-shrink-0",
+                    "w-8 h-8 rounded-lg",
                     "flex items-center justify-center",
                     "bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900",
+                    "shadow-sm",
                     "hover:bg-gray-700 dark:hover:bg-zinc-300",
-                    "transition-colors duration-200",
+                    "active:scale-95",
+                    "disabled:bg-gray-200 dark:disabled:bg-zinc-700 disabled:text-gray-400 dark:disabled:text-zinc-500 disabled:shadow-none disabled:cursor-not-allowed",
+                    "transition-[background-color,color,transform] duration-150",
                   )}
                 >
-                  <Square size={14} fill="currentColor" />
+                  {isSubmitting || isAnyUploading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} />}
                 </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSendButtonClick}
-                disabled={!hasContent || isSubmitDisabled || isAnyUploading}
-                className={cn(
-                  "flex-shrink-0",
-                  "w-9 h-9 rounded-lg",
-                  "flex items-center justify-center",
-                  "bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900",
-                  "shadow-sm",
-                  "hover:bg-gray-700 dark:hover:bg-zinc-300 hover:shadow-md",
-                  "active:shadow-sm",
-                  "disabled:bg-gray-200 dark:disabled:bg-zinc-700 disabled:text-gray-400 dark:disabled:text-zinc-500 disabled:shadow-none disabled:cursor-not-allowed",
-                  "transition-all duration-200",
-                )}
-              >
-                {isSubmitting || isAnyUploading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} />}
-              </button>
-            )}
-          </div>
+              )
+            }
+          />
 
           {/* Hidden file input */}
           {supportsAttachments && (

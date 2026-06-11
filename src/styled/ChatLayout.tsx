@@ -37,7 +37,7 @@ export const ChatLayout = forwardRef<HTMLDivElement, ChatLayoutProps>(
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
 							exit={{ opacity: 0 }}
-							transition={{ duration: 0.3 }}
+							transition={{ duration: 0.2 }}
 							className="flex-1 flex flex-col overflow-hidden min-h-0">
 							{header}
 							{welcomeScreen}
@@ -48,24 +48,24 @@ export const ChatLayout = forwardRef<HTMLDivElement, ChatLayoutProps>(
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
 							exit={{ opacity: 0 }}
-							transition={{ duration: 0.4 }}
+							transition={{ duration: 0.2 }}
 							className="flex-1 flex flex-col overflow-hidden min-h-0">
 							{header}
 
 							{/* Message list */}
 							<motion.div
-								initial={{ opacity: 0, y: -20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ duration: 0.4, delay: 0.1 }}
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								transition={{ duration: 0.2, delay: 0.05 }}
 								className="flex-1 overflow-hidden flex flex-col min-h-0">
 								{messageList}
 							</motion.div>
 
 							{/* Footer + Composer: floating over messages */}
 							<motion.div
-								initial={{ opacity: 0, y: 20 }}
+								initial={{ opacity: 0, y: 8 }}
 								animate={{ opacity: 1, y: 0 }}
-								transition={{ duration: 0.4, delay: 0.2 }}
+								transition={{ duration: 0.2, delay: 0.1 }}
 								className="relative z-10">
 								{footer}
 								{composer}

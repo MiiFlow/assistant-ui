@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { MessageCircleQuestion, Paperclip, X } from "lucide-react";
+import { ArrowUp, X } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
 	LexicalChatInput,
@@ -8,6 +8,7 @@ import {
 } from "../composer";
 import { cn } from "../utils/cn";
 import { Avatar } from "./Avatar";
+import { ComposerToolbar } from "./ComposerToolbar";
 
 export interface WelcomeScreenProps {
 	/** Rotating placeholder strings displayed in the input */
@@ -127,18 +128,8 @@ function DefaultInput({
 
 	return (
 		<div
-			className={cn(
-				"w-full relative mx-auto",
-				"rounded-2xl overflow-hidden",
-				"transition duration-200",
-			)}
-			style={{
-				borderRadius: "1rem",
-				overflow: "hidden",
-				backgroundColor: "var(--chat-composer-bg, #ffffff)",
-				border: "1px solid var(--chat-composer-border, rgba(0,0,0,0.06))",
-				boxShadow: "var(--chat-composer-shadow, 0 8px 30px rgba(0,0,0,0.08))",
-			}}>
+			className={cn("w-full relative mx-auto", "rounded-2xl overflow-hidden", "chat-composer-shell group")}
+			style={{ borderRadius: "1rem", overflow: "hidden" }}>
 			{/* File previews */}
 			{files.length > 0 && (
 				<div className="flex flex-wrap gap-2 px-4 pt-3">
@@ -161,80 +152,48 @@ function DefaultInput({
 				</div>
 			)}
 
-			<div className="flex items-center gap-2" style={{ padding: "0.25rem 0" }}>
-				{/* Paperclip button */}
-				{supportsAttachments && (
+			{/* Text row */}
+			<LexicalChatInput
+				ref={inputRef}
+				placeholder={placeholder}
+				disabled={disabled}
+				commandProvider={commandProvider ?? null}
+				commandProviders={commandProviders}
+				className="px-4 sm:px-5 pt-3.5 sm:pt-4 pb-1"
+				inputClassName="text-sm sm:text-base text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-500"
+				placeholderClassName="text-sm sm:text-base"
+				onChange={({ text }) => setHasText(text.trim().length > 0)}
+				onSubmit={({ text }) => handleSubmit(text)}
+			/>
+
+			{/* Toolbar row */}
+			<ComposerToolbar
+				className="px-2.5 pb-2.5 pt-1"
+				onAttachClick={supportsAttachments ? () => fileInputRef.current?.click() : undefined}
+				disabled={disabled}
+				endSlot={
 					<button
 						type="button"
-						onClick={() => fileInputRef.current?.click()}
-						disabled={disabled}
+						onClick={() => inputRef.current?.submit()}
+						disabled={!canSubmit}
+						aria-label="Send message"
 						className={cn(
-							"ml-3 flex-shrink-0",
+							"flex-shrink-0",
 							"w-8 h-8 rounded-lg",
 							"flex items-center justify-center",
-							"text-gray-400 dark:text-zinc-500",
-							"hover:bg-gray-100 dark:hover:bg-zinc-700",
-							"hover:text-gray-600 dark:hover:text-zinc-300",
-							"disabled:opacity-40 disabled:cursor-not-allowed",
-							"transition-colors",
-						)}
-						style={{ marginLeft: "0.75rem" }}>
-						<Paperclip size={16} />
+							"bg-gray-900 dark:bg-zinc-600 text-zinc-50",
+							"shadow-sm",
+							"hover:bg-gray-700 dark:hover:bg-zinc-500",
+							"active:scale-95",
+							"disabled:bg-gray-300 dark:disabled:bg-zinc-700",
+							"disabled:text-gray-500 dark:disabled:text-zinc-400",
+							"disabled:shadow-none disabled:cursor-not-allowed",
+							"transition-[background-color,color,transform] duration-150",
+						)}>
+						<ArrowUp size={16} strokeWidth={2} />
 					</button>
-				)}
-
-				<LexicalChatInput
-					ref={inputRef}
-					placeholder={placeholder}
-					disabled={disabled}
-					commandProvider={commandProvider ?? null}
-					commandProviders={commandProviders}
-					className={cn(
-						"flex-1",
-						supportsAttachments ? "pl-1" : "pl-4 sm:pl-6",
-						"py-4 sm:py-5 pr-1",
-					)}
-					inputClassName="text-sm sm:text-base text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-500"
-					onChange={({ text }) => setHasText(text.trim().length > 0)}
-					onSubmit={({ text }) => handleSubmit(text)}
-				/>
-				<button
-					type="button"
-					onClick={() => inputRef.current?.submit()}
-					disabled={!canSubmit}
-					className={cn(
-						"mr-3 flex-shrink-0",
-						"w-9 h-9 rounded-lg",
-						"flex items-center justify-center",
-						"bg-gray-900 dark:bg-zinc-600 text-white dark:text-zinc-100",
-						"shadow-sm",
-						"hover:bg-gray-700 dark:hover:bg-zinc-500",
-						"hover:shadow-md hover:-translate-y-px",
-						"active:translate-y-0 active:shadow-sm",
-						"disabled:bg-gray-300 dark:disabled:bg-zinc-700",
-						"disabled:text-gray-500 dark:disabled:text-zinc-400",
-						"disabled:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed",
-						"transition-all duration-200",
-					)}
-					style={{
-						marginRight: "0.75rem",
-						width: "2.25rem",
-						height: "2.25rem",
-						borderRadius: "0.5rem",
-					}}>
-					<svg
-						width="16"
-						height="16"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="2"
-						strokeLinecap="round"
-						strokeLinejoin="round">
-						<path d="M12 19V5M5 12l7-7 7 7" />
-					</svg>
-				</button>
-			</div>
+				}
+			/>
 
 			{/* Hidden file input */}
 			{supportsAttachments && (
@@ -245,73 +204,33 @@ function DefaultInput({
 }
 
 // ---------------------------------------------------------------------------
-// Suggestion card
+// Suggestion pill
 // ---------------------------------------------------------------------------
 
-function SuggestionCard({ text, onClick, index }: { text: string; onClick: () => void; index: number }) {
-	const buttonRef = useRef<HTMLButtonElement>(null);
-	const prefersReducedMotion = useRef(
-		typeof window !== "undefined" ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false,
-	);
-	const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
-
-	const handleMouseMove = useCallback(
-		(e: React.MouseEvent<HTMLButtonElement>) => {
-			if (prefersReducedMotion.current) return;
-			const rect = e.currentTarget.getBoundingClientRect();
-			setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-		},
-		[],
-	);
-
-	const handleMouseLeave = useCallback(() => {
-		setMousePos(null);
-	}, []);
-
+function SuggestionPill({ text, onClick, index }: { text: string; onClick: () => void; index: number }) {
 	return (
-		<motion.div
-			initial={{ opacity: 0, y: 20 }}
-			animate={{ opacity: 1, y: 0 }}
-			transition={{ delay: 0.2 + index * 0.1, duration: 0.4 }}>
-			<button
-				ref={buttonRef}
-				type="button"
-				onClick={onClick}
-				onMouseMove={handleMouseMove}
-				onMouseLeave={handleMouseLeave}
-				className={cn(
-					"relative overflow-hidden",
-					"w-full text-left",
-					"p-3",
-					"cursor-pointer",
-					"border border-gray-200 dark:border-zinc-700",
-					"rounded-lg",
-					"transition-all duration-200 ease-out",
-					"bg-white dark:bg-zinc-800",
-					"hover:border-gray-300 dark:hover:border-zinc-600",
-					"hover:bg-gray-50 dark:hover:bg-zinc-750",
-					"hover:shadow-sm",
-					"active:bg-gray-100 dark:active:bg-zinc-700",
-				)}>
-				{/* Mouse-tracking shimmer overlay */}
-				{mousePos && (
-					<div
-						className="pointer-events-none absolute inset-0 z-0"
-						style={{
-							background: `radial-gradient(120px circle at ${mousePos.x}px ${mousePos.y}px, var(--chat-halo-primary, rgba(16,105,151,0.06)), transparent)`,
-						}}
-					/>
-				)}
-				<div className="relative z-10 flex items-start gap-2.5">
-					<MessageCircleQuestion
-						size={16}
-						strokeWidth={2}
-						className="mt-0.5 text-gray-400 dark:text-zinc-500 flex-shrink-0"
-					/>
-					<span className="text-sm text-gray-600 dark:text-zinc-300 leading-relaxed flex-1">{text}</span>
-				</div>
-			</button>
-		</motion.div>
+		<motion.button
+			type="button"
+			onClick={onClick}
+			initial={{ opacity: 0 }}
+			animate={{ opacity: 1 }}
+			transition={{ delay: 0.15 + index * 0.03, duration: 0.2 }}
+			className={cn(
+				"inline-flex items-center rounded-full",
+				"border border-[var(--chat-border,rgba(29,32,51,0.08))]",
+				"px-3.5 py-1.5",
+				"text-sm leading-normal text-left",
+				"text-[var(--chat-text-subtle,rgba(0,0,0,0.5))]",
+				"cursor-pointer select-none",
+				"transition-colors duration-150",
+				"hover:bg-[var(--chat-panel-bg,rgba(0,0,0,0.02))]",
+				"hover:border-[var(--chat-border-hover,rgba(0,0,0,0.12))]",
+				"hover:text-[var(--chat-text,#1d2033)]",
+				"active:bg-[var(--chat-message-bg,rgba(0,0,0,0.03))]",
+			)}
+			style={{ borderRadius: "9999px" }}>
+			{text}
+		</motion.button>
 	);
 }
 
@@ -357,7 +276,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 			<div ref={ref} className={cn("relative overflow-hidden", "flex-1 flex items-center justify-center", "px-4 sm:px-6", className)}>
 				{/* Ambient background halo */}
 				<div
-					className="pointer-events-none absolute inset-0 animate-welcome-halo"
+					className="pointer-events-none absolute inset-0"
 					style={{
 						background: `radial-gradient(ellipse 60% 50% at 50% 45%, var(--chat-halo-primary, rgba(16,105,151,0.06)), var(--chat-halo-secondary, rgba(86,193,138,0.03)) 60%, transparent 100%)`,
 					}}
@@ -365,16 +284,16 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 
 				<motion.div
 					layout
-					initial={{ scale: 0.95, y: 20, opacity: 0 }}
-					animate={{ scale: 1, y: 0, opacity: 1 }}
-					transition={{ type: "spring", stiffness: 200, damping: 25 }}
+					initial={{ y: 8, opacity: 0 }}
+					animate={{ y: 0, opacity: 1 }}
+					transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
 					className="relative w-full max-w-[800px] flex flex-col items-center gap-8">
 					{/* Welcome heading — message format when avatar is configured */}
 					{welcomeText && assistantAvatar ? (
 						<motion.div
-							initial={{ opacity: 0, y: -10 }}
+							initial={{ opacity: 0, y: -8 }}
 							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.1, duration: 0.4 }}
+							transition={{ delay: 0.05, duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
 							className="flex items-start gap-2 w-full">
 							<div className="flex-shrink-0">
 								<Avatar
@@ -385,30 +304,32 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 								/>
 							</div>
 							<div className="rounded-2xl px-4 py-3">
-								<p style={{ fontSize: "1rem", lineHeight: "1.5rem" }} className="text-base text-gray-800 dark:text-white">{welcomeText}</p>
+								<p
+									style={{ fontSize: "1rem", lineHeight: "1.5rem", color: "var(--chat-text, #1d2033)" }}
+									className="text-base">
+									{welcomeText}
+								</p>
 							</div>
 						</motion.div>
 					) : welcomeText ? (
 						<motion.h2
-							initial={{ opacity: 0, y: -10 }}
+							initial={{ opacity: 0, y: -8 }}
 							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.1, duration: 0.4 }}
-							style={{ fontSize: "1.5rem", lineHeight: "2rem", fontWeight: 600 }}
-							className="text-2xl font-semibold text-gray-800 dark:text-white text-center">
+							transition={{ delay: 0.05, duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+							style={{
+								fontSize: "1.5rem",
+								lineHeight: "2rem",
+								fontWeight: 600,
+								letterSpacing: "-0.01em",
+								color: "var(--chat-text, #1d2033)",
+							}}
+							className="text-2xl font-semibold text-center">
 							{welcomeText}
 						</motion.h2>
 					) : null}
 
-					{/* Composer with glow ring */}
-					<div
-						className={cn(
-							"w-full rounded-2xl",
-							"transition-shadow duration-500",
-							"shadow-[0_0_15px_rgba(16,105,151,0.08)]",
-							"focus-within:shadow-[0_0_20px_rgba(16,105,151,0.15),0_0_40px_rgba(86,193,138,0.08)]",
-							"dark:shadow-[0_0_15px_rgba(255,255,255,0.04)]",
-							"dark:focus-within:shadow-[0_0_20px_rgba(255,255,255,0.08),0_0_40px_rgba(255,255,255,0.03)]",
-						)}>
+					{/* Composer */}
+					<div className="w-full">
 						{composerSlot ?? (
 							<DefaultInput
 								placeholder={placeholder}
@@ -420,15 +341,11 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 						)}
 					</div>
 
-					{/* Suggestion cards */}
+					{/* Suggestion pills */}
 					{suggestions.length > 0 && (
-						<div
-							className={cn(
-								"grid gap-3 w-full max-w-[900px]",
-								"grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(250px,1fr))]",
-							)}>
+						<div className="flex flex-wrap justify-center gap-2 w-full max-w-[640px]">
 							{suggestions.map((text, i) => (
-								<SuggestionCard key={i} text={text} onClick={() => handleSuggestionClick(text)} index={i} />
+								<SuggestionPill key={i} text={text} onClick={() => handleSuggestionClick(text)} index={i} />
 							))}
 						</div>
 					)}

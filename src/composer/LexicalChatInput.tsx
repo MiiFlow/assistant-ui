@@ -5,9 +5,12 @@ import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   $getRoot,
+  $getSelection,
   $isElementNode,
+  $isRangeSelection,
   COMMAND_PRIORITY_HIGH,
   KEY_ENTER_COMMAND,
   type EditorState,
@@ -44,6 +47,12 @@ export interface LexicalChatInputHandle {
   submit: () => void;
   /** Focus the editor. */
   focus: () => void;
+  /**
+   * Insert text at the caret (or at the end when there is no selection) and
+   * focus the editor. Used by toolbar buttons to type trigger characters
+   * like "/" or "@" so the matching typeahead opens.
+   */
+  insertText: (text: string) => void;
 }
 
 export interface LexicalChatInputProps {
@@ -52,6 +61,8 @@ export interface LexicalChatInputProps {
   className?: string;
   /** Tailwind classes applied to the inner ContentEditable element. */
   inputClassName?: string;
+  /** Tailwind classes applied to the placeholder overlay (e.g. font sizing). */
+  placeholderClassName?: string;
   /** Slot for additional Lexical plugins (mounted inside LexicalComposer). */
   children?: ReactNode;
   /**
@@ -105,6 +116,7 @@ export const LexicalChatInput = forwardRef<LexicalChatInputHandle, LexicalChatIn
       disabled = false,
       className,
       inputClassName,
+      placeholderClassName,
       children,
       onChange,
       onSubmit,
@@ -136,6 +148,7 @@ export const LexicalChatInput = forwardRef<LexicalChatInputHandle, LexicalChatIn
           disabled={disabled}
           className={className}
           inputClassName={inputClassName}
+          placeholderClassName={placeholderClassName}
           onChange={onChange}
           onSubmit={onSubmit}
           commandProvider={commandProvider}
@@ -154,6 +167,7 @@ function ChatInputBody({
   disabled,
   className,
   inputClassName,
+  placeholderClassName,
   children,
   onChange,
   onSubmit,
@@ -164,6 +178,7 @@ function ChatInputBody({
   imperativeHandle: React.ForwardedRef<LexicalChatInputHandle>;
 }) {
   const [editor] = useLexicalComposerContext();
+  const prefersReducedMotion = useReducedMotion();
   const onSubmitRef = useRef(onSubmit);
   onSubmitRef.current = onSubmit;
   const commandMenuOpenRef = useRef(false);
@@ -189,6 +204,20 @@ function ChatInputBody({
       },
       submit,
       focus: () => editor.focus(),
+      insertText: (text: string) => {
+        editor.focus(() => {
+          editor.update(() => {
+            let selection = $getSelection();
+            if (!$isRangeSelection(selection)) {
+              $getRoot().selectEnd();
+              selection = $getSelection();
+            }
+            if ($isRangeSelection(selection)) {
+              selection.insertText(text);
+            }
+          });
+        });
+      },
     }),
     [editor, submit],
   );
@@ -226,30 +255,51 @@ function ChatInputBody({
 
   return (
     <div className={cn("relative w-full", className)}>
-      <RichTextPlugin
-        contentEditable={
-          <ContentEditable
-            className={cn(
-              "outline-none w-full text-sm leading-relaxed",
-              "min-h-[24px] max-h-[200px] overflow-y-auto",
-              "text-gray-900 dark:text-zinc-100",
-              disabled && "opacity-50 cursor-not-allowed",
-              inputClassName,
-            )}
-          />
-        }
-        placeholder={
-          <div
-            className={cn(
-              "pointer-events-none absolute top-0 left-0 text-sm text-gray-400 dark:text-zinc-500",
-              "select-none",
-            )}
-          >
-            {placeholder}
-          </div>
-        }
-        ErrorBoundary={LexicalErrorBoundary}
-      />
+      {/* The placeholder is absolutely positioned; this wrapper (not the padded
+          outer div) is its containing block so it overlays the editable text
+          exactly, regardless of caller padding. */}
+      <div className="relative">
+        <RichTextPlugin
+          contentEditable={
+            <ContentEditable
+              className={cn(
+                "outline-none w-full text-sm leading-relaxed",
+                "min-h-[24px] max-h-[200px] overflow-y-auto",
+                "text-gray-900 dark:text-zinc-100",
+                disabled && "opacity-50 cursor-not-allowed",
+                inputClassName,
+              )}
+            />
+          }
+          placeholder={
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-0 flex items-center overflow-hidden",
+                "text-sm text-gray-400 dark:text-zinc-500 select-none",
+                placeholderClassName,
+              )}
+            >
+              {prefersReducedMotion ? (
+                <span className="truncate">{placeholder}</span>
+              ) : (
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={placeholder}
+                    className="truncate"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                  >
+                    {placeholder}
+                  </motion.span>
+                </AnimatePresence>
+              )}
+            </div>
+          }
+          ErrorBoundary={LexicalErrorBoundary}
+        />
+      </div>
       <OnChangePlugin onChange={handleChange} />
       <HistoryPlugin />
       {(() => {

@@ -39,8 +39,10 @@
 
 		/* Composer (input box) backgrounds */
 		--chat-composer-bg: #ffffff;
-		--chat-composer-border: rgba(0, 0, 0, 0.06);
-		--chat-composer-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+		--chat-composer-border: rgba(29, 32, 51, 0.08);
+		--chat-composer-border-focus: color-mix(in srgb, var(--chat-primary) 35%, transparent);
+		--chat-composer-shadow: 0 1px 2px rgba(29, 32, 51, 0.04), 0 8px 24px -12px rgba(29, 32, 51, 0.12);
+		--chat-composer-shadow-focus: 0 2px 4px rgba(29, 32, 51, 0.05), 0 16px 40px -14px rgba(29, 32, 51, 0.2);
 
 		/* Tool approval panel — raised CTA chrome. Warmed near-white surface
 		   with a tinted border and soft elevation so the gate reads as a
@@ -68,7 +70,9 @@
 		/* Composer backgrounds */
 		--chat-composer-bg: #27272a;
 		--chat-composer-border: rgba(255, 255, 255, 0.1);
-		--chat-composer-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+		--chat-composer-border-focus: color-mix(in srgb, var(--chat-primary) 50%, transparent);
+		--chat-composer-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -12px rgba(0, 0, 0, 0.45);
+		--chat-composer-shadow-focus: 0 2px 4px rgba(0, 0, 0, 0.25), 0 16px 40px -14px rgba(0, 0, 0, 0.55);
 
 		/* Tool approval panel — dark counterparts */
 		--chat-approval-panel-bg: oklch(0.22 0.005 70);
@@ -122,6 +126,22 @@
 	[role="button"] {
 		pointer-events: all !important;
 		user-select: text;
+	}
+
+	/* Composer shell: shared chrome for all message inputs. Border and shadow
+	   lift gently on focus; vars keep it brandable per tenant. */
+	.chat-composer-shell {
+		border: 1px solid var(--chat-composer-border, rgba(29, 32, 51, 0.08));
+		background-color: var(--chat-composer-bg, #ffffff);
+		box-shadow: var(--chat-composer-shadow, 0 1px 2px rgba(29, 32, 51, 0.04), 0 8px 24px -12px rgba(29, 32, 51, 0.12));
+		transition:
+			border-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+			box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	.chat-composer-shell:focus-within {
+		border-color: var(--chat-composer-border-focus, rgba(16, 105, 151, 0.35));
+		box-shadow: var(--chat-composer-shadow-focus, 0 2px 4px rgba(29, 32, 51, 0.05), 0 16px 40px -14px rgba(29, 32, 51, 0.2));
 	}
 
 	/* Message prose styling */
@@ -414,26 +434,4 @@
 		}
 	}
 
-	/* Welcome screen halo breathing animation */
-	.animate-welcome-halo {
-		animation: welcome-halo-breathe 6s ease-in-out infinite;
-	}
-
-	@keyframes welcome-halo-breathe {
-		0%,
-		100% {
-			opacity: 0.6;
-			transform: scale(1);
-		}
-		50% {
-			opacity: 1;
-			transform: scale(1.05);
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.animate-welcome-halo {
-			animation: none;
-		}
-	}
 }
