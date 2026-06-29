@@ -40,6 +40,19 @@ export interface MiiflowChatConfig {
   onUserMessageCreated?: (message: { id: string; content: string }) => void;
   /** Callback fired when an assistant message stream completes (for widget event emission) */
   onAssistantMessageComplete?: (message: { id: string; content: string }) => void;
+  /**
+   * Branding to render before the session initializes, so the chat shell paints
+   * instantly without waiting on the network. Server branding from init()
+   * overrides this once it arrives. SSR-safe (a deterministic prop), unlike the
+   * cached branding the hook also applies post-mount for returning visitors.
+   */
+  initialBranding?: BrandingData;
+  /**
+   * Client tools to register as part of the init round-trip instead of via a
+   * separate registerTools() call. Use when the tool set is known at mount;
+   * dynamic tools can still be added later with registerTools().
+   */
+  tools?: ClientToolDefinition[];
 }
 
 // ============================================================================
@@ -72,6 +85,12 @@ export interface EmbedSession {
   token: string;
   config: EmbedSessionConfig;
   session_id: string;
+  /**
+   * Names of client tools the backend registered during init (when tools were
+   * folded into the init call). Transient — used to decide whether a fallback
+   * register-tools call is needed; not persisted to the session cache.
+   */
+  registeredTools?: string[];
 }
 
 // ============================================================================

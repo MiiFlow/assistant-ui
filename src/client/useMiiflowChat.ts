@@ -19,6 +19,7 @@ import type {
   MiiflowChatConfig,
   MiiflowChatResult,
   EmbedSession,
+  EmbedSessionBranding,
   ClientToolDefinition,
   ToolHandler,
   ToolInvocationRequest,
@@ -35,6 +36,9 @@ import {
   sendSystemEvent as sendSystemEventToBackend,
   sendPageContext as sendPageContextToBackend,
   sendToolResult,
+  loadCachedSession,
+  saveCachedSession,
+  clearCachedSession,
 } from "./session";
 import { validateToolDefinition, serializeToolDefinition } from "./tool-validator";
 import { useBrandingCSSVars } from "../hooks/use-branding-css-vars";
@@ -135,10 +139,9 @@ interface AccumulatedChunk {
 // Branding mapper
 // ============================================================================
 
-function mapSessionBranding(
-  session: EmbedSession | null
+function mapBranding(
+  b: EmbedSessionBranding | null | undefined
 ): BrandingData | null {
-  const b = session?.config.branding;
   if (!b) return null;
   return {
     customName: b.custom_name,
@@ -153,6 +156,12 @@ function mapSessionBranding(
     chatbotLogo: b.chatbot_logo,
     assistantAvatar: b.assistant_avatar,
   };
+}
+
+function mapSessionBranding(
+  session: EmbedSession | null
+): BrandingData | null {
+  return mapBranding(session?.config.branding);
 }
 
 // ============================================================================
@@ -795,18 +804,84 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     new Map<string, Omit<ClientToolDefinition, "handler">>()
   );
 
+  // Branding from the last cached session, applied AFTER mount (never during the
+  // first render) so it can't cause an SSR/hydration mismatch. Lets a returning
+  // visitor see their real branding instantly without a network round-trip.
+  const [cachedBranding, setCachedBranding] =
+    useState<EmbedSessionBranding | null>(null);
+
+  // The in-flight init() promise, so sendMessage() (and others) can await a
+  // session instead of dropping calls made before init resolves.
+  const initPromiseRef = useRef<Promise<EmbedSession | null> | null>(null);
 
   // Initialize session on mount
   useEffect(() => {
     let cancelled = false;
 
-    async function init() {
+    // Surface cached branding immediately (post-mount, no network).
+    const cached = loadCachedSession(configRef.current);
+    if (cached?.config.branding) {
+      setCachedBranding(cached.config.branding);
+    }
+
+    // Serialize any tools provided up-front so they can be folded into init.
+    // Their handlers are registered locally so backend invocations resolve.
+    const configTools = configRef.current.tools ?? [];
+    const serializedConfigTools = configTools.map((tool) => {
+      validateToolDefinition(tool);
+      toolHandlersRef.current.set(tool.name, tool.handler);
+      const serialized = serializeToolDefinition(tool);
+      toolDefinitionsRef.current.set(tool.name, serialized);
+      return serialized;
+    });
+
+    async function init(): Promise<EmbedSession | null> {
       try {
-        const sess = await initSession(configRef.current);
+        const cachedToken = cached?.token;
+        let sess: EmbedSession;
+        try {
+          sess = await initSession(configRef.current, {
+            token: cachedToken,
+            tools: serializedConfigTools,
+          });
+        } catch (err) {
+          // A cached token the backend rejects (rotated key, revoked tenant)
+          // shouldn't strand the chat — drop it and retry the full handshake.
+          if (cachedToken) {
+            clearCachedSession(configRef.current);
+            sess = await initSession(configRef.current, {
+              tools: serializedConfigTools,
+            });
+          } else {
+            throw err;
+          }
+        }
         if (!cancelled) {
+          saveCachedSession(configRef.current, sess);
           setSession(sess);
           setLoading(false);
         }
+
+        // Self-heal across deploy ordering: if the backend didn't acknowledge
+        // the folded tools (older backend that ignores `tools` in init), register
+        // them separately. Non-blocking — the session is already usable.
+        if (serializedConfigTools.length > 0) {
+          const acked = new Set(sess.registeredTools ?? []);
+          const missing = serializedConfigTools.filter(
+            (tool) => !acked.has(tool.name)
+          );
+          if (missing.length > 0) {
+            registerToolsOnBackend(configRef.current, sess, missing).catch(
+              (err) => {
+                console.warn(
+                  "[Miiflow] Fallback tool registration failed:",
+                  err
+                );
+              }
+            );
+          }
+        }
+        return sess;
       } catch (err) {
         if (!cancelled) {
           setError(
@@ -814,17 +889,25 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           );
           setLoading(false);
         }
+        return null;
       }
     }
 
-    init();
+    initPromiseRef.current = init();
     return () => {
       cancelled = true;
     };
   }, [config.publicKey, config.assistantId]);
 
-  // Derive branding
-  const branding = useMemo(() => mapSessionBranding(session), [session]);
+  // Derive branding. Live server branding wins once init resolves; before that,
+  // fall back to consumer-provided initialBranding, then the cached branding.
+  const branding = useMemo(
+    () =>
+      mapSessionBranding(session) ??
+      config.initialBranding ??
+      mapBranding(cachedBranding),
+    [session, config.initialBranding, cachedBranding]
+  );
   const brandingCSSVars = useBrandingCSSVars(branding);
 
   // Upload file — store metadata for attaching to user messages
@@ -1068,11 +1151,18 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   // Also fixes: allows attachment-only messages (empty text with attachmentIds).
   const sendMessage = useCallback(
     async (content: string, attachmentIds?: string[], extraMetadata?: Record<string, unknown>) => {
-      const currentSession = sessionRef.current;
       const hasText = !!content.trim();
       const hasAttachments = attachmentIds && attachmentIds.length > 0;
 
-      if ((!hasText && !hasAttachments) || isStreamingRef.current || !currentSession) return;
+      if ((!hasText && !hasAttachments) || isStreamingRef.current) return;
+
+      // The composer is interactive before init resolves; if the user sends
+      // early, wait for the in-flight session rather than dropping the message.
+      let currentSession = sessionRef.current;
+      if (!currentSession && initPromiseRef.current) {
+        currentSession = await initPromiseRef.current;
+      }
+      if (!currentSession) return;
       // Lock immediately to prevent double-send race condition
       isStreamingRef.current = true;
 

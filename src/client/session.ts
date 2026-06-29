@@ -3,12 +3,15 @@
  */
 
 import type {
+	ClientToolDefinition,
 	EmbedSession,
+	EmbedSessionConfig,
 	MiiflowChatConfig,
 	PageContext,
 	SystemEvent,
 	ToolExecutionResult,
 } from "./types";
+import { isTokenExpiringSoon } from "./token-utils";
 
 /**
  * Determine the backend base URL from config.
@@ -46,18 +49,45 @@ export function getOrCreateUserId(): string {
 }
 
 /**
+ * Options for {@link initSession}.
+ */
+export interface InitSessionOptions {
+	/**
+	 * A previously-issued (cached) embed token. When present it is sent as a
+	 * Bearer credential so the backend can take a fast path — skipping the
+	 * public-key/HMAC handshake — and just mint a fresh thread. Backward
+	 * compatible: older backends ignore the header and run the normal handshake.
+	 */
+	token?: string;
+	/**
+	 * Client tool definitions (without handlers) to register in the same
+	 * round-trip as init, so no separate register-tool(s) call is needed.
+	 * Backward compatible: older backends ignore the extra field.
+	 */
+	tools?: Array<Omit<ClientToolDefinition, "handler">>;
+}
+
+/**
  * Initialize an embed session by calling the backend init endpoint.
  */
-export async function initSession(config: MiiflowChatConfig): Promise<EmbedSession> {
+export async function initSession(
+	config: MiiflowChatConfig,
+	options: InitSessionOptions = {},
+): Promise<EmbedSession> {
 	const backendBaseUrl = getBackendBaseUrl(config);
+
+	const headers: Record<string, string> = {
+		"Content-Type": "application/json",
+		"X-Embed-Public-Key": config.publicKey,
+		"x-mii-user-id": getOrCreateUserId(),
+	};
+	if (options.token) {
+		headers["Authorization"] = `Bearer ${options.token}`;
+	}
 
 	const response = await fetch(`${backendBaseUrl}/api/embed/init`, {
 		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			"X-Embed-Public-Key": config.publicKey,
-			"x-mii-user-id": getOrCreateUserId(),
-		},
+		headers,
 		body: JSON.stringify({
 			assistant_id: config.assistantId,
 			user_data: {
@@ -65,6 +95,9 @@ export async function initSession(config: MiiflowChatConfig): Promise<EmbedSessi
 				name: config.userName,
 				email: config.userEmail,
 			},
+			...(options.tools && options.tools.length > 0
+				? { tools: options.tools }
+				: {}),
 		}),
 	});
 
@@ -82,7 +115,69 @@ export async function initSession(config: MiiflowChatConfig): Promise<EmbedSessi
 		token: data.token,
 		config: data.config,
 		session_id: data.session_id,
+		registeredTools: Array.isArray(data.registered_tools)
+			? data.registered_tools
+			: undefined,
 	};
+}
+
+// ============================================================================
+// Session cache (token + branding config)
+// ============================================================================
+
+/**
+ * Persist the auth token and branding config so a returning visitor can render
+ * the branded shell instantly and let the backend skip the handshake. The
+ * cached thread is intentionally NOT reused — each load still mints a fresh
+ * thread — so only the token + branding config are useful across reloads.
+ */
+const SESSION_CACHE_PREFIX = "miiflow-session";
+/** Treat a cached token as unusable once it is within this window of expiry. */
+const TOKEN_REFRESH_THRESHOLD_MS = 5 * 60 * 1000;
+
+export interface CachedSession {
+	token: string;
+	config: EmbedSessionConfig;
+}
+
+function sessionCacheKey(config: MiiflowChatConfig): string {
+	return `${SESSION_CACHE_PREFIX}:${config.publicKey}:${config.assistantId}:${getOrCreateUserId()}`;
+}
+
+/**
+ * Load a cached session, or null if absent, malformed, or the token is expired
+ * / about to expire. Safe to call where localStorage is unavailable (SSR).
+ */
+export function loadCachedSession(config: MiiflowChatConfig): CachedSession | null {
+	try {
+		const raw = localStorage.getItem(sessionCacheKey(config));
+		if (!raw) return null;
+		const parsed = JSON.parse(raw) as CachedSession;
+		if (!parsed?.token || !parsed?.config) return null;
+		if (isTokenExpiringSoon(parsed.token, TOKEN_REFRESH_THRESHOLD_MS)) return null;
+		return parsed;
+	} catch {
+		return null;
+	}
+}
+
+/** Cache the token + branding config from a freshly-initialized session. */
+export function saveCachedSession(config: MiiflowChatConfig, session: EmbedSession): void {
+	try {
+		const payload: CachedSession = { token: session.token, config: session.config };
+		localStorage.setItem(sessionCacheKey(config), JSON.stringify(payload));
+	} catch {
+		// localStorage may be unavailable or over quota — caching is best-effort.
+	}
+}
+
+/** Remove a cached session (e.g. after the backend rejects a stale token). */
+export function clearCachedSession(config: MiiflowChatConfig): void {
+	try {
+		localStorage.removeItem(sessionCacheKey(config));
+	} catch {
+		// Ignore storage errors.
+	}
 }
 
 /**

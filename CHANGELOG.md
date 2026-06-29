@@ -1,5 +1,17 @@
 # @miiflow/assistant-ui
 
+## 0.10.0
+
+### Features
+
+- **Instant-paint branding & session caching**: New `initialBranding` prop on `ChatProvider`/`useMiiflowChat` lets the host render the branded shell on first paint without waiting on the network (SSR-safe). The hook also caches the auth token + branding config per visitor in `client/session.ts`, so a returning visitor sees their real branding immediately and the backend can skip the public-key handshake (`Authorization: Bearer` fast path); a rejected stale token transparently falls back to the full handshake.
+- **Init-time client tool registration**: New `tools` prop on `MiiflowChatConfig` folds known-at-mount client tool definitions into the `init` round-trip instead of a separate `registerTools()` call. Backward compatible — if the backend doesn't acknowledge the folded tools (`registeredTools`), the hook self-heals with a fallback registration call. Dynamic tools can still be added later via `registerTools()`.
+- **Early-send message queuing**: Messages sent before the session finishes initializing now await the in-flight `init()` promise in `client/useMiiflowChat.ts` instead of being silently dropped, so the composer is safe to use the moment it renders.
+- **Multi-question `ClarificationPanel`**: Agents can ask several related clarification questions in one panel with tabbed navigation, answered in any order, each with optional free-text input alongside predefined options. New exported `ClarificationQuestion` and `ClarificationAnswer` types capture answers as structured data (no text parsing) for deterministic server-side recording; the SSE parser falls back to the legacy single-question shape for old history.
+- **`ComposerToolbar` component**: New reusable toolbar (exported from `styled/`) with an optional attach-file button, keyboard hint, and customizable trailing slot for send/stop actions, shared across `MessageComposer` and `WelcomeScreen` for consistent layout.
+- **`LexicalChatInput` enhancements**: New `insertText` imperative handle lets toolbar buttons insert trigger characters (e.g. `/` or `@`) at the caret to open typeahead pickers, plus a new `placeholderClassName` prop; the placeholder now animates on change with Framer Motion (respecting `prefers-reduced-motion`).
+- **Chat shell polish**: Smoother animations and transitions across `ChatHeader`, `ChatLayout`, `MessageComposer`, and `WelcomeScreen`; welcome-screen suggestion pills now render as compact bordered buttons with hover states.
+
 ## 0.9.0
 
 ### Features
