@@ -45,6 +45,8 @@ export default defineConfig({
   external: [
     "react",
     "react-dom",
+    "@shadcn/react",
+    /^@shadcn\/react\//,
     "framer-motion",
     "lucide-react",
     "react-markdown",

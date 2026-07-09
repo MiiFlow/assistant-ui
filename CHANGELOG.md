@@ -1,5 +1,13 @@
 # @miiflow/assistant-ui
 
+## 0.11.0
+
+**Breaking:** now requires **React 19** (`react`/`react-dom` `>=19`), up from `>=18`. The new scroll engine below is built on React 19. Projects still on React 18 should stay on `0.10.x` until they upgrade — this is published as a minor bump (not a patch) so `^0.10.0` ranges won't pick it up automatically.
+
+### Features
+
+- **Rebuilt chat scroll engine (`MessageList`)**: The styled `MessageList` now renders on the shadcn message-scroller engine (`@shadcn/react`) instead of the in-house `useAutoScroll` hook. Scrolling is more robust — it follows streamed output only while the reader is pinned to the live edge, preserves the reader's position when earlier content changes height (no yank-to-bottom mid-read), and opens the transcript at the latest turn. The public `MessageList` API is unchanged (`children` / `autoScroll` / `showScrollToBottom` / `className`); each direct child is wrapped in a scroll-anchored item internally, and the floating scroll-to-bottom button now derives its visibility from the engine's live-edge state. The legacy `useAutoScroll` hook and headless `MessageList` primitive remain exported for backward compatibility.
+
 ## 0.10.0
 
 ### Features
