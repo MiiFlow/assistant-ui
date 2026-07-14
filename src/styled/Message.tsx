@@ -574,7 +574,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 
 					{/* Reasoning Panel - before content for assistant */}
 					{hasReasoning && isAssistant && (
-						<div className="w-full max-w-[80%]">
+						<div className="w-full">
 									<ReasoningPanel
 								isStreaming={isStreaming}
 								chunks={reasoningChunks}
@@ -609,7 +609,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 							{/* Message bubble */}
 							<div
 								ref={bubbleRef}
-								className={cn("max-w-[85%]", "flex flex-col")}
+								className={cn(isViewer ? "max-w-[85%]" : "min-w-0 flex-1", "flex flex-col")}
 								data-message-role={isViewer ? "viewer" : "other"}
 								style={streamingMinHeight ? { minHeight: streamingMinHeight } : undefined}
 							>
