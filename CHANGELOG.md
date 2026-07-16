@@ -1,5 +1,11 @@
 # @miiflow/assistant-ui
 
+## 0.12.0
+
+### Features
+
+- **Full-width assistant responses (`styled/Message.tsx`)**: Assistant responses now fill the message column instead of being capped at 85% width, matching the reading layout of Claude / ChatGPT / Gemini. User messages are unchanged — still right-aligned, messenger-style, and capped at 85%. The reasoning panel above a response widens to full width so it aligns with the response body. Styling-only: the public `MessageList` / `Message` component APIs are unchanged.
+
 ## 0.11.0
 
 **Breaking:** now requires **React 19** (`react`/`react-dom` `>=19`), up from `>=18`. The new scroll engine below is built on React 19. Projects still on React 18 should stay on `0.10.x` until they upgrade — this is published as a minor bump (not a patch) so `^0.10.0` ranges won't pick it up automatically.
