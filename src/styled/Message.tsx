@@ -1,6 +1,7 @@
 import {
 	forwardRef,
 	useContext,
+	useEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -270,6 +271,10 @@ export interface MessageProps {
 	onReportIncorrect?: (reason?: string) => void;
 	/** Confirm this assistant response was correct/helpful */
 	onConfirmCorrect?: () => void;
+	/** Edit-and-resubmit for the viewer's own messages (ChatGPT-style). When
+	 *  provided, a pencil appears in the hover action bar; submitting replaces
+	 *  this message and everything after it with a fresh agent turn. */
+	onEditSubmit?: (newText: string) => void;
 }
 
 /**
@@ -308,12 +313,16 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			renderInlineSuggestedAction,
 			onReportIncorrect,
 			onConfirmCorrect,
+			onEditSubmit,
 		},
 		ref,
 	) => {
 		// Get visualization action callback from context (null-safe for standalone usage)
 		const chatContext = useContext(ChatContext);
 		const onVisualizationAction = chatContext?.onVisualizationAction;
+
+		// Edit-and-resubmit state for the viewer's own messages
+		const [isEditing, setIsEditing] = useState(false);
 
 		// Case-insensitive comparison for role matching
 		const participantRole = (message.participant?.role || "").toLowerCase();
@@ -609,10 +618,23 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 							{/* Message bubble */}
 							<div
 								ref={bubbleRef}
-								className={cn(isViewer ? "max-w-[85%]" : "min-w-0 flex-1", "flex flex-col")}
+								className={cn(
+									isViewer ? (isEditing ? "w-full" : "max-w-[85%]") : "min-w-0 flex-1",
+									"flex flex-col",
+								)}
 								data-message-role={isViewer ? "viewer" : "other"}
 								style={streamingMinHeight ? { minHeight: streamingMinHeight } : undefined}
 							>
+								{isViewer && isEditing && onEditSubmit ? (
+									<UserMessageEditor
+										initialText={message.textContent || ""}
+										onCancel={() => setIsEditing(false)}
+										onSubmit={(newText) => {
+											setIsEditing(false);
+											onEditSubmit(newText);
+										}}
+									/>
+								) : (
 								<div
 									className={cn(
 									"rounded-2xl",
@@ -670,6 +692,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 										</div>
 									)}
 								</div>
+								)}
 
 								{/* Attachments — outside bubble */}
 								{hasAttachments && (
@@ -679,7 +702,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 								)}
 
 								{/* Timestamp + action bar row */}
-								{!isStreaming && (showTimestamp && message.createdAt || (isAssistant && message.textContent)) && (
+								{!isStreaming && !isEditing && (showTimestamp && message.createdAt || message.textContent) && (
 									<div className={cn("flex items-center gap-2 mt-1", isViewer && "flex-row-reverse")}>
 										{showTimestamp && message.createdAt && (
 											<MessageTimestamp
@@ -694,6 +717,12 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 												textContent={message.textContent}
 												onReportIncorrect={onReportIncorrect}
 												onConfirmCorrect={onConfirmCorrect}
+											/>
+										)}
+										{isViewer && message.textContent && (
+											<MessageActionBar
+												textContent={message.textContent}
+												onEdit={onEditSubmit ? () => setIsEditing(true) : undefined}
 											/>
 										)}
 									</div>
@@ -786,6 +815,104 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 );
 
 Message.displayName = "Message";
+
+/**
+ * Inline editor shown when the viewer edits one of their own messages
+ * (ChatGPT-style). Renders in place of the bubble: an auto-growing textarea
+ * with Cancel / Send. Esc cancels, Cmd/Ctrl+Enter sends.
+ */
+function UserMessageEditor({
+	initialText,
+	onCancel,
+	onSubmit,
+}: {
+	initialText: string;
+	onCancel: () => void;
+	onSubmit: (newText: string) => void;
+}) {
+	const [draft, setDraft] = useState(initialText);
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const canSubmit = draft.trim().length > 0;
+
+	// Auto-grow the textarea to fit content
+	const resize = () => {
+		const el = textareaRef.current;
+		if (!el) return;
+		el.style.height = "auto";
+		el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+	};
+
+	// On mount: focus with the caret at the end, sized to content
+	useEffect(() => {
+		const el = textareaRef.current;
+		if (!el) return;
+		el.focus();
+		el.setSelectionRange(el.value.length, el.value.length);
+		resize();
+	}, []);
+
+	return (
+		<div
+			className="w-full rounded-2xl px-4 py-3"
+			style={{
+				backgroundColor: "var(--chat-panel-bg)",
+				border: "1px solid var(--chat-border)",
+			}}
+		>
+			<textarea
+				ref={textareaRef}
+				value={draft}
+				onChange={(e) => {
+					setDraft(e.target.value);
+					resize();
+				}}
+				onKeyDown={(e) => {
+					if (e.key === "Escape") {
+						e.preventDefault();
+						onCancel();
+					} else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+						e.preventDefault();
+						if (canSubmit) onSubmit(draft.trim());
+					}
+				}}
+				rows={1}
+				aria-label="Edit message"
+				className="w-full resize-none border-0 bg-transparent p-0 outline-none text-[var(--chat-text)]"
+				style={{ font: "inherit", lineHeight: "inherit", overflowY: "auto" }}
+			/>
+			<div className="mt-2 flex items-center justify-end gap-2">
+				<button
+					type="button"
+					onClick={onCancel}
+					className={cn(
+						"rounded-full px-3.5 py-1.5 text-sm font-medium",
+						"text-[var(--chat-text)] hover:opacity-80 transition-opacity",
+					)}
+					style={{ border: "1px solid var(--chat-border)", backgroundColor: "transparent" }}
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					onClick={() => canSubmit && onSubmit(draft.trim())}
+					disabled={!canSubmit}
+					className={cn(
+						"rounded-full px-3.5 py-1.5 text-sm font-medium",
+						"transition-opacity",
+						canSubmit ? "hover:opacity-90" : "opacity-40 cursor-not-allowed",
+					)}
+					style={{
+						backgroundColor: "var(--chat-user-message-bg)",
+						color: "var(--chat-user-message-text, #ffffff)",
+						border: "none",
+					}}
+				>
+					Send
+				</button>
+			</div>
+		</div>
+	);
+}
 
 function MessageTimestamp({ createdAt }: { createdAt: string; isViewer?: boolean }) {
 	const formatTime = (dateString: string) => {

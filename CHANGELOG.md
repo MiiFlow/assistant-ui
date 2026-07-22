@@ -1,5 +1,11 @@
 # @miiflow/assistant-ui
 
+## 0.13.0
+
+### Features
+
+- **Copy + edit on user messages (`styled/Message.tsx`)**: Viewer (user) messages now surface a hover action bar — copy is always available, and an inline `UserMessageEditor` (Esc to cancel, Cmd/Ctrl+Enter to send) appears when the new optional `onEditSubmit` prop is provided, letting host apps wire ChatGPT-style edit-and-resubmit. Additive and backward compatible: the bar and editor never render without the prop, and existing `Message` / `MessageList` usage is unchanged.
+
 ## 0.12.0
 
 ### Features
