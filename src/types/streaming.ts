@@ -107,6 +107,13 @@ export interface SubagentChunkData {
   result?: string;
   durationMs?: number;
   nestedChunks: StreamingChunk[];
+  /**
+   * The sub-agent was handed the turn and answered the user directly, so its
+   * reply is the message body rather than this panel's `result` (which stays
+   * empty). The panel still shows the sub-agent's tool work; consumers use
+   * this to attribute the answer instead of rendering a duplicate result.
+   */
+  transferred?: boolean;
 }
 
 export interface ClarificationQuestion {

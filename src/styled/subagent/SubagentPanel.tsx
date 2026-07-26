@@ -46,7 +46,19 @@ export function SubagentPanel({ chunk }: SubagentPanelProps) {
 
 	// Append the assistant's final answer as a thinking-style event so it
 	// renders with the same content treatment as other reasoning output.
-	if (data.result && data.result.trim().length > 0) {
+	//
+	// A transferred sub-agent has no `result` to append: it answered the user
+	// directly, so its reply is the message body below this panel. Showing the
+	// text here too would render the same answer twice. Note instead who wrote
+	// it, so the tool work above doesn't look orphaned.
+	if (data.transferred) {
+		nestedEvents.push({
+			id: `transferred-${data.subagentId}`,
+			type: "thinking",
+			status: "completed",
+			content: `Answered directly by ${humanizeHandle(data.subagentType)}.`,
+		});
+	} else if (data.result && data.result.trim().length > 0) {
 		nestedEvents.push({
 			id: `result-${data.subagentId}`,
 			type: "thinking",
