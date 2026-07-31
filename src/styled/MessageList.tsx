@@ -58,7 +58,10 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(
 						className="h-full overflow-y-auto chat-scrollbar"
 						style={{ overscrollBehavior: "contain" }}
 					>
-						<MessageScroller.Content className={cn("flex flex-col gap-4 p-4 pb-12", className)}>
+						{/* gap-6: the largest gap in the transcript must be between turns.
+						    At gap-4 it was only double a paragraph gap, and assistant
+						    messages have no background to delimit them. */}
+						<MessageScroller.Content className={cn("flex flex-col gap-6 p-4 pb-12", className)}>
 							{Children.map(children, (child) =>
 								isValidElement(child) ? (
 									<MessageScroller.Item>{child}</MessageScroller.Item>

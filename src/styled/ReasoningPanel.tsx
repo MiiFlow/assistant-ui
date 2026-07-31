@@ -7,33 +7,54 @@ import { EventTimeline, convertChunkToEvent } from "./EventTimeline";
 import { PlanTimeline } from "./PlanTimeline";
 
 /**
- * Hook for live duration counter
+ * Live duration counter for the streaming header.
+ *
+ * `startedAt` (epoch ms) is the run's own start, supplied by the host app from
+ * a durable source. It is preferred over the mount's clock because this panel
+ * remounts whenever the user navigates away from a thread and back: timing from
+ * mount restarts the counter at 0 while the run is minutes old. The local
+ * fallback covers hosts that don't track a run start.
+ *
+ * `finalSeconds` is state, not a ref — the completion render happens before the
+ * effect that computes it, so a ref would never surface.
  */
-function useLiveStreamDuration(isStreaming: boolean): { display: string; finalSeconds: number } {
-	const startTimeRef = useRef<number | null>(null);
-	const [elapsed, setElapsed] = useState(0);
-	const finalSecondsRef = useRef(0);
+function useStreamDuration(
+	isStreaming: boolean,
+	startedAt?: number,
+): { liveSeconds: number; finalSeconds: number } {
+	const localStartRef = useRef<number | null>(null);
+	const durableStartRef = useRef<number | null>(null);
+	const [liveSeconds, setLiveSeconds] = useState(0);
+	const [finalSeconds, setFinalSeconds] = useState(0);
+
+	if (isStreaming && localStartRef.current === null) localStartRef.current = Date.now();
+
+	const durableStart = startedAt && startedAt > 0 ? startedAt : null;
+	// Remembered because the host may drop the run start in the same commit the
+	// run completes — the final figure below still needs it.
+	if (durableStart !== null) durableStartRef.current = durableStart;
+	const startTime = durableStart ?? localStartRef.current;
 
 	useEffect(() => {
-		if (isStreaming) {
-			if (startTimeRef.current === null) startTimeRef.current = Date.now();
-			const interval = setInterval(() => {
-				if (startTimeRef.current !== null) {
-					const secs = Math.floor((Date.now() - startTimeRef.current) / 1000);
-					setElapsed(secs);
-					finalSecondsRef.current = secs;
-				}
-			}, 1000);
-			return () => clearInterval(interval);
-		} else if (startTimeRef.current !== null) {
-			// Streaming just ended — capture final elapsed time
-			finalSecondsRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
-			setElapsed(finalSecondsRef.current);
-			startTimeRef.current = null;
-		}
-	}, [isStreaming]);
+		if (!isStreaming || startTime === null) return;
+		// Clamp: a durable start comes from the server, so a client clock running
+		// behind it must not render a negative figure.
+		const tick = () => setLiveSeconds(Math.max(0, (Date.now() - startTime) / 1000));
+		tick();
+		const interval = setInterval(tick, 1000);
+		return () => clearInterval(interval);
+	}, [isStreaming, startTime]);
 
-	return { display: `${elapsed}`, finalSeconds: finalSecondsRef.current };
+	useEffect(() => {
+		if (isStreaming || localStartRef.current === null) return;
+		// Streaming just ended — capture final elapsed time
+		setFinalSeconds(Math.max(0, (Date.now() - (durableStartRef.current ?? localStartRef.current)) / 1000));
+		localStartRef.current = null;
+		// Consumed: a later run in this same instance must not reuse this start.
+		durableStartRef.current = null;
+	}, [isStreaming, durableStart]);
+
+	return { liveSeconds, finalSeconds };
 }
 
 function hasSubagentChunks(chunks: StreamingChunk[]): boolean {
@@ -97,6 +118,9 @@ export interface ReasoningPanelProps {
 	userMessageTimestamp?: number;
 	/** Total execution time in seconds */
 	executionTime?: number;
+	/** Epoch ms the in-progress run started. Supply the run's durable start so
+	 *  the live counter survives this panel remounting; omit to time from mount. */
+	streamStartedAt?: number;
 	/** Whether expanded by default */
 	defaultExpanded?: boolean;
 	/** Controlled expanded state */
@@ -112,8 +136,19 @@ function formatDuration(seconds: number): string {
 	return `${seconds.toFixed(1)}s`;
 }
 
-const MONO_STACK =
-	"ui-monospace, 'SFMono-Regular', 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace";
+/** Live counter: `42s` under a minute, `2:07` beyond it. Now that the figure
+ *  reflects the run's real age it routinely passes a minute, and `127s` reads
+ *  worse than `2:07` at a glance. */
+function formatElapsed(seconds: number): string {
+	const total = Math.floor(seconds);
+	if (total < 60) return `${total}s`;
+	return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/** Monospace for figures and machine text. Themed through the chat token so
+ *  every surface resolves the same stack — the literals this replaced named
+ *  JetBrains Mono and Fira Code, neither of which is loaded anywhere. */
+const MONO_STACK = "var(--chat-font-mono)";
 
 /**
  * Header indicator — bare, no surrounding tag.
@@ -220,13 +255,14 @@ export function ReasoningPanel({
 	executionTimeline = [],
 	userMessageTimestamp,
 	executionTime,
+	streamStartedAt,
 	defaultExpanded = false,
 	expanded: controlledExpanded,
 	onExpandedChange,
 	className,
 }: ReasoningPanelProps) {
 	const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
-	const { display: liveElapsed, finalSeconds: wallClockSeconds } = useLiveStreamDuration(isStreaming);
+	const { liveSeconds, finalSeconds: wallClockSeconds } = useStreamDuration(isStreaming, streamStartedAt);
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -414,7 +450,10 @@ export function ReasoningPanel({
 				}}>
 				<HeaderIndicator isStreaming={isStreaming} justCompleted={justCompleted} />
 
-				{/* Streaming: current operation in prose + tabular timer. */}
+				{/* Streaming: current operation in prose + tabular timer. The timer
+				    counts from the run's start (see useStreamDuration), so leaving
+				    the thread and returning mid-run resumes the real figure instead
+				    of restarting at zero. */}
 				{isStreaming && (
 					<>
 						<span
@@ -432,7 +471,7 @@ export function ReasoningPanel({
 						>
 							{getLiveLabel()}
 						</span>
-						{parseInt(liveElapsed) > 0 && (
+						{liveSeconds >= 1 && (
 							<span
 								className="tabular-nums"
 								style={{
@@ -445,30 +484,40 @@ export function ReasoningPanel({
 									fontWeight: 600,
 								}}
 							>
-								{liveElapsed}s
+								{formatElapsed(liveSeconds)}
 							</span>
 						)}
 					</>
 				)}
 
-				{/* Completed: clean ops · duration in mono. */}
+				{/* Completed: clean ops · duration. The label is prose and reads in
+				    the body face; only the figure is mono + tabular. Setting the
+				    whole header in mono made it read as a code artifact. */}
 				{!isStreaming && (summaryPreview || completedDuration > 0) && (
 					<span
 						style={{
 							display: "inline-flex",
 							alignItems: "center",
 							gap: 6,
-							fontFamily: MONO_STACK,
-							fontSize: 11.5,
+							fontSize: 12,
 							fontWeight: 500,
-							letterSpacing: "0.005em",
+							letterSpacing: "-0.003em",
 							color: "color-mix(in srgb, var(--chat-text) 55%, transparent)",
-							fontVariantNumeric: "tabular-nums",
-							fontVariantLigatures: "none",
 						}}
 					>
 						{completedDuration > 0 && (
-							<span>Thought for {formatDuration(completedDuration)}</span>
+							<span>
+								Thought for{" "}
+								<span
+									style={{
+										fontFamily: MONO_STACK,
+										fontVariantNumeric: "tabular-nums",
+										fontVariantLigatures: "none",
+									}}
+								>
+									{formatDuration(completedDuration)}
+								</span>
+							</span>
 						)}
 						{completedDuration > 0 && summaryPreview && (
 							<span

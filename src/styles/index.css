@@ -1,3 +1,5 @@
+@import "./prose.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -30,6 +32,8 @@
 
 		/* Typography */
 		--chat-font-family: "Inter", "Assistant", system-ui, -apple-system, sans-serif;
+		--chat-font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+		--chat-message-font-size: 15px;
 
 		/* Border radius */
 		--chat-radius-message: 0.5rem;
@@ -144,103 +148,6 @@
 		box-shadow: var(--chat-composer-shadow-focus, 0 2px 4px rgba(29, 32, 51, 0.05), 0 16px 40px -14px rgba(29, 32, 51, 0.2));
 	}
 
-	/* Message prose styling */
-	.chat-prose {
-		@apply leading-relaxed;
-		color: var(--chat-text);
-	}
-
-	.chat-prose.prose-invert {
-		color: var(--chat-user-message-text, #ffffff);
-	}
-
-	.chat-prose p {
-		@apply mb-2 last:mb-0;
-	}
-
-	.chat-prose h1 {
-		@apply text-xl font-semibold mt-4 mb-2;
-	}
-
-	.chat-prose h2 {
-		@apply text-lg font-semibold mt-3 mb-2;
-	}
-
-	.chat-prose h3 {
-		@apply text-base font-medium mt-2 mb-1;
-	}
-
-	.chat-prose ul {
-		@apply list-disc pl-4 mb-2 space-y-1;
-	}
-
-	.chat-prose ol {
-		@apply list-decimal pl-4 mb-2 space-y-1;
-	}
-
-	.chat-prose li {
-		@apply leading-relaxed;
-	}
-
-	.chat-prose a {
-		@apply text-primary underline hover:opacity-80;
-	}
-
-	.chat-prose blockquote {
-		@apply border-l-2 border-gray-300 pl-3 my-2 italic;
-	}
-
-	.chat-prose code:not(pre code) {
-		@apply bg-gray-100 px-1 py-0.5 rounded text-sm font-mono;
-	}
-
-	.dark .chat-prose code:not(pre code) {
-		@apply bg-gray-800;
-	}
-
-	.chat-prose pre {
-		@apply bg-gray-100 p-3 rounded overflow-x-auto text-sm font-mono my-2;
-	}
-
-	.dark .chat-prose pre {
-		@apply bg-gray-800;
-	}
-
-	.chat-prose table {
-		@apply min-w-full;
-	}
-
-	.chat-prose thead {
-		@apply border-b border-gray-200;
-	}
-
-	.dark .chat-prose thead {
-		@apply border-gray-700;
-	}
-
-	.chat-prose th {
-		@apply px-3 py-2 text-left text-sm font-medium bg-gray-50;
-	}
-
-	.dark .chat-prose th {
-		@apply bg-gray-800;
-	}
-
-	.chat-prose td {
-		@apply px-3 py-2 text-sm border-t border-gray-100;
-	}
-
-	.dark .chat-prose td {
-		@apply border-gray-700;
-	}
-
-	.chat-prose hr {
-		@apply my-4 border-gray-200;
-	}
-
-	.dark .chat-prose hr {
-		@apply border-gray-700;
-	}
 }
 
 @layer utilities {

@@ -84,7 +84,7 @@ export function CodePreviewVisualization({ data }: CodePreviewVisualizationProps
           background: "#1e1e1e",
         }}
         codeTagProps={{
-          style: { fontFamily: "'Fira Code', 'JetBrains Mono', monospace" },
+          style: { fontFamily: "var(--chat-font-mono)" },
         }}
       >
         {code.trim()}

@@ -1,8 +1,8 @@
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import * as react from 'react';
 import { ReactNode } from 'react';
-import { C as ChatMessage, P as ParticipantRole } from '../message-D0oMw3tR.js';
-import { f as VisualizationActionEvent } from '../streaming-CmQo_OOA.js';
+import { C as ChatMessage, P as ParticipantRole } from '../message-QLPa83GR.js';
+import { f as VisualizationActionEvent } from '../streaming-B3gt8-5f.js';
 
 interface ChatContextValue {
     /** List of messages in the conversation */
@@ -32,6 +32,12 @@ interface ChatContextValue {
         label?: string;
         tag?: ReactNode;
     } | undefined;
+    /** Whether the surface hosting the chat is dark. Drives choices that CSS
+     * variables can't express, such as which syntax-highlighting theme a code
+     * block uses. The host app must supply this: chat-ui is themed through
+     * `--chat-*` variables and the `.dark` class is NOT applied by every
+     * consumer, so neither is a reliable signal. Defaults to false (light). */
+    isDarkSurface: boolean;
 }
 declare const ChatContext: react.Context<ChatContextValue | null>;
 interface ChatProviderProps {
@@ -49,8 +55,9 @@ interface ChatProviderProps {
         label?: string;
         tag?: ReactNode;
     } | undefined;
+    isDarkSurface?: boolean;
 }
-declare function ChatProvider({ children, messages, isStreaming, streamingMessageId, viewerRole, onSendMessage, onStopStreaming, onRetryLastMessage, customData, onVisualizationAction, resolveCommandToken, }: ChatProviderProps): react_jsx_runtime.JSX.Element;
+declare function ChatProvider({ children, messages, isStreaming, streamingMessageId, viewerRole, onSendMessage, onStopStreaming, onRetryLastMessage, customData, onVisualizationAction, resolveCommandToken, isDarkSurface, }: ChatProviderProps): react_jsx_runtime.JSX.Element;
 declare function useChatContext(): ChatContextValue;
 
 export { ChatContext, type ChatContextValue, ChatProvider, type ChatProviderProps, useChatContext };

@@ -1,6 +1,7 @@
 import { Children, Fragment, isValidElement, cloneElement, useContext, useState, useCallback, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Check, Copy, Link as LinkIcon } from "lucide-react";
@@ -135,6 +136,19 @@ function slugify(text: string): string {
     .trim();
 }
 
+/** Hover-revealed deep link rendered inside a heading. */
+function HeadingAnchor({ id, size }: { id: string; size: number }) {
+  return (
+    <a
+      href={`#${id}`}
+      className="chat-prose__anchor"
+      aria-label="Link to heading"
+    >
+      <LinkIcon size={size} className="inline" />
+    </a>
+  );
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -151,7 +165,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-white/10 transition-colors text-gray-400 hover:text-gray-200"
+      className="chat-code-block__copy"
       aria-label={copied ? "Copied" : "Copy code"}
     >
       {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -167,13 +181,20 @@ export interface MarkdownContentProps {
   className?: string;
   /** Base font size multiplier for responsive scaling */
   baselineFontSize?: number;
-  /** Use dark theme for code blocks */
+  /** Use dark theme for code blocks. Falls back to the host surface's
+   * `isDarkSurface` from ChatProvider. */
   darkCodeTheme?: boolean;
 }
 
 /**
- * Styled markdown renderer with syntax highlighting, copy-to-clipboard,
- * and heading anchor links.
+ * Markdown renderer for chat messages.
+ *
+ * Appearance lives entirely in the `.chat-prose` rules in
+ * `src/styles/prose.css`; the overrides below carry only behaviour (heading
+ * anchors, the code-block copy button, inline command-token chips, and the
+ * image-URL swap). Keep it that way — the two used to be duplicated, and
+ * because react-markdown v9 dropped the `className` prop the CSS half was
+ * silently dead for the entire time both existed.
  */
 export function MarkdownContent({
   children,
@@ -181,14 +202,18 @@ export function MarkdownContent({
   baselineFontSize,
   darkCodeTheme,
 }: MarkdownContentProps) {
-  // Detect dark mode from CSS if not explicitly set
-  const useDarkCode = darkCodeTheme ??
-    (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
+  const chat = useContext(ChatContext);
 
-  // Apply whenever a baseline is provided — even 1 (16px). Without the
-  // inline style the text inherits the host font (e.g. MUI body1 at
-  // 0.875rem), so an explicit baseline must always win.
-  const fontStyle = baselineFontSize != null
+  // The host app owns this: chat-ui is themed through `--chat-*` variables
+  // and consumers do not reliably apply a `.dark` class, so neither can be
+  // read from here. `prefers-color-scheme` used to be the fallback, which
+  // rendered dark code blocks in a light app on a dark OS.
+  const useDarkCode = darkCodeTheme ?? chat?.isDarkSurface ?? false;
+
+  // One font-size declaration on the wrapper; everything inside is sized in
+  // `em` so it scales with a branding override instead of needing the value
+  // stamped onto every element.
+  const rootStyle = baselineFontSize != null
     ? { fontSize: `${baselineFontSize}rem` }
     : undefined;
 
@@ -197,54 +222,45 @@ export function MarkdownContent({
   // render time — the wire format only carries `<id>:<kind>`. Undefined
   // outside a chat context (e.g. MarkdownContent inside a card
   // visualization).
-  const resolveCommandToken = useContext(ChatContext)?.resolveCommandToken;
+  const resolveCommandToken = chat?.resolveCommandToken;
 
   return (
+    <div className={cn("chat-prose", className)} style={rootStyle}>
     <ReactMarkdown
-      className={cn("chat-prose", className)}
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[remarkGfm, remarkBreaks]}
       components={{
         h1: ({ children }) => {
-          const text = String(children);
-          const id = slugify(text);
+          const id = slugify(String(children));
           return (
-            <h1 id={id} className="group text-xl font-semibold mt-4 mb-2 first:mt-0" style={fontStyle}>
-              {children}
-              <a href={`#${id}`} className="ml-2 opacity-0 group-hover:opacity-50 transition-opacity" aria-label="Link to heading">
-                <LinkIcon size={16} className="inline" />
-              </a>
+            <h1 id={id} className="group">
+              {processInlineCommandTokens(children, resolveCommandToken)}
+              <HeadingAnchor id={id} size={16} />
             </h1>
           );
         },
         h2: ({ children }) => {
-          const text = String(children);
-          const id = slugify(text);
+          const id = slugify(String(children));
           return (
-            <h2 id={id} className="group text-lg font-semibold mt-3 mb-2 first:mt-0" style={fontStyle}>
-              {children}
-              <a href={`#${id}`} className="ml-2 opacity-0 group-hover:opacity-50 transition-opacity" aria-label="Link to heading">
-                <LinkIcon size={14} className="inline" />
-              </a>
+            <h2 id={id} className="group">
+              {processInlineCommandTokens(children, resolveCommandToken)}
+              <HeadingAnchor id={id} size={14} />
             </h2>
           );
         },
         h3: ({ children }) => {
-          const text = String(children);
-          const id = slugify(text);
+          const id = slugify(String(children));
           return (
-            <h3 id={id} className="group text-base font-medium mt-2 mb-1 first:mt-0" style={fontStyle}>
-              {children}
-              <a href={`#${id}`} className="ml-2 opacity-0 group-hover:opacity-50 transition-opacity" aria-label="Link to heading">
-                <LinkIcon size={12} className="inline" />
-              </a>
+            <h3 id={id} className="group">
+              {processInlineCommandTokens(children, resolveCommandToken)}
+              <HeadingAnchor id={id} size={12} />
             </h3>
           );
         },
         h4: ({ children }) => (
-          <h4 className="text-base font-medium mt-2 mb-1 first:mt-0" style={fontStyle}>{processInlineCommandTokens(children, resolveCommandToken)}</h4>
+          <h4>{processInlineCommandTokens(children, resolveCommandToken)}</h4>
         ),
         p: ({ children }) => (
-          <p className="mb-2 last:mb-0 leading-relaxed" style={fontStyle}>{processInlineCommandTokens(children, resolveCommandToken)}</p>
+          <p>{processInlineCommandTokens(children, resolveCommandToken)}</p>
         ),
         a: ({ href, children }) => {
           const isImageUrl = href && /\.(png|jpe?g|gif|webp|svg)([?#]|$)/i.test(href);
@@ -253,34 +269,21 @@ export function MarkdownContent({
               <img
                 src={href}
                 alt={typeof children === "string" ? children : ""}
-                className="max-w-full h-auto rounded-lg my-2"
                 loading="lazy"
               />
             );
           }
           return (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline hover:opacity-80 transition-opacity"
-              style={fontStyle}
-            >
+            <a href={href} target="_blank" rel="noopener noreferrer">
               {children}
             </a>
           );
         },
-        ul: ({ children }) => (
-          <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>
-        ),
-        ol: ({ children }) => (
-          <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>
-        ),
-        li: ({ children }) => <li className="leading-relaxed" style={fontStyle}>{processInlineCommandTokens(children, resolveCommandToken)}</li>,
+        ul: ({ children }) => <ul>{children}</ul>,
+        ol: ({ children }) => <ol>{children}</ol>,
+        li: ({ children }) => <li>{processInlineCommandTokens(children, resolveCommandToken)}</li>,
         blockquote: ({ children }) => (
-          <blockquote className="border-l-2 border-gray-300 dark:border-gray-600 pl-3 my-2 italic text-chat-subtle" style={fontStyle}>
-            {processInlineCommandTokens(children, resolveCommandToken)}
-          </blockquote>
+          <blockquote>{processInlineCommandTokens(children, resolveCommandToken)}</blockquote>
         ),
         code: ({ className: codeClassName, children }) => {
           const match = /language-(\w+)/.exec(codeClassName || "");
@@ -288,34 +291,32 @@ export function MarkdownContent({
           const isInline = !match && !codeText.includes("\n");
 
           if (isInline) {
-            return (
-              <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono" style={fontStyle}>
-                {children}
-              </code>
-            );
+            return <code>{children}</code>;
           }
 
           const language = match ? normalizeLanguage(match[1]) : "text";
 
           return (
-            <div className="relative group my-2 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+            /* `data-dark` keeps the whole block on ONE signal: the Prism theme
+               paints its own background, and the header tint below is keyed to
+               the same flag. Deriving the background from --chat-text instead
+               would let a light syntax theme land on a dark panel. */
+            <div className="chat-code-block group" data-dark={useDarkCode ? "" : undefined}>
               {/* Header with language badge and copy button */}
-              <div className="flex items-center justify-between px-3 py-1.5 bg-gray-800 dark:bg-gray-900 border-b border-gray-700">
-                <span className="text-xs font-mono text-gray-400">{language}</span>
+              <div className="chat-code-block__header">
+                <span className="chat-code-block__lang">{language}</span>
                 <CopyButton text={codeText} />
               </div>
               <SyntaxHighlighter
                 language={language}
-                style={useDarkCode === false ? oneLight : oneDark}
+                style={useDarkCode ? oneDark : oneLight}
                 customStyle={{
                   margin: 0,
                   borderRadius: 0,
-                  fontSize: "0.8125rem",
+                  fontSize: "0.8125em",
                   lineHeight: "1.6",
                 }}
-                codeTagProps={{
-                  style: { fontFamily: "'Fira Code', 'JetBrains Mono', monospace" },
-                }}
+                codeTagProps={{ style: { fontFamily: "var(--chat-font-mono)" } }}
               >
                 {codeText}
               </SyntaxHighlighter>
@@ -324,41 +325,25 @@ export function MarkdownContent({
         },
         pre: ({ children }) => <>{children}</>,
         table: ({ children }) => (
-          <div className="overflow-x-auto my-2 rounded-lg border border-gray-200 dark:border-gray-700">
-            <table className="min-w-full">
-              {children}
-            </table>
+          <div className="chat-table-wrap">
+            <table>{children}</table>
           </div>
         ),
-        thead: ({ children }) => (
-          <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">{children}</thead>
-        ),
+        thead: ({ children }) => <thead>{children}</thead>,
         th: ({ children }) => (
-          <th className="px-3 py-2 text-left text-sm font-medium" style={fontStyle}>
-            {processInlineCommandTokens(children, resolveCommandToken)}
-          </th>
+          <th>{processInlineCommandTokens(children, resolveCommandToken)}</th>
         ),
         td: ({ children }) => (
-          <td className="px-3 py-2 text-sm border-t border-gray-100 dark:border-gray-700" style={fontStyle}>
-            {processInlineCommandTokens(children, resolveCommandToken)}
-          </td>
+          <td>{processInlineCommandTokens(children, resolveCommandToken)}</td>
         ),
-        hr: () => <hr className="my-4 border-gray-200 dark:border-gray-700" />,
-        strong: ({ children }) => (
-          <strong className="font-semibold">{children}</strong>
-        ),
-        em: ({ children }) => <em className="italic">{children}</em>,
-        img: ({ src, alt }) => (
-          <img
-            src={src}
-            alt={alt ?? ""}
-            className="max-w-full h-auto rounded-lg my-2"
-            loading="lazy"
-          />
-        ),
+        hr: () => <hr />,
+        strong: ({ children }) => <strong>{children}</strong>,
+        em: ({ children }) => <em>{children}</em>,
+        img: ({ src, alt }) => <img src={src} alt={alt ?? ""} loading="lazy" />,
       }}
     >
       {children}
     </ReactMarkdown>
+    </div>
   );
 }

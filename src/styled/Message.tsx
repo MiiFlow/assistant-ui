@@ -254,6 +254,10 @@ export interface MessageProps {
 	baselineFontSize?: number;
 	/** Total execution time in seconds (persisted from streaming wall-clock) */
 	executionTime?: number;
+	/** Epoch ms the in-progress run started. Supply the run's durable start
+	 *  (e.g. from a server snapshot) so the streaming elapsed figure stays
+	 *  correct across remounts; omit to time from when this component mounted. */
+	streamStartedAt?: number;
 	/** Pending clarification data (agent needs user input) */
 	pendingClarification?: ClarificationData;
 	/** Callback when user responds to a clarification */
@@ -305,6 +309,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			onArtifactOpen,
 			baselineFontSize,
 			executionTime,
+			streamStartedAt,
 			pendingClarification,
 			onClarificationSubmit,
 			pendingToolApproval,
@@ -591,6 +596,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 								executionTimeline={executionTimeline as any[]}
 								userMessageTimestamp={message.createdAt ? new Date(typeof message.createdAt === "string" ? message.createdAt : message.createdAt).getTime() / 1000 : undefined}
 								executionTime={executionTime}
+								streamStartedAt={streamStartedAt}
 								expanded={reasoningExpanded}
 								onExpandedChange={onReasoningExpandedChange}
 							/>

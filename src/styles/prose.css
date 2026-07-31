@@ -1,0 +1,370 @@
+/**
+ * Message prose — shared by BOTH css entry points (index.css and
+ * no-preflight.css). These were previously two hand-maintained copies and
+ * had already drifted (no-preflight lost the thead rule, index.css lost the
+ * table divider). Edit here only.
+ *
+ * Deliberately NOT wrapped in `@layer components`: postcss-import hoists this
+ * file above the `@tailwind` directives, and the web app runs no-preflight.css
+ * through its OWN pipeline, where a bare `@layer components` has no matching
+ * directive and hard-fails the build. None of these rules use `@apply`, so
+ * they need no layer — every selector here is class-scoped (0,1,1) and so
+ * outranks preflight's element resets (0,0,1) regardless of order, while
+ * Tailwind utilities emitted later still win, which is the direction callers
+ * like `<MarkdownContent className="text-[14px]">` depend on.
+ */
+
+
+/* ----------------------------------------------------------------
+   Message prose
+   ----------------------------------------------------------------
+   The single owner of message typography. MarkdownContent renders a
+   wrapper <div> carrying this class and every appearance rule lives
+   here; the component keeps only behaviour (heading anchors, code
+   copy button, command-token chips).
+
+   Sizes below the base are expressed in `em` so a branding override
+   of --chat-message-font-size scales the whole block proportionally
+   instead of just the body text.
+
+   Colours derive from --chat-text via color-mix, so light and dark
+   both fall out of the same rule and no .dark overrides are needed. */
+.chat-prose {
+	font-size: var(--chat-message-font-size, 15px);
+	line-height: 1.6;
+	color: var(--chat-text);
+
+	/* Reading measure, ~75 characters.
+	   Deliberately NOT expressed in `ch`: that unit is the advance of the
+	   digit "0", which in DM Sans is 1.46x the average prose character
+	   (10.26px vs 7.02px at 15px). `74ch` measures 759px and fits ~108
+	   characters — nearly the full 800px column, i.e. no cap at all.
+	   Average character width is a far more stable fraction of the em
+	   (~0.47em) across sans faces, so em is the honest unit here. */
+	--chat-prose-measure: 35em;
+}
+
+.chat-prose.prose-invert {
+	color: var(--chat-user-message-text, #ffffff);
+}
+
+/* Prose is capped at a readable measure. Structural blocks — tables,
+   fenced code, images, rules — keep the full column width. */
+.chat-prose > :where(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6) {
+	max-width: var(--chat-prose-measure, 35em);
+}
+
+.chat-prose > :first-child {
+	margin-top: 0;
+}
+
+.chat-prose > :last-child {
+	margin-bottom: 0;
+}
+
+/* Vertical rhythm keyed to the ~24px line box. Headings take a large
+   top margin and a small bottom one so they bind to the content they
+   introduce instead of floating midway between two blocks. */
+.chat-prose p {
+	margin: 0 0 12px;
+}
+
+.chat-prose ul,
+.chat-prose ol {
+	margin: 12px 0;
+	padding-left: 1.35em;
+}
+
+.chat-prose ul {
+	list-style-type: disc;
+}
+
+.chat-prose ol {
+	list-style-type: decimal;
+}
+
+.chat-prose li {
+	margin-block: 6px;
+}
+
+.chat-prose li::marker {
+	color: color-mix(in srgb, var(--chat-text) 45%, transparent);
+}
+
+/* Nested lists tuck in without compounding the outer margins. */
+.chat-prose li > ul,
+.chat-prose li > ol {
+	margin: 6px 0;
+}
+
+.chat-prose li > p {
+	margin: 0;
+}
+
+.chat-prose h1 {
+	font-size: 1.35em;
+	font-weight: 600;
+	line-height: 1.3;
+	letter-spacing: -0.012em;
+	margin: 28px 0 8px;
+}
+
+.chat-prose h2 {
+	font-size: 1.2em;
+	font-weight: 600;
+	line-height: 1.35;
+	letter-spacing: -0.01em;
+	margin: 24px 0 8px;
+}
+
+/* Agent output uses `**Label:**` as a pseudo-heading constantly, so h3 has
+   to clear bold body text on size, not just weight. */
+.chat-prose h3 {
+	font-size: 1.1em;
+	font-weight: 600;
+	line-height: 1.4;
+	letter-spacing: -0.006em;
+	margin: 20px 0 6px;
+}
+
+.chat-prose h4,
+.chat-prose h5,
+.chat-prose h6 {
+	font-size: 1em;
+	font-weight: 600;
+	line-height: 1.4;
+	margin: 20px 0 6px;
+}
+
+.chat-prose a {
+	color: var(--chat-primary);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	text-decoration-thickness: 1px;
+	text-decoration-color: color-mix(in srgb, var(--chat-primary) 40%, transparent);
+	transition: text-decoration-color 150ms ease-out;
+}
+
+.chat-prose a:hover {
+	text-decoration-color: var(--chat-primary);
+}
+
+.chat-prose strong {
+	font-weight: 600;
+}
+
+.chat-prose em {
+	font-style: italic;
+}
+
+.chat-prose blockquote {
+	margin: 16px 0;
+	padding-left: 14px;
+	border-left: 2px solid color-mix(in srgb, var(--chat-text) 15%, transparent);
+	color: color-mix(in srgb, var(--chat-text) 72%, transparent);
+}
+
+/* Inline code. Monospace at the same pixel size as the body reads
+   noticeably larger, so it steps down to 0.875em; vertical padding is
+   kept near zero so a code span never inflates its line box. Long
+   identifiers must be breakable or they force a short ragged line. */
+.chat-prose :not(pre) > code {
+	font-family: var(--chat-font-mono);
+	font-size: 0.875em;
+	padding: 0.1em 0.34em;
+	border-radius: 4px;
+	background: color-mix(in srgb, var(--chat-text) 6%, transparent);
+	border: 1px solid color-mix(in srgb, var(--chat-text) 8%, transparent);
+	overflow-wrap: anywhere;
+	font-variant-ligatures: none;
+}
+
+/* Fenced blocks get their own chrome from MarkdownContent; this is the
+   fallback for a bare <pre>. */
+.chat-prose pre {
+	margin: 16px 0;
+	padding: 12px;
+	border-radius: 8px;
+	overflow-x: auto;
+	font-family: var(--chat-font-mono);
+	font-size: 0.8125em;
+	line-height: 1.6;
+	background: color-mix(in srgb, var(--chat-text) 5%, transparent);
+}
+
+.chat-prose table {
+	min-width: 100%;
+	font-size: 0.925em;
+}
+
+.chat-prose thead {
+	background: color-mix(in srgb, var(--chat-text) 4%, transparent);
+}
+
+.chat-prose th {
+	padding: 8px 12px;
+	text-align: left;
+	font-weight: 600;
+	border-bottom: 1px solid color-mix(in srgb, var(--chat-text) 12%, transparent);
+}
+
+.chat-prose td {
+	padding: 8px 12px;
+	border-top: 1px solid color-mix(in srgb, var(--chat-text) 8%, transparent);
+	vertical-align: top;
+}
+
+.chat-prose hr {
+	margin: 24px 0;
+	border: 0;
+	border-top: 1px solid color-mix(in srgb, var(--chat-text) 12%, transparent);
+}
+
+.chat-prose img {
+	margin: 16px 0;
+	border-radius: 8px;
+}
+
+/* Hover-revealed heading deep link. */
+.chat-prose__anchor {
+	margin-left: 8px;
+	opacity: 0;
+	color: color-mix(in srgb, var(--chat-text) 45%, transparent);
+	text-decoration: none;
+	transition: opacity 150ms ease-out;
+}
+
+.group:hover > .chat-prose__anchor,
+.chat-prose__anchor:focus-visible {
+	opacity: 1;
+}
+
+/* ---- Fenced code block chrome (rendered by MarkdownContent) ----
+   The header used to be bg-gray-800 unconditionally, i.e. a black bar
+   inside a light message. Tinting from --chat-text keeps it legible on
+   both surfaces without a .dark selector. */
+.chat-code-block {
+	position: relative;
+	margin: 16px 0;
+	border-radius: 8px;
+	overflow: hidden;
+	border: 1px solid color-mix(in srgb, var(--chat-text) 12%, transparent);
+
+	/* Chrome colours key off the SAME flag as the syntax theme (set as
+	   `data-dark` by MarkdownContent), not off --chat-text, so the header
+	   can never end up light over a dark theme or vice versa. The Prism
+	   theme paints the code area's own background. */
+	--chat-code-ink: 0, 0, 0;
+}
+
+.chat-code-block[data-dark] {
+	--chat-code-ink: 255, 255, 255;
+}
+
+.chat-code-block__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 5px 10px;
+	background: rgba(var(--chat-code-ink), 0.04);
+	border-bottom: 1px solid rgba(var(--chat-code-ink), 0.1);
+}
+
+.chat-code-block__lang {
+	font-family: var(--chat-font-mono);
+	font-size: 11px;
+	letter-spacing: 0.02em;
+	color: rgba(var(--chat-code-ink), 0.5);
+}
+
+.chat-code-block__copy {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 3px 7px;
+	border-radius: 4px;
+	font-size: 11px;
+	color: rgba(var(--chat-code-ink), 0.5);
+	transition:
+		background-color 150ms ease-out,
+		color 150ms ease-out;
+}
+
+.chat-code-block__copy:hover {
+	background: rgba(var(--chat-code-ink), 0.08);
+	color: rgba(var(--chat-code-ink), 0.9);
+}
+
+.chat-table-wrap {
+	margin: 16px 0;
+	overflow-x: auto;
+	border-radius: 8px;
+	border: 1px solid color-mix(in srgb, var(--chat-text) 12%, transparent);
+}
+
+/* Inverted (user bubble on the primary fill): the text-derived mixes
+   above would resolve dark against a saturated background. */
+.chat-prose.prose-invert li::marker {
+	color: rgba(255, 255, 255, 0.6);
+}
+
+.chat-prose.prose-invert a {
+	color: inherit;
+	text-decoration-color: rgba(255, 255, 255, 0.5);
+}
+
+.chat-prose.prose-invert a:hover {
+	text-decoration-color: currentColor;
+}
+
+.chat-prose.prose-invert blockquote {
+	border-left-color: rgba(255, 255, 255, 0.3);
+	color: rgba(255, 255, 255, 0.85);
+}
+
+.chat-prose.prose-invert :not(pre) > code {
+	background: rgba(255, 255, 255, 0.16);
+	border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Compact variant for markdown nested inside visualization cards and
+   reasoning-timeline rows: already narrow, and denser by context. */
+.chat-prose--compact {
+	line-height: 1.55;
+}
+
+.chat-prose--compact {
+	--chat-prose-measure: none;
+}
+
+.chat-prose--compact p {
+	margin: 0 0 8px;
+}
+
+.chat-prose--compact ul,
+.chat-prose--compact ol {
+	margin: 8px 0;
+}
+
+.chat-prose--compact li {
+	margin-block: 3px;
+}
+
+.chat-prose--compact h1,
+.chat-prose--compact h2,
+.chat-prose--compact h3,
+.chat-prose--compact h4,
+.chat-prose--compact h5,
+.chat-prose--compact h6 {
+	margin: 12px 0 4px;
+}
+
+.chat-prose--compact blockquote,
+.chat-prose--compact pre,
+.chat-prose--compact img {
+	margin: 10px 0;
+}
+
+.chat-prose--compact hr {
+	margin: 12px 0;
+}

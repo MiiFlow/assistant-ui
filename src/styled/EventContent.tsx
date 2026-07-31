@@ -47,8 +47,8 @@ function ToolCallMark() {
   );
 }
 
-const MONO_STACK =
-  "ui-monospace, 'SFMono-Regular', 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace";
+/** Themed through the chat token so every surface resolves the same stack. */
+const MONO_STACK = "var(--chat-font-mono)";
 
 /**
  * Theme-adaptive text-shimmer styles applied to the live, in-progress

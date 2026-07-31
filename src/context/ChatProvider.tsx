@@ -35,6 +35,12 @@ export interface ChatContextValue {
     id: string,
     kind: string,
   ) => { label?: string; tag?: ReactNode } | undefined;
+  /** Whether the surface hosting the chat is dark. Drives choices that CSS
+   * variables can't express, such as which syntax-highlighting theme a code
+   * block uses. The host app must supply this: chat-ui is themed through
+   * `--chat-*` variables and the `.dark` class is NOT applied by every
+   * consumer, so neither is a reliable signal. Defaults to false (light). */
+  isDarkSurface: boolean;
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -54,6 +60,7 @@ export interface ChatProviderProps {
     id: string,
     kind: string,
   ) => { label?: string; tag?: ReactNode } | undefined;
+  isDarkSurface?: boolean;
 }
 
 export function ChatProvider({
@@ -68,6 +75,7 @@ export function ChatProvider({
   customData,
   onVisualizationAction,
   resolveCommandToken,
+  isDarkSurface = false,
 }: ChatProviderProps) {
   const sendMessage = useCallback(
     async (content: string, attachments?: File[]) => {
@@ -88,6 +96,7 @@ export function ChatProvider({
       customData,
       onVisualizationAction,
       resolveCommandToken,
+      isDarkSurface,
     }),
     [
       messages,
@@ -100,6 +109,7 @@ export function ChatProvider({
       customData,
       onVisualizationAction,
       resolveCommandToken,
+      isDarkSurface,
     ]
   );
 
