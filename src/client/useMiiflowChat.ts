@@ -321,6 +321,17 @@ async function parseSSEStream(
         const parsed = JSON.parse(data);
 
         if (parsed.type === "assistant_chunk") {
+          // Server retracted optimistically streamed answer text: it was
+          // preamble narration before a tool call (or a max_tokens
+          // truncation). Clear the answer buffer; the text re-arrives as a
+          // thinking chunk. The is_tool_planned clear below stays as a
+          // backstop for older servers that don't emit retractions.
+          if (parsed.is_answer_retraction) {
+            assistantContent = "";
+            updateStreamingMessage();
+            continue;
+          }
+
           // Handle tool planned
           if (parsed.is_tool_planned) {
             if (currentChunkContent || currentChunkType !== "answer") {
