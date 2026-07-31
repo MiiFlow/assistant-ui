@@ -332,6 +332,29 @@ async function parseSSEStream(
             continue;
           }
 
+          // A tool_use block started streaming: show the pending tool chip
+          // immediately — argument generation can run tens of seconds with no
+          // other event; the is_tool_planned frame that follows once args are
+          // complete merges into this chip by tool_call_id.
+          if (parsed.is_tool_streaming) {
+            if (currentChunkContent || currentChunkType !== "answer") {
+              finalizeChunk();
+              currentChunkType = "answer";
+            }
+            if (findToolChunkIndex(chunks, parsed) < 0) {
+              chunks.push({
+                type: "tool",
+                content: "",
+                toolName: parsed.tool_name,
+                toolCallId: parsed.tool_call_id,
+                status: "planned",
+                subtaskId: parsed.subtask_id,
+              });
+            }
+            updateStreamingMessage();
+            continue;
+          }
+
           // Handle tool planned
           if (parsed.is_tool_planned) {
             if (currentChunkContent || currentChunkType !== "answer") {
@@ -349,15 +372,31 @@ async function parseSSEStream(
             // this turn was preamble.
             assistantContent = "";
 
-            chunks.push({
-              type: "tool",
-              content: "",
-              toolName: parsed.tool_name,
-              toolCallId: parsed.tool_call_id,
-              toolDescription: parsed.tool_description,
-              status: "planned",
-              subtaskId: parsed.subtask_id,
-            });
+            // Merge into the chip the is_tool_streaming frame already created.
+            // Only by tool_call_id — the name-based fallback could wrongly
+            // resurrect a COMPLETED chip for a repeated same-name call on
+            // id-less legacy paths, where pushing a fresh chip is correct.
+            const plannedIdx = parsed.tool_call_id
+              ? findToolChunkIndex(chunks, parsed)
+              : -1;
+            if (plannedIdx >= 0) {
+              chunks[plannedIdx] = {
+                ...chunks[plannedIdx],
+                toolDescription:
+                  parsed.tool_description ?? chunks[plannedIdx].toolDescription,
+                status: "planned",
+              };
+            } else {
+              chunks.push({
+                type: "tool",
+                content: "",
+                toolName: parsed.tool_name,
+                toolCallId: parsed.tool_call_id,
+                toolDescription: parsed.tool_description,
+                status: "planned",
+                subtaskId: parsed.subtask_id,
+              });
+            }
             updateStreamingMessage();
             continue;
           }
