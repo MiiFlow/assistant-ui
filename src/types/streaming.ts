@@ -424,6 +424,9 @@ export interface StreamingChunk {
 
   // Tool-related (ReAct)
   toolName?: string;
+  /** Provider tool-call id — correlates this row with its observation frame
+   *  when a turn runs several calls of the same tool in parallel. */
+  toolCallId?: string;
   toolDescription?: string;
   toolArgs?: Record<string, unknown>;
   success?: boolean;

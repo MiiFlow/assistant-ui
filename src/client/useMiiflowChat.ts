@@ -15,6 +15,7 @@ import type {
   SubagentChunkData,
 } from "../types";
 import type { BrandingData } from "../types/branding";
+import { findToolChunkIndex } from "./tool-chunk-matching";
 import type {
   MiiflowChatConfig,
   MiiflowChatResult,
@@ -131,6 +132,7 @@ interface AccumulatedChunk {
   toolArgs?: Record<string, unknown>;
   progress?: ProgressData;
   toolUseId?: string;
+  toolCallId?: string;
   // Sub-assistant nested rendering
   subagentData?: SubagentChunkData;
 }
@@ -340,6 +342,7 @@ async function parseSSEStream(
               type: "tool",
               content: "",
               toolName: parsed.tool_name,
+              toolCallId: parsed.tool_call_id,
               toolDescription: parsed.tool_description,
               status: "planned",
               subtaskId: parsed.subtask_id,
@@ -350,36 +353,16 @@ async function parseSSEStream(
 
           // Handle tool executing
           if (parsed.is_tool_executing) {
-            for (let i = chunks.length - 1; i >= 0; i--) {
-              const chunk = chunks[i];
-              if (
-                chunk.type === "tool" &&
-                chunk.toolName === parsed.tool_name &&
-                (parsed.subtask_id === undefined ||
-                  chunk.subtaskId === parsed.subtask_id)
-              ) {
-                chunks[i].status = "executing";
-                break;
-              }
-            }
+            const idx = findToolChunkIndex(chunks, parsed);
+            if (idx >= 0) chunks[idx].status = "executing";
             updateStreamingMessage();
             continue;
           }
 
           // Handle observation
           if (parsed.is_observation) {
-            for (let i = chunks.length - 1; i >= 0; i--) {
-              const chunk = chunks[i];
-              if (
-                chunk.type === "tool" &&
-                chunk.toolName === parsed.tool_name &&
-                (parsed.subtask_id === undefined ||
-                  chunk.subtaskId === parsed.subtask_id)
-              ) {
-                chunks[i].status = "completed";
-                break;
-              }
-            }
+            const idx = findToolChunkIndex(chunks, parsed);
+            if (idx >= 0) chunks[idx].status = "completed";
             updateStreamingMessage();
             continue;
           }

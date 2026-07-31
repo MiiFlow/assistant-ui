@@ -35,6 +35,10 @@ export type {
   MeasuredText,
 } from "../utils/measureMessage";
 
+// Tool-frame → chunk correlation (shared with the web dashboard's reducers)
+export { findToolChunkIndex } from "./tool-chunk-matching";
+export type { MatchableToolChunk, ToolFrame } from "./tool-chunk-matching";
+
 // Tool validation
 export {
   validateToolDefinition,
