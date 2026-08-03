@@ -23,6 +23,9 @@ export interface WelcomeScreenProps {
 	welcomeText?: string;
 	/** Whether to show the attachment (paperclip) button */
 	supportsAttachments?: boolean;
+	/** Blocks the built-in input (e.g. while a response is already streaming).
+	 *  Ignored when `composerSlot` is provided — that composer owns its own gating. */
+	disabled?: boolean;
 	/** Override the default plain-text input with a custom composer (e.g. chat-ui MessageComposer) */
 	composerSlot?: ReactNode;
 	/** Optional slash-command typeahead provider (e.g. for skill picker). */
@@ -254,6 +257,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 			onSuggestionClick,
 			welcomeText = "How can I help you today?",
 			supportsAttachments,
+			disabled,
 			composerSlot,
 			commandProvider,
 			commandProviders,
@@ -335,6 +339,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
 								placeholder={placeholder}
 								onSubmit={(msg, files) => onSubmit?.(msg, files)}
 								supportsAttachments={supportsAttachments}
+								disabled={disabled}
 								commandProvider={commandProvider ?? null}
 								commandProviders={commandProviders}
 							/>

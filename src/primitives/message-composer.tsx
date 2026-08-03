@@ -38,6 +38,9 @@ export interface MessageComposerProps {
   onSubmit: (content: string, attachments?: File[]) => Promise<void>;
   /** Whether the composer is disabled */
   disabled?: boolean;
+  /** Whether the current conversation is mid-response. Blocks submitting a
+   *  second, concurrent turn into the same conversation. */
+  isStreaming?: boolean;
   /** Children to render inside the composer */
   children: ReactNode;
   /** Additional CSS classes */
@@ -49,8 +52,8 @@ export interface MessageComposerProps {
  * Provides composer state and behavior to children.
  */
 export const MessageComposer = forwardRef<HTMLFormElement, MessageComposerProps>(
-  ({ onSubmit, disabled = false, children, className }, ref) => {
-    const composer = useMessageComposer({ onSubmit, disabled });
+  ({ onSubmit, disabled = false, isStreaming = false, children, className }, ref) => {
+    const composer = useMessageComposer({ onSubmit, disabled, isStreaming });
 
     const handleFormSubmit = (e: React.FormEvent) => {
       e.preventDefault();

@@ -187,10 +187,14 @@ function ChatInputBody({
     editor.setEditable(!disabled);
   }, [editor, disabled]);
 
+  // Emits submit intent unconditionally — including on empty text. Whether a
+  // message is actually sendable depends on state this component cannot see
+  // (attachments, uploads in flight, streaming), so the owning composer makes
+  // that call in its onSubmit. Gating on text here silently swallowed
+  // attachment-only messages: the parent enabled its send button on
+  // `hasText || files.length`, and the click reached a no-op.
   const submit = useCallback(() => {
-    const payload = readPayload(editor);
-    if (payload.text.trim().length === 0 && payload.tokens.length === 0) return;
-    void onSubmitRef.current(payload);
+    void onSubmitRef.current(readPayload(editor));
   }, [editor]);
 
   useImperativeHandle(

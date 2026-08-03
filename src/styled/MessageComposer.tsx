@@ -291,6 +291,14 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     const submitWithText = useCallback(
       async (text: string) => {
         if (!hasContent && text.trim().length === 0) return;
+        // `isStreaming` is the per-conversation gate: the send button is already
+        // swapped for Stop while a turn is running, but Enter bypasses the
+        // button, and a second concurrent turn on one conversation is invalid.
+        if (isStreaming) return;
+        // `isSubmittingRef` guards only the handshake (double Enter / double
+        // click). `onSubmit` must resolve once the message is accepted — if a
+        // host holds it open for the whole response, this latch becomes a lock
+        // on every conversation the composer is reused for.
         if (isSubmitDisabled || isAnyUploading || isSubmittingRef.current) return;
         isSubmittingRef.current = true;
 
@@ -315,7 +323,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
           isSubmittingRef.current = false;
         }
       },
-      [attachments, hasContent, isSubmitDisabled, isAnyUploading, onSubmit, onUploadFile, uploadedIds],
+      [attachments, hasContent, isSubmitDisabled, isAnyUploading, isStreaming, onSubmit, onUploadFile, uploadedIds],
     );
 
     const handleSendButtonClick = useCallback(() => {
@@ -521,7 +529,10 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                 <button
                   type="button"
                   onClick={handleSendButtonClick}
-                  disabled={!hasContent || isSubmitDisabled || isAnyUploading}
+                  // `isStreaming` matters here only for hosts that pass it
+                  // without `onStopStreaming` (no Stop button to swap in) —
+                  // without it the button would look live but silently no-op.
+                  disabled={!hasContent || isSubmitDisabled || isAnyUploading || isStreaming}
                   aria-label="Send message"
                   className={cn(
                     "flex-shrink-0",

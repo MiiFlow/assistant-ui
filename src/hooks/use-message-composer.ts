@@ -1,10 +1,19 @@
 import { useState, useCallback, useRef, type KeyboardEvent } from "react";
 
 interface UseMessageComposerOptions {
-  /** Callback when message is submitted */
+  /**
+   * Callback when message is submitted. MUST resolve once the message has been
+   * accepted, not when the assistant has finished responding — the submit lock
+   * below is held for the duration of this promise, so a host that keeps it
+   * open for a whole turn locks the composer for every conversation it is
+   * reused for.
+   */
   onSubmit: (content: string, attachments?: File[]) => Promise<void>;
   /** Whether submission is disabled */
   disabled?: boolean;
+  /** Whether the current conversation is mid-response. Blocks submitting a
+   *  second, concurrent turn into the same conversation. */
+  isStreaming?: boolean;
   /** Maximum file size in bytes */
   maxFileSize?: number;
   /** Allowed file types (MIME types) */
@@ -17,6 +26,7 @@ interface UseMessageComposerOptions {
 export function useMessageComposer({
   onSubmit,
   disabled = false,
+  isStreaming = false,
   maxFileSize = 10 * 1024 * 1024, // 10MB
   allowedFileTypes,
 }: UseMessageComposerOptions) {
@@ -65,7 +75,7 @@ export function useMessageComposer({
 
   const handleSubmit = useCallback(async () => {
     const trimmedContent = content.trim();
-    if ((!trimmedContent && attachments.length === 0) || disabled || isSubmitting || isSubmittingRef.current) {
+    if ((!trimmedContent && attachments.length === 0) || disabled || isStreaming || isSubmitting || isSubmittingRef.current) {
       return;
     }
 
@@ -85,7 +95,7 @@ export function useMessageComposer({
       setIsSubmitting(false);
       isSubmittingRef.current = false;
     }
-  }, [content, attachments, disabled, isSubmitting, onSubmit]);
+  }, [content, attachments, disabled, isStreaming, isSubmitting, onSubmit]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -104,7 +114,8 @@ export function useMessageComposer({
     setError(null);
   }, []);
 
-  const canSubmit = (content.trim() || attachments.length > 0) && !disabled && !isSubmitting;
+  const canSubmit =
+    (content.trim() || attachments.length > 0) && !disabled && !isStreaming && !isSubmitting;
 
   return {
     content,

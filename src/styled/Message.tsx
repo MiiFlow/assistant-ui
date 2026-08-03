@@ -603,8 +603,12 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 						</div>
 					)}
 
-					{/* Content row: avatar + message bubble */}
-					{message.textContent && (
+					{/* Content row: avatar + message bubble.
+					    Attachments count as content: an image sent without a caption
+					    is a valid message, and gating this row on text alone made the
+					    user's own image vanish from the transcript (the attachments
+					    block below lives inside this row). */}
+					{(message.textContent || hasAttachments) && (
 						<div className={cn(
 							"group flex items-start gap-2 w-full",
 							isViewer ? "flex-row-reverse" : "flex-row"
@@ -640,7 +644,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 											onEditSubmit(newText);
 										}}
 									/>
-								) : (
+								) : message.textContent ? (
 								<div
 									className={cn(
 									"rounded-2xl",
@@ -698,12 +702,15 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 										</div>
 									)}
 								</div>
-								)}
+								) : null}
 
 								{/* Attachments — outside bubble */}
 								{hasAttachments && (
 									<div className="mt-2">
-										<MessageAttachments attachments={attachments} />
+										<MessageAttachments
+											attachments={attachments}
+											align={isViewer ? "end" : "start"}
+										/>
 									</div>
 								)}
 
