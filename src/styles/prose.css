@@ -33,25 +33,10 @@
 	font-size: var(--chat-message-font-size, 15px);
 	line-height: 1.6;
 	color: var(--chat-text);
-
-	/* Reading measure, ~75 characters.
-	   Deliberately NOT expressed in `ch`: that unit is the advance of the
-	   digit "0", which in DM Sans is 1.46x the average prose character
-	   (10.26px vs 7.02px at 15px). `74ch` measures 759px and fits ~108
-	   characters — nearly the full 800px column, i.e. no cap at all.
-	   Average character width is a far more stable fraction of the em
-	   (~0.47em) across sans faces, so em is the honest unit here. */
-	--chat-prose-measure: 35em;
 }
 
 .chat-prose.prose-invert {
 	color: var(--chat-user-message-text, #ffffff);
-}
-
-/* Prose is capped at a readable measure. Structural blocks — tables,
-   fenced code, images, rules — keep the full column width. */
-.chat-prose > :where(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6) {
-	max-width: var(--chat-prose-measure, 35em);
 }
 
 .chat-prose > :first-child {
@@ -331,10 +316,6 @@
    reasoning-timeline rows: already narrow, and denser by context. */
 .chat-prose--compact {
 	line-height: 1.55;
-}
-
-.chat-prose--compact {
-	--chat-prose-measure: none;
 }
 
 .chat-prose--compact p {
