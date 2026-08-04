@@ -46,6 +46,7 @@ export type {
   FormFieldType,
   FormField,
   FormVisualizationData,
+  AuthPromptVisualizationData,
   VisualizationConfig,
   VisualizationData,
   VisualizationChunkData,

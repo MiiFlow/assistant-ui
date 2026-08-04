@@ -199,7 +199,8 @@ export type VisualizationType =
   | "card"
   | "kpi"
   | "code_preview"
-  | "form";
+  | "form"
+  | "auth_prompt";
 
 export type ChartDataType = "line" | "bar" | "pie" | "area" | "scatter" | "composed";
 
@@ -325,6 +326,25 @@ export interface FormVisualizationData {
   submitAction?: string;
 }
 
+/**
+ * An integration the assistant could not use because the viewer hasn't
+ * authorized it. Either a first-party provider (`serviceProviderId`) or an
+ * OAuth-protected MCP server (`mcpServerId`).
+ *
+ * The package renders this; it never performs the OAuth flow, which needs the
+ * host app's session and mutations. Hosts wire the button through `onAction`.
+ */
+export interface AuthPromptVisualizationData {
+  providerName: string;
+  reason?: string;
+  provider?: string;
+  providerLogo?: string;
+  serviceProviderId?: string;
+  mcpServerId?: string;
+  mcpServerName?: string;
+  authMethods?: Array<{ id: string; name: string; authType: string }>;
+}
+
 export interface VisualizationConfig {
   height?: number;
   width?: string;
@@ -358,6 +378,7 @@ export interface VisualizationData {
     | KpiVisualizationData
     | CodePreviewVisualizationData
     | FormVisualizationData
+    | AuthPromptVisualizationData
     | Record<string, unknown>;
   config?: VisualizationConfig;
 }
@@ -587,4 +608,15 @@ export type Event =
 export type VisualizationActionEvent =
   | { type: "form_submit"; action: string; data: Record<string, unknown> }
   | { type: "form_cancel"; action: string }
-  | { type: "card_action"; action: string };
+  | { type: "card_action"; action: string }
+  /**
+   * The viewer asked to connect an integration from an `auth_prompt`. The
+   * package cannot run OAuth, so it reports intent and the host drives the
+   * flow (`connectMcpServer` / `startOauthFlow`).
+   */
+  | {
+      type: "auth_connect";
+      providerName: string;
+      mcpServerId?: string;
+      serviceProviderId?: string;
+    };

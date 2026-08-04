@@ -145,6 +145,27 @@ export const formVisualizationSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// Auth prompt
+// ---------------------------------------------------------------------------
+
+// `providerName` is the only field the card cannot render without. Everything
+// else is optional because the two emitters populate different halves: the
+// tool-level OAuth prompt sends serviceProviderId/authMethods, the MCP-server
+// one sends mcpServerId/mcpServerName and leaves `provider` an empty string.
+export const authPromptVisualizationSchema = z.object({
+	providerName: z.string(),
+	reason: z.string().nullish(),
+	provider: z.string().nullish(),
+	providerLogo: z.string().nullish(),
+	serviceProviderId: z.string().nullish(),
+	mcpServerId: z.string().nullish(),
+	mcpServerName: z.string().nullish(),
+	authMethods: z
+		.array(z.object({ id: z.string(), name: z.string(), authType: z.string() }))
+		.nullish(),
+});
+
+// ---------------------------------------------------------------------------
 // Auto-register schemas with the registry
 // ---------------------------------------------------------------------------
 
@@ -155,4 +176,5 @@ registerBuiltinSchemas({
 	kpi: kpiVisualizationSchema,
 	code_preview: codePreviewVisualizationSchema,
 	form: formVisualizationSchema,
+	auth_prompt: authPromptVisualizationSchema,
 });

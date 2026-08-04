@@ -5,6 +5,7 @@ export { CardVisualization, type CardVisualizationProps } from "./CardVisualizat
 export { KpiVisualization, type KpiVisualizationProps } from "./KpiVisualization";
 export { CodePreviewVisualization, type CodePreviewVisualizationProps } from "./CodePreviewVisualization";
 export { FormVisualization, type FormVisualizationProps } from "./FormVisualization";
+export { AuthPromptVisualization, type AuthPromptVisualizationProps } from "./AuthPromptVisualization";
 
 // Registry
 export {
@@ -22,4 +23,5 @@ export {
   kpiVisualizationSchema,
   codePreviewVisualizationSchema,
   formVisualizationSchema,
+  authPromptVisualizationSchema,
 } from "./schemas";

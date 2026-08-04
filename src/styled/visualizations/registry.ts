@@ -54,6 +54,7 @@ import { CardVisualization } from "./CardVisualization";
 import { KpiVisualization } from "./KpiVisualization";
 import { CodePreviewVisualization } from "./CodePreviewVisualization";
 import { FormVisualization } from "./FormVisualization";
+import { AuthPromptVisualization } from "./AuthPromptVisualization";
 
 // Schemas are registered lazily after the schemas module is loaded to avoid
 // circular-dependency issues.  The `registerBuiltinSchemas` helper is called
@@ -64,6 +65,11 @@ registerVisualization("card", { component: CardVisualization });
 registerVisualization("kpi", { component: KpiVisualization });
 registerVisualization("code_preview", { component: CodePreviewVisualization });
 registerVisualization("form", { component: FormVisualization });
+// Every type the server can emit needs an entry here, not only the ones this
+// package styles best. A type contributed exclusively by a host registration
+// module renders as "Unknown visualization type" the moment that module isn't
+// evaluated — which is how `auth_prompt` shipped broken in production builds.
+registerVisualization("auth_prompt", { component: AuthPromptVisualization });
 
 
 /**
