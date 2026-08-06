@@ -1,6 +1,6 @@
 import * as react from 'react';
 import { RefObject, KeyboardEvent } from 'react';
-import { d as StreamingOptions, c as StreamChunk } from '../streaming-B3gt8-5f.js';
+import { d as StreamingOptions, c as StreamChunk } from '../streaming-mVwyUtPR.js';
 import { B as BrandingData } from '../branding-NieTEGQf.js';
 
 interface UseAutoScrollOptions {
@@ -73,10 +73,19 @@ declare function useStreaming(options?: StreamingOptions): {
 };
 
 interface UseMessageComposerOptions {
-    /** Callback when message is submitted */
+    /**
+     * Callback when message is submitted. MUST resolve once the message has been
+     * accepted, not when the assistant has finished responding — the submit lock
+     * below is held for the duration of this promise, so a host that keeps it
+     * open for a whole turn locks the composer for every conversation it is
+     * reused for.
+     */
     onSubmit: (content: string, attachments?: File[]) => Promise<void>;
     /** Whether submission is disabled */
     disabled?: boolean;
+    /** Whether the current conversation is mid-response. Blocks submitting a
+     *  second, concurrent turn into the same conversation. */
+    isStreaming?: boolean;
     /** Maximum file size in bytes */
     maxFileSize?: number;
     /** Allowed file types (MIME types) */
@@ -85,7 +94,7 @@ interface UseMessageComposerOptions {
 /**
  * Hook to manage message composer state and behavior.
  */
-declare function useMessageComposer({ onSubmit, disabled, maxFileSize, // 10MB
+declare function useMessageComposer({ onSubmit, disabled, isStreaming, maxFileSize, // 10MB
 allowedFileTypes, }: UseMessageComposerOptions): {
     content: string;
     attachments: File[];

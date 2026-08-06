@@ -65,6 +65,8 @@ export {
   type CodePreviewVisualizationProps,
   FormVisualization,
   type FormVisualizationProps,
+  AuthPromptVisualization,
+  type AuthPromptVisualizationProps,
   // Registry
   registerVisualization,
   getVisualization,
@@ -77,6 +79,7 @@ export {
   kpiVisualizationSchema,
   codePreviewVisualizationSchema,
   formVisualizationSchema,
+  authPromptVisualizationSchema,
 } from "./visualizations";
 
 // Artifact registry + unstyled inline card

@@ -8,7 +8,7 @@ React components and hooks for building custom Miiflow chat interfaces. Install 
 npm install @miiflow/assistant-ui
 ```
 
-**Peer dependencies:** `react >= 18`, `react-dom >= 18`
+**Peer dependencies:** `react >= 19`, `react-dom >= 19`, `zod >= 3`. Optionally `lexical >= 0.20` and `@lexical/react >= 0.20` — required only if you use the Lexical-based `MessageComposer` / `WelcomeScreen` input or the `/composer` entry. React 18 projects must stay on `0.10.x`.
 
 The styled components use [TailwindCSS](https://tailwindcss.com/). If your project doesn't use Tailwind, import the pre-built CSS instead:
 
@@ -44,6 +44,7 @@ function Chat() {
     streamingMessageId,
     sendMessage,
     uploadFile,
+    stopStreaming,
     startNewThread,
     branding,
     brandingCSSVars,
@@ -63,7 +64,8 @@ function Chat() {
       messages={messages}
       isStreaming={isStreaming}
       streamingMessageId={streamingMessageId}
-      onSendMessage={sendMessage}
+      onSendMessage={(content) => sendMessage(content)}
+      onStopStreaming={stopStreaming}
     >
       <div style={{ height: "100vh", ...brandingCSSVars }}>
         <ChatLayout
@@ -82,8 +84,9 @@ function Chat() {
               welcomeText={branding?.welcomeMessage}
               placeholders={branding?.rotatingPlaceholders}
               suggestions={branding?.presetQuestions}
-              onSubmit={sendMessage}
-              onSuggestionClick={sendMessage}
+              onSubmit={(message) => sendMessage(message)}
+              onSuggestionClick={(s) => sendMessage(s)}
+              disabled={isStreaming}
             />
           }
           messageList={
@@ -101,9 +104,12 @@ function Chat() {
           }
           composer={
             <MessageComposer
-              onSubmit={sendMessage}
+              onSubmit={(content, _files, attachmentIds) =>
+                sendMessage(content, attachmentIds)
+              }
               onUploadFile={uploadFile}
-              disabled={isStreaming}
+              isStreaming={isStreaming}
+              onStopStreaming={stopStreaming}
               placeholder={branding?.chatboxPlaceholder}
             />
           }
@@ -113,6 +119,8 @@ function Chat() {
   );
 }
 ```
+
+Note the small signature adapters: the hook's `sendMessage` takes `(content, attachmentIds?)`, while `ChatProvider.onSendMessage` passes `(content, attachments?: File[])` and `MessageComposer.onSubmit` passes `(content, attachments?, attachmentIds?)` — wrap them as shown rather than passing `sendMessage` directly.
 
 ## Configuration Reference
 
@@ -128,9 +136,13 @@ Pass a `MiiflowChatConfig` object to `useMiiflowChat`:
 | `userMetadata` | `string` | No | JSON string of custom user metadata |
 | `hmac` | `string` | No | HMAC for identity verification |
 | `timestamp` | `string` | No | Timestamp for HMAC verification |
-| `baseUrl` | `string` | No | Override API endpoint (default: `https://api.miiflow.ai/api`) |
+| `baseUrl` | `string` | No | API origin override (default: `https://api.miiflow.ai`). A trailing `/api` is stripped; the client appends `/api/...` per request |
 | `webSocketUrl` | `string` | No | WebSocket URL for tool invocations (auto-derived from `baseUrl` if not set) |
-| `responseTimeout` | `number` | No | SSE stream timeout in ms (default: `60000`) |
+| `initialBranding` | `BrandingData` | No | Branding rendered before session init so the shell paints instantly (SSR-safe). Server branding overrides it once init resolves |
+| `tools` | `ClientToolDefinition[]` | No | Client tools folded into the init round-trip instead of a separate `registerTools()` call |
+| `onToolInvocationFallback` | `(invocation: ToolInvocationRequest) => Promise<boolean>` | No | Handles tool invocations with no local handler (multi-widget routing); return `true` if handled |
+| `onUserMessageCreated` | `(message: { id: string; content: string }) => void` | No | Fired when a user message is created |
+| `onAssistantMessageComplete` | `(message: { id: string; content: string }) => void` | No | Fired when an assistant stream completes |
 
 ## Connecting to a Custom Backend
 
@@ -140,13 +152,13 @@ By default, the hook connects to `https://api.miiflow.ai`. To point to your own 
 useMiiflowChat({
   publicKey: "pk_live_...",
   assistantId: "ast_...",
-  baseUrl: "https://your-server.example.com/api",
+  baseUrl: "https://your-server.example.com",
   // webSocketUrl is auto-derived from baseUrl; override if needed:
   // webSocketUrl: "wss://your-server.example.com/ws",
 });
 ```
 
-Your backend must implement the same API contract as the Miiflow platform (session init, SSE streaming, file upload, and tool-result endpoints).
+Pass the bare origin — the client appends `/api/...` to each request itself (a trailing `/api` on `baseUrl` is stripped). Your backend must implement the same API contract as the Miiflow platform (session init, SSE streaming, file upload, and tool-result endpoints).
 
 ## Hook API — `useMiiflowChat`
 
@@ -173,12 +185,17 @@ const result = useMiiflowChat(config);
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `sendMessage` | `(content: string, attachmentIds?: string[]) => Promise<void>` | Send a message to the assistant |
+| `sendMessage` | `(content: string, attachmentIds?: string[]) => Promise<void>` | Send a message; queued if init hasn't resolved yet |
 | `uploadFile` | `(file: File) => Promise<string>` | Upload a file and get an attachment ID |
-| `startNewThread` | `() => Promise<string>` | Start a new conversation thread |
+| `removeUploadedAttachment` | `(attachmentId: string) => void` | Drop uploaded-attachment metadata when the user removes it pre-send |
+| `stopStreaming` | `() => void` | Abort the in-flight stream, preserving partial content |
+| `startNewThread` | `() => Promise<string>` | Start a new conversation thread; re-registers client tools |
 | `registerTool` | `(tool: ClientToolDefinition) => Promise<void>` | Register a client-side tool |
 | `registerTools` | `(tools: ClientToolDefinition[]) => Promise<void>` | Register multiple tools |
-| `sendSystemEvent` | `(event: SystemEvent) => Promise<void>` | Send an invisible system event |
+| `sendSystemEvent` | `(event: SystemEvent) => Promise<void>` | Send an invisible system event (triggers a reply) |
+| `sendPageContext` | `(context: PageContext) => Promise<void>` | Append hidden page context to the thread (no reply) |
+| `handleToolInvocation` | `(invocation: ToolInvocationRequest) => Promise<boolean>` | Execute a tool invocation; `true` if handled locally |
+| `updateSession` | `(session: EmbedSession) => void` | Replace the session externally (e.g. after token refresh) |
 
 ## Components Reference
 
@@ -188,14 +205,18 @@ Wraps children and provides chat context via React context.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `messages` | `ChatMessage[]` | — | Messages to display |
+| `children` | `ReactNode` | — | **Required.** Subtree |
+| `messages` | `ChatMessage[]` | — | **Required.** Messages to display |
+| `onSendMessage` | `(content: string, attachments?: File[]) => Promise<void>` | — | **Required.** Message send handler |
 | `isStreaming` | `boolean` | `false` | Whether a response is streaming |
 | `streamingMessageId` | `string \| null` | `null` | ID of the streaming message |
 | `viewerRole` | `ParticipantRole` | `"user"` | Viewer's role (determines message alignment) |
-| `onSendMessage` | `(content: string, attachments?: File[]) => Promise<void>` | — | Message send handler |
-| `onStopStreaming` | `() => void` | — | Stop streaming handler |
-| `onRetryLastMessage` | `() => Promise<void>` | — | Retry last message handler |
-| `onVisualizationAction` | `(event: VisualizationActionEvent) => void` | — | Callback for form/card interactions |
+| `onStopStreaming` | `() => void` | — | Stop streaming handler (wire to the hook's `stopStreaming`) |
+| `onRetryLastMessage` | `() => Promise<void>` | — | Retry last message handler (host-implemented) |
+| `customData` | `Record<string, unknown>` | — | Arbitrary data passed through context |
+| `onVisualizationAction` | `(event: VisualizationActionEvent) => void` | — | Callback for form/card/auth interactions |
+| `resolveCommandToken` | `(id: string, kind: string) => { label?: string; tag?: ReactNode } \| undefined` | — | Customize inline command-token chip rendering |
+| `isDarkSurface` | `boolean` | `false` | Tells the package the host surface is dark — drives choices CSS variables can't express, currently the code-block syntax theme |
 
 ### `ChatLayout`
 
@@ -203,13 +224,12 @@ Handles the empty-to-active state transition with crossfade animation. Accepts r
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `isEmpty` | `boolean` | — | Whether the chat has no messages |
+| `isEmpty` | `boolean` | — | **Required.** Whether the chat has no messages |
 | `header` | `ReactNode` | — | Header slot (rendered in both states) |
 | `welcomeScreen` | `ReactNode` | — | Content for empty state |
 | `messageList` | `ReactNode` | — | Message list for active state |
 | `composer` | `ReactNode` | — | Composer for active state |
 | `footer` | `ReactNode` | — | Extra content between list and composer |
-| `variant` | `"standalone" \| "embedded" \| "widget"` | `"standalone"` | Layout variant |
 | `className` | `string` | — | Additional CSS classes |
 
 ### `WelcomeScreen`
@@ -220,38 +240,64 @@ Empty state with rotating placeholder text and suggestion cards.
 |------|------|---------|-------------|
 | `placeholders` | `string[]` | `[]` | Rotating placeholder strings |
 | `suggestions` | `string[]` | `[]` | Preset suggestion cards |
-| `onSubmit` | `(message: string) => void` | — | Submit handler for built-in input |
+| `onSubmit` | `(message: string, files?: File[]) => void` | — | Submit handler for built-in input |
 | `onSuggestionClick` | `(suggestion: string) => void` | — | Suggestion card click handler |
 | `welcomeText` | `string` | `"How can I help you today?"` | Heading text |
+| `supportsAttachments` | `boolean` | — | Show the attach button on the built-in input |
+| `disabled` | `boolean` | — | Block the built-in input (e.g. while streaming). Ignored when `composerSlot` is set |
 | `composerSlot` | `ReactNode` | — | Override default input with custom composer |
+| `commandProvider` | `CommandProvider \| null` | — | Slash-command typeahead provider |
+| `commandProviders` | `CommandProvider[]` | — | Multiple trigger providers; takes precedence over `commandProvider` |
+| `assistantAvatar` | `string` | — | Avatar URL; when set, welcome text renders in message format |
+| `assistantName` | `string` | — | Name shown alongside the avatar |
 | `className` | `string` | — | Additional CSS classes |
 
 ### `MessageList`
 
-Scrollable message container with auto-scroll.
+Scrollable message transcript built on a scroll engine that follows streamed output only while the reader is pinned to the live edge, and preserves the reader's position when earlier content changes height. Each direct child is wrapped in a scroll-anchored item.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `children` | `ReactNode` | — | Message elements |
-| `autoScroll` | `boolean` | `true` | Auto-scroll to bottom on new messages |
-| `className` | `string` | — | Additional CSS classes |
+| `children` | `ReactNode` | — | **Required.** Message elements |
+| `autoScroll` | `boolean` | `true` | Follow streamed output while at the live edge (not "always jump to bottom") |
+| `showScrollToBottom` | `boolean` | `true` | Render the floating scroll-to-bottom button |
+| `className` | `string` | — | Classes applied to the inner transcript content container |
 
 ### `Message`
 
-Individual message with markdown rendering, reasoning panel, citations, and visualizations.
+Individual message with markdown rendering, reasoning panel, citations, visualizations, media, artifacts, and interactive panels (clarification, tool approval).
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `message` | `MessageData` | — | Message data object |
+| `message` | `MessageData` | — | **Required.** Message data object |
 | `viewerRole` | `ParticipantRole` | `"user"` | Viewer's role (determines alignment) |
 | `showAvatar` | `boolean` | `true` | Show participant avatar |
 | `showTimestamp` | `boolean` | `true` | Show message timestamp |
 | `renderMarkdown` | `boolean` | `true` | Render content as markdown |
 | `reasoning` | `StreamingChunk[]` | — | Reasoning/thinking chunks for collapsible panel |
+| `reasoningExpanded` | `boolean` | — | Controlled expansion of the reasoning panel |
+| `onReasoningExpandedChange` | `(expanded: boolean) => void` | — | Reasoning panel expansion callback |
+| `executionPlan` | `unknown` | — | Execution plan for completed agent messages |
+| `executionTimeline` | `unknown[]` | — | Execution timeline for completed messages |
+| `executionTime` | `number` | — | Total execution time in seconds (persisted) |
+| `streamStartedAt` | `number` | — | Epoch ms the in-progress run started, so the live elapsed counter survives remounts |
 | `suggestedActions` | `SuggestedAction[]` | — | Suggested follow-up actions |
 | `onSuggestedAction` | `(action: SuggestedAction) => void` | — | Suggested action click handler |
+| `renderInlineSuggestedAction` | `(id: string) => ReactNode` | — | Renderer for inline `[SA:id]` markers |
 | `citations` | `SourceReference[]` | — | Citation sources to display |
-| `visualizations` | `VisualizationChunkData[]` | — | Inline visualizations |
+| `visualizations` | `VisualizationChunkData[]` | — | Inline visualizations (`[VIZ:id]` markers) |
+| `medias` | `MediaChunkData[]` | — | Inline images/videos |
+| `artifacts` | `ArtifactChunkData[]` | — | Inline downloadable artifacts (PDF, HTML, …) |
+| `onArtifactOpen` | `(artifact: ArtifactChunkData) => void` | — | Artifact inline-card click handler |
+| `baselineFontSize` | `number` | — | Base font size multiplier for markdown |
+| `pendingClarification` | `ClarificationData` | — | Agent needs user input |
+| `onClarificationSubmit` | `(response: string) => void` | — | Clarification response handler |
+| `pendingToolApproval` | `ToolApprovalData` | — | Tool awaiting approval |
+| `onToolApprove` | `(modifiedInputs: Record<string, unknown>) => void` | — | Tool approval handler |
+| `onToolReject` | `(reason?: string) => void` | — | Tool rejection handler |
+| `onReportIncorrect` | `(reason?: string) => void` | — | Report the response as incorrect |
+| `onConfirmCorrect` | `() => void` | — | Confirm the response was helpful |
+| `onEditSubmit` | `(newText: string) => void` | — | Edit-and-resubmit for the viewer's own messages; enables the edit action in the hover bar |
 | `className` | `string` | — | Additional CSS classes |
 
 ### `MessageComposer`
@@ -260,15 +306,35 @@ Rich text editor (Lexical) with file upload, drag-and-drop, and Enter-to-send.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `onSubmit` | `(content: string, attachments?: File[]) => Promise<void>` | — | Submit handler |
+| `onSubmit` | `(content: string, attachments?: File[], attachmentIds?: string[]) => Promise<void>` | — | **Required.** Submit handler; `attachmentIds` carries server-uploaded IDs |
 | `onUploadFile` | `(file: File) => Promise<string>` | — | File upload handler (returns attachment ID) |
 | `onAttach` | `(files: File[]) => void` | — | Called when files are attached |
-| `disabled` | `boolean` | `false` | Disable the composer |
+| `onRemoveUploadedAttachment` | `(attachmentId: string) => void` | — | Called when an uploaded attachment is removed pre-send |
+| `disabled` | `boolean` | `false` | Disable the composer entirely |
 | `supportsAttachments` | `boolean` | `true` | Enable file attachments |
 | `allowedFileTypes` | `string[]` | images, docs, videos | Allowed MIME types |
 | `maxFileSize` | `number` | `104857600` (100MB) | Max file size in bytes |
 | `placeholder` | `string` | `"Type a message..."` | Placeholder text |
-| `isSubmitting` | `boolean` | `false` | Show loading state on send button |
+| `isSubmitting` | `boolean` | `false` | Guards the submit handshake only (loading state on send) |
+| `isStreaming` | `boolean` | `false` | Per-conversation gate while a response streams: blocks Enter and swaps Send for Stop |
+| `onStopStreaming` | `() => void` | — | Stop-button handler |
+| `centered` | `boolean` | `false` | Welcome-screen mode: bigger radius, more padding, larger shadow |
+| `commandProvider` | `CommandProvider \| null` | — | Slash-command typeahead provider |
+| `commandProviders` | `CommandProvider[]` | — | Multiple trigger providers; takes precedence |
+| `className` | `string` | — | Additional CSS classes |
+
+Use `isStreaming` (not `disabled`) while a response is streaming — it keeps the composer editable, blocks submission, and shows the Stop button.
+
+### `MessageAttachments`
+
+Attachment strip rendered inside messages. Image attachments render as inline thumbnails that open a shared lightbox (Esc to close, arrow-key paging, body scroll-lock); non-image files render as downloadable chips. Images whose URL fails to load fall back to the file chip.
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `attachments` | `Attachment[]` | — | **Required.** Attachments to display |
+| `onDownload` | `(attachment: Attachment) => void` | — | Custom download handler |
+| `onPreview` | `(attachment: Attachment) => void` | — | Custom preview handler |
+| `align` | `"start" \| "end"` | `"start"` | Edge to align against; use `"end"` for right-aligned viewer messages |
 | `className` | `string` | — | Additional CSS classes |
 
 ### `ChatHeader`
@@ -307,14 +373,31 @@ The `brandingCSSVars` object from `useMiiflowChat` contains CSS custom propertie
 </div>
 ```
 
-Available CSS variables:
+Variables emitted by `brandingCSSVars`:
 
 | Variable | Source | Description |
 |----------|--------|-------------|
 | `--chat-primary` | `backgroundBubbleColor` | Primary accent color |
 | `--chat-user-message-bg` | `backgroundBubbleColor` | User message bubble background |
+| `--chat-user-message-text` | derived | Auto-computed contrast color for user bubbles |
 | `--chat-header-bg` | `headerBackgroundColor` | Header background color |
 | `--chat-message-font-size` | `messageFontSize` | Base message font size |
+| `--chat-font-family` | `fontFamily` | Base font stack |
+| `--chat-approval-accent` / `--chat-approval-accent-soft` | `approvalAccentColor` | Tool-approval panel accent |
+| `--chat-approve-bg` / `--chat-approve-bg-hover` | `approveButtonColor` | Approve button colors |
+| `--chat-reject-bg-hover` | `rejectButtonHoverColor` | Reject button hover |
+| `--chat-clarification-accent` / `--chat-clarification-accent-soft` | `clarificationAccentColor` | Clarification panel accent |
+| `--chat-activity` | `activityAccentColor` | In-progress indicators (falls back to `--chat-primary`) |
+
+Beyond these, the stylesheet declares many more host-overridable `--chat-*` tokens (surfaces, borders, text, radii, composer chrome, `--chat-font-mono` for code, and more) — see `styles.css` for the full set. Set them on any ancestor element to theme the components.
+
+### Dark surfaces
+
+CSS variables handle colors, but some choices can't be expressed in CSS — currently the syntax-highlighting theme for code blocks. If your app renders the chat on a dark surface, pass `isDarkSurface` to `ChatProvider` (the package does not infer dark mode from the OS `prefers-color-scheme`):
+
+```tsx
+<ChatProvider isDarkSurface {...rest}>
+```
 
 ### TailwindCSS Customization
 
@@ -332,13 +415,13 @@ Pass `onUploadFile={uploadFile}` to `MessageComposer` to enable server-side file
 const { sendMessage, uploadFile } = useMiiflowChat(config);
 
 <MessageComposer
-  onSubmit={sendMessage}
+  onSubmit={(content, _files, attachmentIds) => sendMessage(content, attachmentIds)}
   onUploadFile={uploadFile}
   supportsAttachments={true}
 />
 ```
 
-The composer handles file picking, validation, drag-and-drop, and preview thumbnails. Files are uploaded via `uploadFile()` which returns an attachment ID. The IDs are passed along when `sendMessage()` is called.
+The composer handles file picking, validation, drag-and-drop, and preview thumbnails. Files are uploaded via `uploadFile()` which returns an attachment ID; the IDs arrive as `onSubmit`'s third argument. A message with attachments and no text is valid — the composer allows attachment-only sends.
 
 ## Client-Side Tools
 
@@ -364,9 +447,9 @@ await registerTool({
 });
 ```
 
-Tools are automatically re-registered when starting a new thread via `startNewThread()`.
+Tools known at mount time can instead be passed via `config.tools` — they're folded into the session-init round-trip, saving a registration call. Tools are automatically re-registered when starting a new thread via `startNewThread()`.
 
-The `handler` function receives the parameters as a `Record<string, unknown>` and must return a `Promise`. Results are sent back to the assistant automatically. A 30-second timeout is enforced per invocation.
+The `handler` function receives the parameters as a `Record<string, unknown>` and must return a `Promise`. Results are sent back to the assistant automatically. A 30-second timeout is enforced per invocation. Invocations with no locally registered handler are offered to `config.onToolInvocationFallback` (useful when several widgets share one session).
 
 ## System Events
 
@@ -388,6 +471,8 @@ await sendSystemEvent({
 | `description` | `string` | Yes | Human-readable description of what happened |
 | `followUpInstruction` | `string` | Yes | Instruction for the assistant |
 | `metadata` | `Record<string, unknown>` | No | Additional structured data |
+
+A system event triggers an assistant reply. To attach silent context that the assistant only uses on the *next* user message, use `sendPageContext(context)` instead — it appends hidden context to the thread without generating a response.
 
 ## Identity Verification (HMAC)
 
@@ -421,6 +506,7 @@ Assistant messages can contain rich visualizations (charts, tables, forms, etc.)
 | `kpi` | `KpiVisualization` | Key performance indicator metrics with trends |
 | `code_preview` | `CodePreviewVisualization` | Syntax-highlighted code blocks |
 | `form` | `FormVisualization` | Interactive forms with validation |
+| `auth_prompt` | `AuthPromptVisualization` | "Connect this integration" card shown when the assistant needs an authorized provider; emits an `auth_connect` action via `onAction` (no button renders without it) |
 
 ### Visualization Registry
 
@@ -441,7 +527,7 @@ registerVisualization("my_widget", {
 
 // Check what's registered
 console.log(getRegisteredTypes());
-// ["chart", "table", "card", "kpi", "code_preview", "form", "my_widget"]
+// ["chart", "table", "card", "kpi", "code_preview", "form", "auth_prompt", "my_widget"]
 ```
 
 Your component receives these props:
@@ -452,6 +538,7 @@ interface VisualizationComponentProps {
   config?: VisualizationConfig;
   isStreaming?: boolean;
   onAction?: (event: VisualizationActionEvent) => void;
+  medias?: MediaChunkData[]; // for resolving media_ref:<id> values
 }
 ```
 
@@ -471,6 +558,7 @@ import {
   kpiVisualizationSchema,
   codePreviewVisualizationSchema,
   formVisualizationSchema,
+  authPromptVisualizationSchema,
 } from "@miiflow/assistant-ui/styled";
 
 const result = chartVisualizationSchema.safeParse(data);
@@ -499,7 +587,7 @@ registerVisualization("my_widget", {
 
 ### Interaction Callbacks
 
-Forms and cards can trigger user interactions (submit, cancel, button click). Instead of listening for global `CustomEvent`s, pass a callback through `ChatProvider`:
+Forms, cards, and auth prompts can trigger user interactions. Instead of listening for global `CustomEvent`s, pass a callback through `ChatProvider`:
 
 ```tsx
 function handleVisualizationAction(event: VisualizationActionEvent) {
@@ -514,12 +602,16 @@ function handleVisualizationAction(event: VisualizationActionEvent) {
     case "card_action":
       console.log("Card action clicked:", event.action);
       break;
+    case "auth_connect":
+      // Kick off your OAuth/connect flow for event.providerName
+      console.log("Connect requested:", event.providerName);
+      break;
   }
 }
 
 <ChatProvider
   messages={messages}
-  onSendMessage={sendMessage}
+  onSendMessage={(content) => sendMessage(content)}
   onVisualizationAction={handleVisualizationAction}
 >
   ...
@@ -532,8 +624,16 @@ The `VisualizationActionEvent` type is a discriminated union:
 type VisualizationActionEvent =
   | { type: "form_submit"; action: string; data: Record<string, unknown> }
   | { type: "form_cancel"; action: string }
-  | { type: "card_action"; action: string };
+  | { type: "card_action"; action: string }
+  | {
+      type: "auth_connect";
+      providerName: string;
+      mcpServerId?: string;
+      serviceProviderId?: string;
+    };
 ```
+
+Note the `auth_connect` variant has no `action` field — narrow on `event.type` before reading variant-specific fields.
 
 **Backward compatibility:** If no `onVisualizationAction` callback is provided, components fall back to dispatching `CustomEvent`s on `window` (`visualization-form-submit`, `visualization-form-cancel`, `visualization-action`).
 
@@ -562,10 +662,11 @@ import { VisualizationRenderer } from "@miiflow/assistant-ui/styled";
 
 | Import | Description |
 |--------|-------------|
-| `@miiflow/assistant-ui` | Core types, context, hooks, primitives |
-| `@miiflow/assistant-ui/styled` | TailwindCSS-styled components, visualization registry, schemas |
-| `@miiflow/assistant-ui/client` | `useMiiflowChat` hook, session utilities, types |
+| `@miiflow/assistant-ui` | Core types, context, hooks, primitives — plus re-exports of the styled components and shared utils (`cn`, format/color helpers, `chatTokens`) |
+| `@miiflow/assistant-ui/styled` | TailwindCSS-styled components, visualization + artifact registries, schemas |
+| `@miiflow/assistant-ui/client` | `useMiiflowChat` hook, session utilities, tool validation, SSE helpers, types |
 | `@miiflow/assistant-ui/primitives` | Headless unstyled component primitives |
+| `@miiflow/assistant-ui/composer` | Lexical composer internals: `LexicalChatInput`, command-token node/plugin/view, `CommandProvider` types |
 | `@miiflow/assistant-ui/styles.css` | Full CSS (includes Tailwind preflight) |
 | `@miiflow/assistant-ui/styles-no-preflight.css` | CSS without preflight (for embedding in existing pages) |
 
@@ -575,7 +676,14 @@ import { VisualizationRenderer } from "@miiflow/assistant-ui/styled";
 `registerVisualization`, `getVisualization`, `getRegisteredTypes`, `VisualizationEntry`
 
 **Visualization Schemas:**
-`chartVisualizationSchema`, `tableVisualizationSchema`, `cardVisualizationSchema`, `kpiVisualizationSchema`, `codePreviewVisualizationSchema`, `formVisualizationSchema`
+`chartVisualizationSchema`, `tableVisualizationSchema`, `cardVisualizationSchema`, `kpiVisualizationSchema`, `codePreviewVisualizationSchema`, `formVisualizationSchema`, `authPromptVisualizationSchema`
+
+**Artifact Registry:**
+`registerArtifact`, `getArtifact`, `getRegisteredArtifactTypes`, `ArtifactInlineCard`, `ArtifactList`
 
 **Types:**
 `VisualizationActionEvent`, `VisualizationChunkData`, `VisualizationConfig`, `VisualizationType`
+
+### Key Exports from `@miiflow/assistant-ui/client`
+
+Beyond `useMiiflowChat`: session helpers (`initSession`, `createThread`, `uploadFile`, `sendSystemEvent`, `sendPageContext`, `sendToolResult`, `getBackendBaseUrl`), tool validation (`validateToolDefinition`, `serializeToolDefinition`, `ToolValidationError`), and SSE-reducer helpers for hosts with their own stream parsing (`findToolChunkIndex`, `MatchableToolChunk`, `ToolFrame`).
