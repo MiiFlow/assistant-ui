@@ -185,7 +185,6 @@ function AttachmentThumbnail({
     >
       {/* Intrinsic aspect ratio is preserved: the box only bounds the image, so
           tall screenshots and wide banners both render undistorted. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={source}
         alt={attachment.filename}

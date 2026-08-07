@@ -132,7 +132,6 @@ export const LexicalChatInput = forwardRef<LexicalChatInputHandle, LexicalChatIn
         nodes: [CommandTokenNode],
         editable: !disabled,
         onError: (error: Error) => {
-          // eslint-disable-next-line no-console
           console.error("[chat-ui composer]", error);
         },
       }),

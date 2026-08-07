@@ -647,9 +647,13 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 								) : message.textContent ? (
 								<div
 									className={cn(
-									"rounded-2xl",
-									isViewer || showAvatar ? "px-4 py-3" : "",
-								)}
+										"rounded-2xl",
+										isViewer || showAvatar ? "px-4 py-3" : "",
+										// The timestamp and invisible hover actions share the
+										// wrapper below. Keep their width from stretching a short
+										// viewer bubble and looking like trailing whitespace.
+										isViewer && "self-end w-fit max-w-full",
+									)}
 									style={{
 										backgroundColor: isViewer ? "var(--chat-user-message-bg)" : "transparent",
 										color: isViewer ? "var(--chat-user-message-text, #ffffff)" : "var(--chat-text)",

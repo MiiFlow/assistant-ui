@@ -27,6 +27,24 @@ function paletteForIndex(idx: number) {
   return BENTO_PALETTE[idx % BENTO_PALETTE.length];
 }
 
+// Visualizations render inside a chat panel that is much narrower than the
+// window, so layout here is driven by the container (intrinsic grid/flex sizing
+// and `cqi` units) rather than by Tailwind's viewport breakpoints.
+const GRID_GAP_PX = 16; // gap-4
+
+/**
+ * Column template that never exceeds `maxCols` tracks but sheds columns as the
+ * container narrows, keeping every card at least `minPx` wide. `min(100%, …)`
+ * is the floor that stops a single card from overflowing a very narrow panel.
+ */
+function autoColumns(maxCols: number, minPx: number, gapPx = GRID_GAP_PX): string {
+  const capped = `calc((100% - ${(maxCols - 1) * gapPx}px) / ${maxCols})`;
+  return `repeat(auto-fit, minmax(min(100%, max(${minPx}px, ${capped})), 1fr))`;
+}
+
+/** Cards are their own query containers so `cqi` value sizing tracks card width. */
+const CARD_CONTAINER = { containerType: "inline-size" as const };
+
 // Original row/grid card — kept identical so existing threads render unchanged.
 function KpiMetricCard({ metric, color, animate }: { metric: KpiMetric; color: string; animate: boolean }) {
   const trendIcon = metric.trend === "up" ? <ArrowUp size={16} className="text-green-500" /> :
@@ -39,7 +57,10 @@ function KpiMetricCard({ metric, color, animate }: { metric: KpiMetric; color: s
   const sparklineData = metric.sparkline?.map((value, idx) => ({ value, idx }));
 
   return (
-    <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 relative overflow-hidden">
+    <div
+      className="h-full p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 relative overflow-hidden"
+      style={CARD_CONTAINER}
+    >
       {sparklineData && sparklineData.length > 0 && (
         <div className="absolute bottom-0 left-0 right-0 h-10 opacity-30">
           <ResponsiveContainer width="100%" height="100%">
@@ -50,9 +71,14 @@ function KpiMetricCard({ metric, color, animate }: { metric: KpiMetric; color: s
         </div>
       )}
       <div className="relative z-10">
-        <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">{metric.label}</span>
-        <div className="flex items-baseline gap-1 mt-1">
-          <span className="text-2xl font-bold">{metric.value}</span>
+        <span className="text-xs text-gray-500 font-medium uppercase tracking-wider [overflow-wrap:anywhere]">{metric.label}</span>
+        <div className="flex items-baseline gap-1 mt-1 min-w-0">
+          <span
+            className="font-bold [overflow-wrap:anywhere]"
+            style={{ fontSize: "clamp(1.25rem, 9cqi, 1.5rem)" }}
+          >
+            {metric.value}
+          </span>
           {metric.unit && <span className="text-sm text-gray-500">{metric.unit}</span>}
         </div>
         {(metric.trend || metric.change !== undefined && metric.change !== null) && (
@@ -107,6 +133,7 @@ function KpiBentoCard({
         isHero ? "p-5" : "p-4",
       )}
       style={{
+        ...CARD_CONTAINER,
         background: isHero
           ? `linear-gradient(135deg, ${palette.tintFrom} 0%, ${palette.tintMid} 60%, transparent 100%), var(--kpi-bg, white)`
           : undefined,
@@ -152,19 +179,23 @@ function KpiBentoCard({
       <div className={cn("relative z-10", isHero ? "pl-1" : "pl-0.5")}>
         <span
           className={cn(
-            "block font-semibold uppercase tracking-wider",
+            "block font-semibold uppercase tracking-wider [overflow-wrap:anywhere]",
             palette.label,
             isHero ? "text-xs" : "text-[0.7rem]",
           )}
         >
           {metric.label}
         </span>
-        <div className={cn("flex items-baseline gap-1", isHero ? "mt-2" : "mt-1")}>
+        <div className={cn("flex items-baseline gap-1 min-w-0", isHero ? "mt-2" : "mt-1")}>
           <span
-            className={cn(
-              "font-extrabold tabular-nums text-gray-900 dark:text-gray-100 leading-tight tracking-tight",
-              isHero ? "text-4xl sm:text-5xl" : "text-2xl",
-            )}
+            className="font-extrabold tabular-nums text-gray-900 dark:text-gray-100 leading-tight tracking-tight [overflow-wrap:anywhere]"
+            style={{
+              // Scales with the card, not the window — a satellite in a narrow
+              // chat panel steps down instead of clipping.
+              fontSize: isHero
+                ? "clamp(1.75rem, 11cqi, 2.75rem)"
+                : "clamp(1.125rem, 10cqi, 1.5rem)",
+            }}
           >
             {metric.value}
           </span>
@@ -225,15 +256,19 @@ function KpiBentoLayout({ metrics, animate }: { metrics: KpiMetric[]; animate: b
 
   const satCount = satellites.length;
   const satCols = satCount <= 3 ? Math.max(2, satCount) : satCount >= 7 ? 3 : 2;
-  const satGridClass =
-    satCols === 2 ? "sm:grid-cols-2" : satCols === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
 
+  // Hero and satellites sit side by side (roughly 5:7) only while the container
+  // can hold both flex bases; below that they stack. Flex basis is the container
+  // query here — no viewport breakpoint involved.
   return (
-    <div className="w-full grid gap-4 md:[grid-template-columns:minmax(0,5fr)_minmax(0,7fr)] items-stretch">
-      <div className="md:min-h-[220px]">
+    <div className="w-full flex flex-wrap gap-4 items-stretch">
+      <div className="min-w-0" style={{ flex: "5 1 260px" }}>
         <KpiBentoCard metric={hero} index={heroIdx} isHero animate={animate} />
       </div>
-      <div className={cn("grid gap-4 grid-cols-2", satGridClass)}>
+      <div
+        className="min-w-0 grid gap-4"
+        style={{ flex: "7 1 320px", gridTemplateColumns: autoColumns(satCols, 140) }}
+      >
         {satellites.map(({ m, i }) => (
           <KpiBentoCard key={i} metric={m} index={i} isHero={false} animate={animate} />
         ))}
@@ -257,12 +292,24 @@ export function KpiVisualization({ data, config, isStreaming = false }: KpiVisua
 
   const isGrid = layout === "grid";
 
+  // "row" asks for one line of equal cards, but the line only holds as many as
+  // the container can fit at a readable width — the rest wrap.
   return (
-    <div className={cn("w-full", isGrid ? "grid grid-cols-1 sm:grid-cols-2 gap-4" : "flex gap-4 flex-wrap")}>
+    <div
+      className="w-full grid gap-4"
+      style={{
+        gridTemplateColumns: isGrid
+          ? autoColumns(2, 200)
+          : autoColumns(Math.max(metrics.length, 1), 170),
+      }}
+    >
       {metrics.map((metric, idx) => (
-        <div key={idx} className={cn(!isGrid && "flex-1 min-w-[200px]")}>
-          <KpiMetricCard metric={metric} color={metric.color || colors[idx % colors.length]} animate={animate} />
-        </div>
+        <KpiMetricCard
+          key={idx}
+          metric={metric}
+          color={metric.color || colors[idx % colors.length]}
+          animate={animate}
+        />
       ))}
     </div>
   );
