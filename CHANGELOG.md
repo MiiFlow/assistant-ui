@@ -1,5 +1,11 @@
 # @miiflow/assistant-ui
 
+## Unreleased
+
+### Features
+
+- **`LexicalChatInput` as a form field (`composer/LexicalChatInput.tsx`, `composer/hydrate.ts`)**: New optional props `submitOnEnter` (default `true`; `false` makes Enter insert a paragraph and Shift+Enter a line break, for a saved-prompt / scheduled-message editor that reads its value from `onChange`), `initialContent` (hydrated once on mount from the same plain-text projection the editor emits, so `/id:kind` substrings become chips again) and `resolveTokenLabel` (display label for rehydrated chips with opaque ids). `onSubmit` is now optional and the imperative handle gains `setContent(text)`. New export `$hydrateFromEncodedText` for hosts that mount their own `LexicalComposer`. Additive — the chat contract is unchanged.
+
 ## 0.14.0
 
 ### Features

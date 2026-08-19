@@ -11,6 +11,7 @@ import {
   $getSelection,
   $isElementNode,
   $isRangeSelection,
+  CLEAR_HISTORY_COMMAND,
   COMMAND_PRIORITY_HIGH,
   KEY_ENTER_COMMAND,
   type EditorState,
@@ -30,6 +31,7 @@ import {
 import { cn } from "../utils/cn";
 import { CommandTokenNode, $isCommandTokenNode } from "./CommandTokenNode";
 import { CommandTokenPlugin } from "./CommandTokenPlugin";
+import { $hydrateFromEncodedText, type ResolveTokenLabel } from "./hydrate";
 import type {
   ChatComposerSubmitPayload,
   ChatComposerToken,
@@ -53,6 +55,11 @@ export interface LexicalChatInputHandle {
    * like "/" or "@" so the matching typeahead opens.
    */
   insertText: (text: string) => void;
+  /**
+   * Replace the editor contents with the plain-text projection of an earlier
+   * payload (`/id:kind` substrings become chips again) and reset history.
+   */
+  setContent: (text: string) => void;
 }
 
 export interface LexicalChatInputProps {
@@ -70,8 +77,22 @@ export interface LexicalChatInputProps {
    * gate a parent-rendered submit button on `text.trim().length > 0`.
    */
   onChange?: (payload: ChatComposerSubmitPayload) => void;
-  /** Called when the user presses Enter (without Shift). */
-  onSubmit: (payload: ChatComposerSubmitPayload) => void | Promise<void>;
+  /** Called on submit — Enter without Shift (when `submitOnEnter`) or `submit()`. */
+  onSubmit?: (payload: ChatComposerSubmitPayload) => void | Promise<void>;
+  /**
+   * Whether Enter (without Shift) submits. Default true — the chat contract.
+   * Set false when the editor is a form FIELD (a schedule's message, a saved
+   * prompt): Enter then inserts a paragraph and Shift+Enter a line break, and
+   * the owner reads the value from `onChange`.
+   */
+  submitOnEnter?: boolean;
+  /**
+   * Content to hydrate on mount, in the same plain-text projection the editor
+   * emits (`payload.text`). Read ONCE — remount with a `key` to reset.
+   */
+  initialContent?: string;
+  /** Display label for a rehydrated chip whose id is opaque; defaults to the id. */
+  resolveTokenLabel?: ResolveTokenLabel;
   /**
    * Optional slash-command typeahead. When omitted, the editor behaves like
    * a plain rich-text input.
@@ -120,6 +141,9 @@ export const LexicalChatInput = forwardRef<LexicalChatInputHandle, LexicalChatIn
       children,
       onChange,
       onSubmit,
+      submitOnEnter = true,
+      initialContent,
+      resolveTokenLabel,
       commandProvider,
       commandProviders,
     },
@@ -131,6 +155,11 @@ export const LexicalChatInput = forwardRef<LexicalChatInputHandle, LexicalChatIn
         theme: EDITOR_THEME,
         nodes: [CommandTokenNode],
         editable: !disabled,
+        // Runs once inside the editor's first update — the one place initial
+        // content can be seeded without a flash of empty editor.
+        editorState: initialContent
+          ? () => $hydrateFromEncodedText(initialContent, resolveTokenLabel)
+          : undefined,
         onError: (error: Error) => {
           console.error("[chat-ui composer]", error);
         },
@@ -150,6 +179,8 @@ export const LexicalChatInput = forwardRef<LexicalChatInputHandle, LexicalChatIn
           placeholderClassName={placeholderClassName}
           onChange={onChange}
           onSubmit={onSubmit}
+          submitOnEnter={submitOnEnter}
+          resolveTokenLabel={resolveTokenLabel}
           commandProvider={commandProvider}
           commandProviders={commandProviders}
           imperativeHandle={ref}
@@ -170,6 +201,8 @@ function ChatInputBody({
   children,
   onChange,
   onSubmit,
+  submitOnEnter = true,
+  resolveTokenLabel,
   commandProvider,
   commandProviders,
   imperativeHandle,
@@ -193,7 +226,7 @@ function ChatInputBody({
   // attachment-only messages: the parent enabled its send button on
   // `hasText || files.length`, and the click reached a no-op.
   const submit = useCallback(() => {
-    void onSubmitRef.current(readPayload(editor));
+    void onSubmitRef.current?.(readPayload(editor));
   }, [editor]);
 
   useImperativeHandle(
@@ -207,6 +240,13 @@ function ChatInputBody({
       },
       submit,
       focus: () => editor.focus(),
+      setContent: (text: string) => {
+        editor.update(() => {
+          $hydrateFromEncodedText(text, resolveTokenLabel);
+          $getRoot().selectEnd();
+        });
+        editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined);
+      },
       insertText: (text: string) => {
         editor.focus(() => {
           editor.update(() => {
@@ -222,13 +262,16 @@ function ChatInputBody({
         });
       },
     }),
-    [editor, submit],
+    [editor, submit, resolveTokenLabel],
   );
 
   // Intercept Enter (without Shift) and trigger submit, unless the
   // command-token typeahead menu is open — in which case the typeahead's
-  // own LOW-priority handler takes the key to select an option.
+  // own LOW-priority handler takes the key to select an option. In field
+  // mode (submitOnEnter=false) nothing is registered, so RichTextPlugin's
+  // default Enter = new paragraph applies.
   useEffect(() => {
+    if (!submitOnEnter) return;
     return editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event) => {
@@ -241,7 +284,7 @@ function ChatInputBody({
       },
       COMMAND_PRIORITY_HIGH,
     );
-  }, [editor, submit]);
+  }, [editor, submit, submitOnEnter]);
 
   const handleCommandMenuStateChange = useCallback((isOpen: boolean) => {
     commandMenuOpenRef.current = isOpen;

@@ -19,6 +19,8 @@ export { CommandTokenPlugin, type CommandTokenPluginProps } from "./CommandToken
 
 export { CommandTokenView, type CommandTokenViewProps } from "./CommandTokenView";
 
+export { $hydrateFromEncodedText, type ResolveTokenLabel } from "./hydrate";
+
 export {
   LexicalChatInput,
   type LexicalChatInputHandle,
