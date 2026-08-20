@@ -95,6 +95,8 @@ export function CommandTokenView({
           alignItems: "center",
           gap: 5,
           verticalAlign: "middle",
+          // Optical correction: the pill otherwise reads slightly below adjacent text.
+          transform: "translateY(-1px)",
           background: CHIP_BG,
           borderRadius: 999,
           padding: "2px 9px 2px 4px",
