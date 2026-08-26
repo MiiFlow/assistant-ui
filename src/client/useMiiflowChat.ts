@@ -186,6 +186,9 @@ interface StreamParseCallbacks {
     pendingToolApproval?: import("../types").ToolApprovalData,
   ) => void;
   onToolInvocation?: (invocation: ToolInvocationRequest) => void;
+  /** Server setup status line ("Getting started…") for the pre-first-token
+   *  window; null clears it. Optional — older consumers ignore it. */
+  onStatusUpdate?: (text: string | null) => void;
 }
 
 async function parseSSEStream(
@@ -321,6 +324,14 @@ async function parseSSEStream(
         const parsed = JSON.parse(data);
 
         if (parsed.type === "assistant_chunk") {
+          // Setup status frame: carries no content — surface the text and
+          // skip all accumulation (an empty chunk must not create or touch
+          // the streaming message).
+          if (parsed.is_status_update) {
+            callbacks.onStatusUpdate?.(parsed.status_text || null);
+            continue;
+          }
+
           // Server retracted optimistically streamed answer text: it was
           // preamble narration before a tool call (or a max_tokens
           // truncation). Clear the answer buffer; the text re-arrives as a
@@ -813,6 +824,7 @@ async function parseSSEStream(
 export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   const [messages, setMessages] = useState<InternalMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [statusText, setStatusText] = useState<string | null>(null);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
     null
   );
@@ -1313,6 +1325,9 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
                 )
               );
             },
+            onStatusUpdate: (text) => {
+              setStatusText(text);
+            },
             onComplete: (
               assistantMsgId,
               finalContent,
@@ -1413,6 +1428,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         abortControllerRef.current = null;
         setIsStreaming(false);
         setStreamingMessageId(null);
+        setStatusText(null);
       }
     },
     [handleToolInvocation] // stable — reads sessionRef and isStreamingRef
@@ -1437,6 +1453,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     isStreamingRef.current = false;
     setIsStreaming(false);
     setStreamingMessageId(null);
+    setStatusText(null);
   }, []);
 
   // Start new thread — uses sessionRef for stable reference
@@ -1576,6 +1593,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     messages: chatMessages,
     isStreaming,
     streamingMessageId,
+    statusText,
     sendMessage,
     uploadFile,
     removeUploadedAttachment,

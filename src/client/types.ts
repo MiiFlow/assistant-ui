@@ -104,6 +104,9 @@ export interface MiiflowChatResult {
   isStreaming: boolean;
   /** ID of the message being streamed */
   streamingMessageId: string | null;
+  /** Server setup status line ("Getting started…") for the pre-first-token
+   *  window; null once real content streams or the turn ends */
+  statusText: string | null;
   /** Send a message to the assistant, optionally with attachment IDs */
   sendMessage: (content: string, attachmentIds?: string[]) => Promise<void>;
   /** Upload a file and return its attachment ID */
