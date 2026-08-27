@@ -12,11 +12,39 @@ export { StreamingText, type StreamingTextProps } from "./StreamingText";
 export { SuggestedActions, type SuggestedActionsProps } from "./SuggestedActions";
 export { TimeMarker, type TimeMarkerProps } from "./TimeMarker";
 export { TypingIndicator, type TypingIndicatorProps } from "./TypingIndicator";
+export { ThinkingIndicator, decodeFrame, type ThinkingIndicatorProps } from "./ThinkingIndicator";
 
 // New components for main app integration
 export { ChatHeader, type ChatHeaderAction, type ChatHeaderProps } from "./ChatHeader";
 export { MessageAttachments, type MessageAttachmentsProps } from "./MessageAttachments";
 export { ReasoningPanel, type ReasoningPanelProps } from "./ReasoningPanel";
+export {
+	ReasoningStream,
+	type ReasoningStreamProps,
+	StepBlock,
+	type StepBlockProps,
+	ToolChip,
+	SubagentBody,
+	SubagentGroup,
+	type SubagentGroupProps,
+	humanizeHandle,
+	initials,
+	ActivityMeter,
+	Chevron,
+	AgentMark,
+	DispatchMark,
+	StepMark,
+	WriteMark,
+	buildRunSteps,
+	durationSeconds,
+	isInternalTool,
+	stepsWallClockSeconds,
+	INTERNAL_TOOLS,
+	type RunStep,
+	type RunStepStatus,
+	type RunStepTool,
+	type RunStepToolKind,
+} from "./reasoning";
 
 // Action bar
 export { MessageActionBar, type MessageActionBarProps } from "./MessageActionBar";

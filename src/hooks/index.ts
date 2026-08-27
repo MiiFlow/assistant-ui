@@ -1,5 +1,6 @@
 export { useAutoScroll, type UseAutoScrollOptions, type UseAutoScrollReturn } from "./use-auto-scroll";
 export { useScrollLock } from "./use-scroll-lock";
+export { usePrefersReducedMotion } from "./use-reduced-motion";
 export { useStreaming } from "./use-streaming";
 export { useMessageComposer } from "./use-message-composer";
 export { useAttachments } from "./use-attachments";

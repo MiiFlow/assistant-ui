@@ -1,155 +1,16 @@
-import * as react from 'react';
-import { RefObject, KeyboardEvent } from 'react';
-import { d as StreamingOptions, c as StreamChunk } from '../streaming-mVwyUtPR.js';
-import { B as BrandingData } from '../branding-NieTEGQf.js';
-
-interface UseAutoScrollOptions {
-    /** Whether auto-scroll is enabled */
-    enabled?: boolean;
-    /** Smooth scroll behavior */
-    smooth?: boolean;
-    /** Scroll to bottom when component mounts */
-    scrollToBottomOnMount?: boolean;
-}
-interface UseAutoScrollReturn<T extends HTMLElement> {
-    /** Ref to attach to the scrollable container */
-    containerRef: React.RefObject<T | null>;
-    /** Scroll to bottom programmatically (always forces scroll) */
-    scrollToBottom: (behavior?: ScrollBehavior) => void;
-    /** Whether the viewport is currently at the bottom */
-    isAtBottom: boolean;
-}
-/**
- * Hook to automatically scroll to the bottom of a container
- * when new content is added, unless the user has scrolled up.
- *
- * Combines ResizeObserver + MutationObserver to catch all height changes
- * (image loads, panel expansion, streaming text, new messages).
- *
- * Uses a 1px tolerance for isAtBottom (matches assistant-ui) and
- * persists scroll behavior across content resize to prevent
- * the "content outraces scroll" bug.
- */
-declare function useAutoScroll<T extends HTMLElement>({ enabled, smooth, scrollToBottomOnMount, }?: UseAutoScrollOptions): UseAutoScrollReturn<T>;
+export { U as UseAutoScrollOptions, a as UseAutoScrollReturn, u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from '../use-branding-css-vars-CR2tjSV8.js';
+import 'react';
+import '../streaming-BfLEgW5u.js';
+import '../branding-NieTEGQf.js';
 
 /**
- * Locks scroll position during collapsible/height animations.
+ * Whether the viewer has asked for reduced motion.
  *
- * Prevents viewport jumps when content height changes during animations
- * (e.g. ReasoningPanel expand/collapse). Finds the nearest scrollable
- * ancestor and temporarily locks its scroll position for the animation duration.
- *
- * Adapted from assistant-ui's useScrollLock.
- *
- * @param animatedElementRef - Ref to the animated element
- * @param animationDuration - Lock duration in milliseconds
- * @returns Function to activate the scroll lock (call before toggling)
- *
- * @example
- * ```tsx
- * const panelRef = useRef<HTMLDivElement>(null);
- * const lockScroll = useScrollLock(panelRef, 200);
- *
- * const handleToggle = () => {
- *   lockScroll();
- *   setIsExpanded(!isExpanded);
- * };
- * ```
+ * The reasoning stream drives shimmer, a live meter and a blinking caret from
+ * inline `animation` declarations, and a media query cannot override an inline
+ * style — so the decision has to be made in JS and the effect simply not
+ * applied. Starts `false` so server rendering and the first client paint agree.
  */
-declare function useScrollLock<T extends HTMLElement = HTMLElement>(animatedElementRef: RefObject<T | null>, animationDuration: number): () => void;
+declare function usePrefersReducedMotion(): boolean;
 
-/**
- * Hook to manage streaming message state.
- */
-declare function useStreaming(options?: StreamingOptions): {
-    startStreaming: (messageId: string) => void;
-    appendContent: (chunk: StreamChunk) => void;
-    stopStreaming: () => void;
-    handleError: (error: Error) => void;
-    abortSignal: AbortSignal | undefined;
-    isStreaming: boolean;
-    streamingMessageId: string | null;
-    streamedContent: string;
-};
-
-interface UseMessageComposerOptions {
-    /**
-     * Callback when message is submitted. MUST resolve once the message has been
-     * accepted, not when the assistant has finished responding — the submit lock
-     * below is held for the duration of this promise, so a host that keeps it
-     * open for a whole turn locks the composer for every conversation it is
-     * reused for.
-     */
-    onSubmit: (content: string, attachments?: File[]) => Promise<void>;
-    /** Whether submission is disabled */
-    disabled?: boolean;
-    /** Whether the current conversation is mid-response. Blocks submitting a
-     *  second, concurrent turn into the same conversation. */
-    isStreaming?: boolean;
-    /** Maximum file size in bytes */
-    maxFileSize?: number;
-    /** Allowed file types (MIME types) */
-    allowedFileTypes?: string[];
-}
-/**
- * Hook to manage message composer state and behavior.
- */
-declare function useMessageComposer({ onSubmit, disabled, isStreaming, maxFileSize, // 10MB
-allowedFileTypes, }: UseMessageComposerOptions): {
-    content: string;
-    attachments: File[];
-    isSubmitting: boolean;
-    error: string | null;
-    canSubmit: boolean | "";
-    inputRef: react.RefObject<HTMLTextAreaElement | null>;
-    handleContentChange: (value: string) => void;
-    handleAddAttachment: (files: FileList | File[]) => void;
-    handleRemoveAttachment: (index: number) => void;
-    handleSubmit: () => Promise<void>;
-    handleKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
-    clear: () => void;
-};
-
-interface AttachmentState {
-    file: File;
-    id: string;
-    progress: number;
-    status: "pending" | "uploading" | "complete" | "error";
-    error?: string;
-    url?: string;
-}
-interface UseAttachmentsOptions {
-    /** Maximum number of attachments */
-    maxCount?: number;
-    /** Maximum file size in bytes */
-    maxFileSize?: number;
-    /** Allowed MIME types */
-    allowedTypes?: string[];
-}
-/**
- * Hook to manage file attachments with upload progress.
- */
-declare function useAttachments({ maxCount, maxFileSize, allowedTypes, }?: UseAttachmentsOptions): {
-    attachments: AttachmentState[];
-    addAttachment: (file: File) => {
-        success: boolean;
-        error?: string;
-    };
-    removeAttachment: (id: string) => void;
-    updateProgress: (id: string, progress: number) => void;
-    setError: (id: string, error: string) => void;
-    setUrl: (id: string, url: string) => void;
-    clear: () => void;
-    getFiles: () => File[];
-    canAddMore: boolean;
-};
-
-/**
- * Converts BrandingData into CSS custom properties for chat-ui theming.
- * Returns a CSSProperties object that can be spread onto a container element.
- */
-declare function useBrandingCSSVars(branding: BrandingData | null | undefined, overrides?: {
-    iconColor?: string;
-}): React.CSSProperties;
-
-export { type UseAutoScrollOptions, type UseAutoScrollReturn, useAttachments, useAutoScroll, useBrandingCSSVars, useMessageComposer, useScrollLock, useStreaming };
+export { usePrefersReducedMotion };

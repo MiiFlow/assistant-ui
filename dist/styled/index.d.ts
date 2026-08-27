@@ -1,14 +1,14 @@
-export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-CrLDXVO-.js';
+export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-DLL8JTDR.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import react__default, { ReactNode, ComponentType } from 'react';
-import { A as Attachment, S as SourceReference } from '../message-Cle4Btyv.js';
-export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-Cle4Btyv.js';
-import { S as StreamingChunk, P as PlanData, C as ClarificationData, a as ClarificationAnswer, T as ToolApprovalData, V as VisualizationChunkData, f as VisualizationActionEvent, M as MediaChunkData, g as ChartVisualizationData, h as VisualizationConfig, i as TableVisualizationData, j as CardVisualizationData, K as KpiVisualizationData, k as CodePreviewVisualizationData, F as FormVisualizationData, l as AuthPromptVisualizationData, A as ArtifactChunkData, E as Event, m as EventStatus } from '../streaming-mVwyUtPR.js';
-export { n as ArtifactStatus, o as ChunkType, p as EventType, q as FollowupAction, O as ObservationEvent, r as PlanningEvent, s as ProgressData, t as StreamingMessage, u as SubTaskData, v as SubagentChunkData, w as SubtaskEvent, x as ThinkingEvent, y as ToolEvent, z as VisualizationType } from '../streaming-mVwyUtPR.js';
+import { A as Attachment, S as SourceReference } from '../message-DTNTKSQr.js';
+export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-DTNTKSQr.js';
+import { S as StreamingChunk, P as PlanData, f as SubagentChunkData, C as ClarificationData, a as ClarificationAnswer, T as ToolApprovalData, V as VisualizationChunkData, g as VisualizationActionEvent, M as MediaChunkData, h as ChartVisualizationData, i as VisualizationConfig, j as TableVisualizationData, k as CardVisualizationData, K as KpiVisualizationData, l as CodePreviewVisualizationData, F as FormVisualizationData, m as AuthPromptVisualizationData, A as ArtifactChunkData, E as Event, n as EventStatus } from '../streaming-BfLEgW5u.js';
+export { o as ArtifactStatus, p as ChunkType, q as EventType, r as FollowupAction, O as ObservationEvent, s as PlanningEvent, t as ProgressData, u as StreamingMessage, v as SubTaskData, w as SubtaskEvent, x as ThinkingEvent, y as ToolEvent, z as VisualizationType } from '../streaming-BfLEgW5u.js';
 import { z, ZodSchema } from 'zod';
 export { ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from '../context/index.js';
 export { B as BrandingData } from '../branding-NieTEGQf.js';
-export { u as useComposer, g as useMessage } from '../avatar-DvRFHhUI.js';
+export { u as useComposer, g as useMessage } from '../avatar-B_AvYfE8.js';
 import '../types-Du00UBst.js';
 
 /**
@@ -50,6 +50,39 @@ interface TimeMarkerProps {
  * Displays a label like "Today" or "Yesterday" with horizontal rules.
  */
 declare function TimeMarker({ label, className }: TimeMarkerProps): react_jsx_runtime.JSX.Element;
+
+/**
+ * One frame of the decode: everything left of the wavefront is settled, the
+ * rest is noise.
+ *
+ * Pure, and exported, because it is the only part of this component with logic
+ * worth checking and the effect that drives it runs too fast to catch from the
+ * outside — a screenshot or a MutationObserver both arrive after it has landed.
+ *
+ * @param progress 0 → all noise, 1 → the real text.
+ * @param frame    Increments per roll so the unresolved tail churns instead of
+ *                 freezing on one arrangement between settles.
+ */
+declare function decodeFrame(text: string, progress: number, frame: number): string;
+interface ThinkingIndicatorProps {
+    /**
+     * Brand mark shown while the agent starts up. Supplied by the host, which
+     * owns its own logo and its own image loader; this package renders the
+     * motion around whatever it is given. Omit it for the plain form.
+     */
+    mark?: ReactNode;
+    /** Status line, e.g. "Getting started…". Resolves out of noise. */
+    label?: string | null;
+    className?: string;
+}
+/**
+ * The waiting state before the first token.
+ *
+ * A mark with a breathing halo, beside a line of text decoding itself. Both
+ * halves are the same idea: something is being worked out, and it is nearly
+ * here.
+ */
+declare function ThinkingIndicator({ mark, label, className }: ThinkingIndicatorProps): react_jsx_runtime.JSX.Element;
 
 interface ChatHeaderAction {
     id: string;
@@ -99,6 +132,18 @@ interface MessageAttachmentsProps {
  */
 declare function MessageAttachments({ attachments, onDownload, onPreview, align, className, }: MessageAttachmentsProps): react_jsx_runtime.JSX.Element | null;
 
+/**
+ * @deprecated Superseded by `ReasoningStream`, which renders the agent's work as
+ * steps in the transcript rather than as a timeline nested under a chip. This
+ * component is no longer used by `Message`; it stays exported because
+ * `@miiflow/assistant-ui` is published and external consumers may mount it
+ * directly. Remove in the next major.
+ *
+ * Known limitations, kept as-is rather than fixed here: thinking rows are always
+ * built with `status: "completed"`, so the live-state shimmer never fires on
+ * them; and `convertChunkToEvent` never sets `durationSeconds`, so the per-step
+ * duration trail never draws.
+ */
 interface ReasoningPanelProps {
     /** Whether currently streaming */
     isStreaming?: boolean;
@@ -126,6 +171,308 @@ interface ReasoningPanelProps {
     className?: string;
 }
 declare function ReasoningPanel({ isStreaming, chunks, plan, executionTimeline, userMessageTimestamp, executionTime, streamStartedAt, defaultExpanded, expanded: controlledExpanded, onExpandedChange, className, }: ReasoningPanelProps): react_jsx_runtime.JSX.Element | null;
+
+interface ReasoningStreamProps {
+    /** Whether the run is still producing steps. */
+    isStreaming?: boolean;
+    /** The turn's reasoning chunks, live or replayed from the durable trace. */
+    chunks?: StreamingChunk[];
+    /** Persisted wall clock for the whole run, in seconds. */
+    executionTime?: number;
+    /**
+     * Epoch ms the in-progress run started. Supply the run's durable start so the
+     * live counter survives this component remounting — timing from mount
+     * restarts at 0 on a run that is already minutes old.
+     */
+    streamStartedAt?: number;
+    /**
+     * The run finished moments ago, in a DIFFERENT component instance.
+     *
+     * The streaming message and the completed message are separate elements, so
+     * this component cannot observe the streaming→complete edge itself. The host
+     * passes it instead, and it is what turns the collapse from a jump cut into
+     * a transition.
+     */
+    justCompleted?: boolean;
+    /** Controlled disclosure of the finished turn's full trace. */
+    expanded?: boolean;
+    onExpandedChange?: (expanded: boolean) => void;
+    className?: string;
+}
+/**
+ * The agent's work, rendered as steps in the transcript.
+ *
+ * Live, it is a rolling window of the last few steps — the newest at full
+ * strength, older ones fading out above. A long run therefore costs a fixed
+ * amount of vertical space instead of pushing the composer off the screen.
+ *
+ * Finished, it collapses to one line: `Thought for 2:14 · 6 steps`, which
+ * re-opens to the full trace on click.
+ */
+declare function ReasoningStream({ isStreaming, chunks, executionTime, streamStartedAt, justCompleted, expanded: controlledExpanded, onExpandedChange, className, }: ReasoningStreamProps): react_jsx_runtime.JSX.Element | null;
+
+type RunStepStatus = "pending" | "running" | "completed" | "failed";
+/**
+ * What a tool call DID, as declared server-side.
+ *
+ * Three values, not a richer taxonomy, because three is what the wire actually
+ * knows. `undeclared` is a first-class answer: a tool that never said whether
+ * it has side effects must not be drawn as a read, since that is the one
+ * mistake with consequences for the person watching.
+ */
+type RunStepToolKind = "read" | "write" | "undeclared";
+/**
+ * One tool call, rendered as an inline chip inside the thought that justified it.
+ */
+interface RunStepTool {
+    /** Provider tool-call id when available; otherwise a positional fallback. */
+    id: string;
+    /** Raw slug (`get_ad_performance`) — the hover title. */
+    name: string;
+    /** LLM-written prose, falling back to the slug. */
+    label: string;
+    /** True when `label` is only the slug, so it can render as an identifier. */
+    isSlugOnly: boolean;
+    /** Read, write, or undeclared. Drives the mark and the chip's weight. */
+    kind: RunStepToolKind;
+    status: RunStepStatus;
+    /** Epoch ms. `endedAt` is undefined while the call is still open. */
+    startedAt?: number;
+    endedAt?: number;
+    /** Bounded excerpt of a failed result, surfaced when the step is expanded. */
+    observationExcerpt?: string;
+}
+/**
+ * One unit of the transcript: a thought plus the tool calls it justified.
+ *
+ * The agent thinks, then acts, so a tool belongs to the thought immediately
+ * preceding it. That is the same boundary the server's `RunTraceProjector`
+ * already draws (`_finish_open_thinking` closes the open thought the moment a
+ * tool arrives), which is why the grouping needs no extra signal on the wire.
+ *
+ * A `subagent` step is block-level rather than a chip — a dispatched thread is
+ * not a chip — and carries no prose of its own.
+ */
+interface RunStep {
+    id: string;
+    sequence: number;
+    kind: "thinking" | "planning" | "subagent";
+    status: RunStepStatus;
+    /** Markdown prose. Absent when tools ran with no preceding thought. */
+    text?: string;
+    tools: RunStepTool[];
+    /** Epoch ms. `endedAt` is undefined while the step is still open. */
+    startedAt?: number;
+    endedAt?: number;
+    /**
+     * The specialists this step dispatched. Always at least one on a `subagent`
+     * step, empty otherwise.
+     *
+     * A LIST rather than a single value because `dispatch_assistant` is
+     * parallelizable: one parent step can gather several children, and showing
+     * them as separate stacked steps loses the fact that they ran at once. Only
+     * dispatches sharing a `dispatchStep` are collected here.
+     */
+    subagents: SubagentChunkData[];
+}
+
+interface StepBlockProps {
+    step: RunStep;
+    /** Older step in the live window: quieter, and never the shimmering one. */
+    dimmed?: boolean;
+    /** Animate an entrance. False for steps already on screen (a replayed
+     *  trace must not perform, and re-opening one must not re-animate). */
+    entering?: boolean;
+    /** Delay in ms, for staggering a revealed trace. */
+    enterDelayMs?: number;
+}
+/**
+ * One step of the transcript: a mark, then prose, with the tool calls it
+ * justified flowing inline underneath.
+ *
+ * Every step type sits in the same two-column shape — mark gutter, content —
+ * so a thought and a dispatched specialist read as members of one sequence.
+ * The specialist used to wear a 24px initials badge instead, which made it a
+ * different kind of object on the page and spelled out "GA" to no one's
+ * benefit.
+ *
+ * There is deliberately no rule connecting the marks. A rail would turn this
+ * back into the trace viewer the redesign replaced; the shared x-position is
+ * enough to read as a column.
+ */
+declare function StepBlock({ step, dimmed, entering, enterDelayMs, }: StepBlockProps): react_jsx_runtime.JSX.Element | null;
+
+/**
+ * One tool call, inline in the flow of the thought that justified it.
+ *
+ * ## Two states, not three
+ *
+ * Only a declared WRITE is marked. Reads and undeclared tools share one quiet
+ * treatment, because both are honestly described by "nothing notable happened
+ * here" — and because a mark per category produced a row of competing glyphs
+ * that said nothing. Every run that predates the `writes` declaration reaching
+ * the wire has no declaration at all, so a distinct "unknown" mark would have
+ * stamped a loud diamond on the entire history for a signal with no content.
+ *
+ * ## Why there is no border
+ *
+ * A 1px outline plus an internal divider made these read as broken form
+ * controls at 12px. A soft fill with no edge is one shape instead of three,
+ * which is what lets a paragraph carry four of them without looking like a
+ * toolbar. The duration recedes inside the same shape rather than sitting in a
+ * compartment of its own.
+ */
+declare function ToolChip({ tool }: {
+    tool: RunStepTool;
+}): react_jsx_runtime.JSX.Element;
+
+/**
+ * Turn an LLM-facing handle ("google_ads_specialist") into a human label
+ * ("Google Ads Specialist").
+ */
+declare function humanizeHandle(handle: string): string;
+/**
+ * Monogram for the avatar: "Google Ads Specialist" → "GA", "Budget
+ * Specialist" → "BU".
+ *
+ * The role noun is dropped because the distinguishing part of a handle is what
+ * comes BEFORE it — every specialist would otherwise collapse toward "…S". A
+ * handle with only one meaningful word takes two letters of it rather than
+ * standing as a lone initial, which reads as a stray character at 24px.
+ */
+declare function initials(handle: string): string;
+/**
+ * The nested work one specialist did: its steps, its tool chips, its answer.
+ *
+ * Body only — the header, the status and the disclosure belong to
+ * `SubagentGroup`, which renders them the same way whether the parent step
+ * dispatched one specialist or gathered five. Splitting them is what stops the
+ * single-dispatch case being a second implementation of the group.
+ */
+declare function SubagentBody({ data }: {
+    data: SubagentChunkData;
+}): react_jsx_runtime.JSX.Element;
+
+interface SubagentGroupProps {
+    /** One dispatch, or several gathered from the same parent step. */
+    members: SubagentChunkData[];
+}
+/**
+ * A dispatch: one specialist, or several that ran at once.
+ *
+ * `dispatch_assistant` is parallelizable, so a parent step can gather three
+ * specialists that work simultaneously. Rendered as three stacked rows that
+ * reads as three things that happened in sequence, which is the one fact the
+ * layout should not get wrong. A pip row says "these ran together" in the space
+ * of one line, and the ring around each pip says which are still going.
+ *
+ * The pips are deliberately identical. Nothing in the data distinguishes one
+ * specialist from another at a glance — the handle is a user-editable slug with
+ * no platform link, and initials spell out letters nobody reads. So the group
+ * carries COUNT and STATUS, and the tab row underneath carries identity.
+ */
+declare function SubagentGroup({ members }: SubagentGroupProps): react_jsx_runtime.JSX.Element;
+
+/**
+ * Marks for the reasoning stream.
+ *
+ * Two levels, and only two. STEPS carry a mark so the left edge reads as one
+ * consistent column; CHIPS carry one only when the tool changed something. An
+ * icon on every chip turned a row of three tool calls into a row of three
+ * competing glyphs and said nothing, since almost every call is a read.
+ *
+ * Drawn at 12-13px, where stroke detail disappears, so the solid marks are
+ * filled silhouettes rather than line art.
+ */
+interface MarkProps {
+    size?: number;
+}
+/**
+ * A STEP the agent reasoned through. Three lines of decreasing width — a note,
+ * not a bullet. Quiet enough to sit beside prose without competing with it, and
+ * specific enough that the gutter reads as a deliberate column rather than an
+ * indent.
+ */
+declare function StepMark({ size }: MarkProps): react_jsx_runtime.JSX.Element;
+/**
+ * A WRITE: the agent changed something on a live account.
+ *
+ * A pencil, because that is the mark Google Ads and Meta Ads Manager both use
+ * for editing a campaign — this audience already reads it as "this modified
+ * something", with no translation. It is the ONLY mark a chip ever carries, so
+ * a single change stands out in a paragraph full of reads.
+ */
+declare function WriteMark({ size }: MarkProps): react_jsx_runtime.JSX.Element;
+/**
+ * An AGENT: one specialist, as it appears in a dispatch's pip row.
+ *
+ * A robot head, drawn geometrically rather than cartoonishly — square-ish
+ * proportions, tight eyes, no mouth. It stands for the colleague doing the
+ * work, which is what a pip needs to say; the STEP that dispatched it keeps
+ * `DispatchMark`, because a step is a delegation, not a robot.
+ *
+ * The eyes are knocked out of the head with `fill-rule="evenodd"` rather than
+ * painted in a background colour: this package has no surface token, so a
+ * filled counter-shape would be wrong on any host that is not white.
+ */
+declare function AgentMark({ size }: MarkProps): react_jsx_runtime.JSX.Element;
+/**
+ * A DISPATCH: the STEP in which the agent handed work to specialists.
+ *
+ * One node branching into two — the shape of the delegation itself, not of the
+ * colleague doing it. This marks a sub-agent step in the same gutter a
+ * thought's mark sits in, which is what makes the two read as members of one
+ * sequence. Who is doing the work is said by the pips (`AgentMark`), a level
+ * down; the two glyphs answer different questions and both are needed.
+ */
+declare function DispatchMark({ size }: MarkProps): react_jsx_runtime.JSX.Element;
+/** Disclosure chevron. Rotates 90° on open. */
+declare function Chevron({ size }: MarkProps): react_jsx_runtime.JSX.Element;
+/**
+ * Three bars reading as a level meter: "this is working right now".
+ *
+ * The one live affordance in the panel, shared by the run footer and by a
+ * dispatched specialist so both say it the same way.
+ *
+ * Still, under reduced motion, it holds the stepped shape the animation passes
+ * through, so the row keeps its in-progress reading without moving.
+ */
+declare function ActivityMeter({ reducedMotion, size, }: {
+    reducedMotion?: boolean;
+    size?: number;
+}): react_jsx_runtime.JSX.Element;
+
+/**
+ * Tools that are machinery rather than work the user asked for.
+ *
+ * `dispatch_assistant` is the odd one: the call IS user-relevant, but it
+ * arrives a second time as a `subagent` chunk carrying the child's whole
+ * thread, and that is the rendering we want — so the bare tool row is dropped
+ * to avoid showing one dispatch twice.
+ *
+ * This is the ONLY copy. `ReasoningPanel`, `EventTimeline` and `PlanTimeline`
+ * each kept their own, which is how they drifted apart.
+ */
+declare const INTERNAL_TOOLS: Set<string>;
+declare function isInternalTool(toolName?: string): boolean;
+/**
+ * Group a flat chunk stream into the steps the transcript renders.
+ *
+ * The one grouping rule, applied to every source: a step opens on a thought (or
+ * on a tool with no thought before it) and closes when the next thought or
+ * sub-agent dispatch arrives. Both producers — the live SSE reducers and
+ * `runTraceStepsToChunks` replaying a durable trace — hand over the same chunk
+ * shape, so both get the same result and a reloaded thread looks like the run
+ * the user watched.
+ *
+ * `isStreaming` decides only whether the trailing step may render as running:
+ * on a finished run nothing is open, however the last chunk happened to look.
+ */
+declare function buildRunSteps(chunks: readonly StreamingChunk[] | undefined, isStreaming?: boolean): RunStep[];
+/** Seconds between two epoch-ms stamps, or undefined when either is missing. */
+declare function durationSeconds(startedAt?: number, endedAt?: number): number | undefined;
+/** Total wall clock the steps span, for the collapsed summary line. */
+declare function stepsWallClockSeconds(steps: readonly RunStep[]): number | undefined;
 
 interface ClarificationPanelProps {
     clarification: ClarificationData;
@@ -598,6 +945,11 @@ declare function convertChunkToEvent(chunk: StreamingChunk, index: number): Even
  * Computes pairwise `durationSeconds` from `item.timestamp` so completed
  * timelines can show per-step trace bars. Falls back to undefined when
  * timestamps are missing (e.g. tail events without a successor).
+ *
+ * @deprecated Never called. It was the only producer of `durationSeconds`, and
+ * `ReasoningPanel` built its events with `convertChunkToEvent` instead — which
+ * is why that panel's duration trail never drew. Per-step timing now travels on
+ * `StreamingChunk.startedAt` / `endedAt`; see `reasoning/build-steps.ts`.
  */
 declare function convertTimelineToEvents(timeline: Array<Record<string, unknown>>): Event[];
 interface EventTimelineProps {
@@ -723,4 +1075,4 @@ interface TimelineRowProps {
  */
 declare function TimelineRow({ label, description, durationSeconds, isFailed, defaultExpanded, nestedEvents, hideChevron, }: TimelineRowProps): react_jsx_runtime.JSX.Element;
 
-export { type ApprovalButtonSlotProps, type ApprovalChatInputSlotProps, ArtifactChunkData, type ArtifactEntry, ArtifactInlineCard, type ArtifactInlineCardProps, ArtifactList, type ArtifactListProps, Attachment, AuthPromptVisualization, type AuthPromptVisualizationProps, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, CodePreviewVisualization, type CodePreviewVisualizationProps, ComposerToolbar, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FormVisualization, type FormVisualizationProps, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StreamingChunk, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, TimelineRow, type TimelineRowProps, ToolApprovalPanel, type ToolApprovalPanelProps, type ToolApprovalSlots, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, authPromptVisualizationSchema, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, formVisualizationSchema, getArtifact, getRegisteredArtifactTypes, getRegisteredTypes, getVisualization, kpiVisualizationSchema, registerArtifact, registerVisualization, tableVisualizationSchema };
+export { ActivityMeter, AgentMark, type ApprovalButtonSlotProps, type ApprovalChatInputSlotProps, ArtifactChunkData, type ArtifactEntry, ArtifactInlineCard, type ArtifactInlineCardProps, ArtifactList, type ArtifactListProps, Attachment, AuthPromptVisualization, type AuthPromptVisualizationProps, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, Chevron, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, CodePreviewVisualization, type CodePreviewVisualizationProps, ComposerToolbar, DispatchMark, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FormVisualization, type FormVisualizationProps, INTERNAL_TOOLS, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, ReasoningStream, type ReasoningStreamProps, type RunStep, type RunStepStatus, type RunStepTool, type RunStepToolKind, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StepBlock, type StepBlockProps, StepMark, StreamingChunk, SubagentBody, SubagentChunkData, SubagentGroup, type SubagentGroupProps, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, ThinkingIndicator, type ThinkingIndicatorProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, TimelineRow, type TimelineRowProps, ToolApprovalPanel, type ToolApprovalPanelProps, type ToolApprovalSlots, ToolChip, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, WriteMark, authPromptVisualizationSchema, buildRunSteps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, decodeFrame, durationSeconds, formVisualizationSchema, getArtifact, getRegisteredArtifactTypes, getRegisteredTypes, getVisualization, humanizeHandle, initials, isInternalTool, kpiVisualizationSchema, registerArtifact, registerVisualization, stepsWallClockSeconds, tableVisualizationSchema };

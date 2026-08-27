@@ -105,6 +105,11 @@ export function convertChunkToEvent(chunk: StreamingChunk, index: number): Event
  * Computes pairwise `durationSeconds` from `item.timestamp` so completed
  * timelines can show per-step trace bars. Falls back to undefined when
  * timestamps are missing (e.g. tail events without a successor).
+ *
+ * @deprecated Never called. It was the only producer of `durationSeconds`, and
+ * `ReasoningPanel` built its events with `convertChunkToEvent` instead — which
+ * is why that panel's duration trail never drew. Per-step timing now travels on
+ * `StreamingChunk.startedAt` / `endedAt`; see `reasoning/build-steps.ts`.
  */
 export function convertTimelineToEvents(timeline: Array<Record<string, unknown>>): Event[] {
   const events: Event[] = [];

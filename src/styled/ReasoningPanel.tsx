@@ -104,6 +104,18 @@ function convertTimelineToChunks(timeline: any[]): StreamingChunk[] {
 	return chunks;
 }
 
+/**
+ * @deprecated Superseded by `ReasoningStream`, which renders the agent's work as
+ * steps in the transcript rather than as a timeline nested under a chip. This
+ * component is no longer used by `Message`; it stays exported because
+ * `@miiflow/assistant-ui` is published and external consumers may mount it
+ * directly. Remove in the next major.
+ *
+ * Known limitations, kept as-is rather than fixed here: thinking rows are always
+ * built with `status: "completed"`, so the live-state shimmer never fires on
+ * them; and `convertChunkToEvent` never sets `durationSeconds`, so the per-step
+ * duration trail never draws.
+ */
 export interface ReasoningPanelProps {
 	/** Whether currently streaming */
 	isStreaming?: boolean;

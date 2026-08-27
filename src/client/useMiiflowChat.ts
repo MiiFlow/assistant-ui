@@ -133,6 +133,11 @@ interface AccumulatedChunk {
   progress?: ProgressData;
   toolUseId?: string;
   toolCallId?: string;
+  /** Epoch ms; mirrors StreamingChunk so the render layer gets durations. */
+  startedAt?: number;
+  endedAt?: number;
+  /** Server-declared side-effect status; undefined means undeclared, not read. */
+  toolWrites?: boolean;
   // Sub-assistant nested rendering
   subagentData?: SubagentChunkData;
 }
@@ -220,8 +225,17 @@ async function parseSSEStream(
   let currentSubtaskId: number | undefined;
   let currentToolArgs: Record<string, unknown> | undefined;
   let currentProgress: ProgressData | undefined;
+  let currentChunkStartedAt: number | undefined;
 
   let lineBuffer = "";
+
+  // Wall clock of the SSE frame being processed, in epoch ms. The server stamps
+  // every frame with `ts` (float seconds); arrival time is the fallback for a
+  // server that predates it. Durations are always a DIFFERENCE of two of these,
+  // so client clock skew and network latency both cancel.
+  let frameTimeMs = Date.now();
+  const readFrameTime = (frame: { ts?: unknown }): number =>
+    typeof frame?.ts === "number" ? frame.ts * 1000 : Date.now();
 
   const branding = session.config.branding;
 
@@ -237,6 +251,8 @@ async function parseSSEStream(
         subtaskId: currentSubtaskId,
         toolArgs: currentToolArgs,
         progress: currentProgress,
+        startedAt: currentChunkStartedAt,
+        endedAt: frameTimeMs,
       });
       currentChunkContent = "";
       currentToolName = undefined;
@@ -246,6 +262,7 @@ async function parseSSEStream(
       currentSubtaskId = undefined;
       currentToolArgs = undefined;
       currentProgress = undefined;
+      currentChunkStartedAt = undefined;
     }
   };
 
@@ -262,6 +279,8 @@ async function parseSSEStream(
         subtaskId: currentSubtaskId,
         toolArgs: currentToolArgs,
         progress: currentProgress,
+        startedAt: currentChunkStartedAt,
+        // No endedAt: the chunk is still open, which is what renders it running.
       });
     }
     return display;
@@ -322,6 +341,7 @@ async function parseSSEStream(
 
       try {
         const parsed = JSON.parse(data);
+        frameTimeMs = readFrameTime(parsed);
 
         if (parsed.type === "assistant_chunk") {
           // Setup status frame: carries no content — surface the text and
@@ -360,6 +380,10 @@ async function parseSSEStream(
                 toolCallId: parsed.tool_call_id,
                 status: "planned",
                 subtaskId: parsed.subtask_id,
+                toolWrites: parsed.tool_writes,
+                // A tool's clock starts when its block opens — argument
+                // generation is real waiting the user is watching.
+                startedAt: frameTimeMs,
               });
             }
             updateStreamingMessage();
@@ -396,6 +420,9 @@ async function parseSSEStream(
                 toolDescription:
                   parsed.tool_description ?? chunks[plannedIdx].toolDescription,
                 status: "planned",
+                // Keep the earlier start from the is_tool_streaming frame.
+                startedAt: chunks[plannedIdx].startedAt ?? frameTimeMs,
+                toolWrites: chunks[plannedIdx].toolWrites ?? parsed.tool_writes,
               };
             } else {
               chunks.push({
@@ -406,6 +433,8 @@ async function parseSSEStream(
                 toolDescription: parsed.tool_description,
                 status: "planned",
                 subtaskId: parsed.subtask_id,
+                toolWrites: parsed.tool_writes,
+                startedAt: frameTimeMs,
               });
             }
             updateStreamingMessage();
@@ -415,7 +444,11 @@ async function parseSSEStream(
           // Handle tool executing
           if (parsed.is_tool_executing) {
             const idx = findToolChunkIndex(chunks, parsed);
-            if (idx >= 0) chunks[idx].status = "executing";
+            if (idx >= 0) {
+              chunks[idx].status = "executing";
+              chunks[idx].startedAt ??= frameTimeMs;
+              chunks[idx].toolWrites ??= parsed.tool_writes;
+            }
             updateStreamingMessage();
             continue;
           }
@@ -423,7 +456,13 @@ async function parseSSEStream(
           // Handle observation
           if (parsed.is_observation) {
             const idx = findToolChunkIndex(chunks, parsed);
-            if (idx >= 0) chunks[idx].status = "completed";
+            if (idx >= 0) {
+              chunks[idx].status = "completed";
+              // The observation IS the tool's completion — the only frame
+              // that closes a tool's clock.
+              chunks[idx].endedAt = frameTimeMs;
+              if (parsed.success === false) chunks[idx].success = false;
+            }
             updateStreamingMessage();
             continue;
           }
@@ -461,6 +500,9 @@ async function parseSSEStream(
             finalizeChunk();
             currentChunkType = newChunkType;
           }
+
+          // First frame of this chunk opens its clock; finalizeChunk closes it.
+          currentChunkStartedAt ??= frameTimeMs;
 
           if (parsed.tool_name) currentToolName = parsed.tool_name;
           if (parsed.success !== undefined) currentSuccess = parsed.success;
@@ -548,6 +590,10 @@ async function parseSSEStream(
                     status: "running",
                     result: "",
                     nestedChunks: [],
+                    // Which parent step gathered this child. Specialists sharing
+                    // it ran concurrently and render as one group.
+                    dispatchStep:
+                      typeof parsed.dispatch_step === "number" ? parsed.dispatch_step : undefined,
                   },
                 };
                 container.push(newChunk);

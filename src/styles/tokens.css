@@ -1,0 +1,108 @@
+/*
+ * Chat-UI design tokens — the ONE definition.
+ *
+ * Both stylesheets import this. They used to carry a copy each, which drifted
+ * exactly as duplicated declarations do: `--chat-approval-panel-*` reached
+ * `index.css` and never reached `no-preflight.css`, so the tool-approval panel
+ * lost its chrome on every host that loads the no-preflight build — which is
+ * the web app. A token added to one file and not the other resolves to nothing,
+ * and a `background: var(--missing)` renders transparent rather than failing.
+ *
+ * Deliberately NOT wrapped in `@layer base`, for the same reason `prose.css`
+ * carries no `@layer components`: postcss-import hoists this file above the
+ * `@tailwind` directives, and the web app runs `no-preflight.css` through its
+ * OWN pipeline, where Next resolves each `@import` as a separate webpack module
+ * — so a bare `@layer base` has no matching `@tailwind base` in scope and hard-
+ * fails the build. These are custom-property declarations on `:root` and
+ * `.dark`; they use no `@apply` and nothing in Tailwind's layers competes with
+ * them, so they need no layer. `.dark` follows `:root` here, which is what makes
+ * it win at equal specificity.
+ */
+
+:root {
+	/* Primary colors - customize these to match your brand */
+	--chat-primary: #106997;
+	--chat-secondary: #56c18a;
+	--chat-error: #b1001b;
+	--chat-warning: #dd9652;
+
+	/* Message backgrounds */
+	--chat-message-bg: rgba(0, 0, 0, 0.03);
+	--chat-user-message-bg: var(--chat-primary);
+	--chat-user-message-text: #ffffff;
+
+	/* Opaque surface for floating layers (hover cards, popovers).
+	   Must be OPAQUE: a translucent panel token lets the transcript show
+	   through a card that is meant to sit above it. */
+	--chat-surface-raised: #ffffff;
+
+	/* Panel backgrounds */
+	--chat-panel-bg: rgba(0, 0, 0, 0.02);
+	--chat-panel-border: rgba(0, 0, 0, 0.06);
+
+	/* Borders */
+	--chat-border: rgba(0, 0, 0, 0.06);
+	--chat-border-hover: rgba(0, 0, 0, 0.12);
+
+	/* Text colors */
+	--chat-text: #1d2033;
+	--chat-text-subtle: rgba(0, 0, 0, 0.5);
+	--chat-placeholder: rgba(0, 0, 0, 0.4);
+
+	/* Typography */
+	--chat-font-family: "Inter", "Assistant", system-ui, -apple-system, sans-serif;
+	--chat-font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+	--chat-message-font-size: 15px;
+
+	/* Border radius */
+	--chat-radius-message: 0.5rem;
+	--chat-radius-input: 1rem;
+	--chat-radius-panel: 0.5rem;
+	--chat-radius-button: 0.5rem;
+
+	/* Composer (input box) backgrounds */
+	--chat-composer-bg: #ffffff;
+	--chat-composer-border: rgba(29, 32, 51, 0.08);
+	--chat-composer-border-focus: color-mix(in srgb, var(--chat-primary) 35%, transparent);
+	--chat-composer-shadow: 0 1px 2px rgba(29, 32, 51, 0.04), 0 8px 24px -12px rgba(29, 32, 51, 0.12);
+	--chat-composer-shadow-focus: 0 2px 4px rgba(29, 32, 51, 0.05), 0 16px 40px -14px rgba(29, 32, 51, 0.2);
+
+	/* Tool approval panel — raised CTA chrome. Warmed near-white surface
+	   with a tinted border and soft elevation so the gate reads as a
+	   decision moment rather than ambient assistant prose. */
+	--chat-approval-panel-bg: oklch(0.995 0.003 70);
+	--chat-approval-panel-border: oklch(0.86 0.005 70);
+	--chat-approval-panel-shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 8px 24px -12px rgba(0, 0, 0, 0.1);
+
+	/* Welcome screen halo effect */
+	--chat-halo-primary: rgba(16, 105, 151, 0.06);
+	--chat-halo-secondary: rgba(86, 193, 138, 0.03);
+}
+
+.dark {
+	--chat-surface-raised: #232327;
+	--chat-message-bg: rgba(255, 255, 255, 0.05);
+	--chat-panel-bg: rgba(255, 255, 255, 0.03);
+	--chat-panel-border: rgba(255, 255, 255, 0.08);
+	--chat-border: rgba(255, 255, 255, 0.08);
+	--chat-border-hover: rgba(255, 255, 255, 0.15);
+	--chat-text: #f5f5f5;
+	--chat-text-subtle: rgba(255, 255, 255, 0.5);
+	--chat-placeholder: rgba(255, 255, 255, 0.4);
+
+	/* Composer backgrounds */
+	--chat-composer-bg: #27272a;
+	--chat-composer-border: rgba(255, 255, 255, 0.1);
+	--chat-composer-border-focus: color-mix(in srgb, var(--chat-primary) 50%, transparent);
+	--chat-composer-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -12px rgba(0, 0, 0, 0.45);
+	--chat-composer-shadow-focus: 0 2px 4px rgba(0, 0, 0, 0.25), 0 16px 40px -14px rgba(0, 0, 0, 0.55);
+
+	/* Tool approval panel — dark counterparts */
+	--chat-approval-panel-bg: oklch(0.22 0.005 70);
+	--chat-approval-panel-border: oklch(0.36 0.005 70);
+	--chat-approval-panel-shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+
+	/* Slightly stronger halo in dark mode */
+	--chat-halo-primary: rgba(16, 105, 151, 0.1);
+	--chat-halo-secondary: rgba(86, 193, 138, 0.05);
+}

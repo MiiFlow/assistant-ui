@@ -15,10 +15,23 @@ const KEYFRAME_CONTENT = `
 @keyframes mf-mono-blink{0%,49%{opacity:1}50%,100%{opacity:.45}}
 @keyframes mf-row-enter{0%{opacity:0;transform:translateY(3px)}100%{opacity:1;transform:translateY(0)}}
 @keyframes mf-halo-once{0%{opacity:0;transform:scale(.4)}38%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.55)}}
+@keyframes mf-chip-in{0%{opacity:0;transform:translateY(2px) scale(.97)}100%{opacity:1;transform:none}}
+@keyframes mf-figure-in{0%{opacity:0;transform:translateX(-2px)}100%{opacity:1;transform:none}}
+@keyframes mf-commit{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--chat-text) 34%,transparent);opacity:1}100%{box-shadow:0 0 0 7px color-mix(in srgb,var(--chat-text) 0%,transparent);opacity:0}}
+@keyframes mf-step-in{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:none}}
+@keyframes mf-agent-in{0%{opacity:0;transform:scale(.82)}100%{opacity:1;transform:none}}
+@keyframes mf-ring-travel{to{stroke-dashoffset:-71}}
+@keyframes mf-halo-breathe{0%,100%{opacity:.35;transform:scale(.86)}50%{opacity:.85;transform:scale(1.06)}}
+@keyframes mf-mark-breathe{0%,100%{transform:scale(.94)}50%{transform:scale(1.04)}}
+@keyframes mf-panel-in-right{0%{opacity:0;transform:translateX(6px)}100%{opacity:1;transform:none}}
+@keyframes mf-panel-in-left{0%{opacity:0;transform:translateX(-6px)}100%{opacity:1;transform:none}}
+@keyframes mf-card-in{0%{opacity:0;transform:translateY(-3px)}100%{opacity:1;transform:translateY(0)}}
 .mf-row-enter{animation:mf-row-enter 360ms cubic-bezier(.16,1,.3,1) both}
 .mf-tool-mark{transition:transform 220ms cubic-bezier(.16,1,.3,1);transform-origin:50% 62%;will-change:transform}
 .mf-tool-row:hover .mf-tool-mark{transform:rotate(-9deg) scale(1.08)}
-@media (prefers-reduced-motion:reduce){.mf-row-enter{animation:none}.mf-tool-mark{transition:none}.mf-tool-row:hover .mf-tool-mark{transform:none}}
+.mf-focus{outline:none}
+.mf-focus:focus-visible{outline:2px solid color-mix(in srgb,var(--chat-text) 45%,transparent);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){.mf-row-enter{animation:none}.mf-chip{animation:none!important}.mf-step{animation:none!important}.mf-pip-ring{animation:none!important}.mf-tool-mark{transition:none}.mf-tool-row:hover .mf-tool-mark{transform:none}}
 `;
 
 /**

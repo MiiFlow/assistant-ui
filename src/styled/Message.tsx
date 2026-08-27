@@ -30,11 +30,11 @@ import { Avatar } from "./Avatar";
 import { CitationSources } from "./CitationSources";
 import { ClarificationPanel } from "./ClarificationPanel";
 import { ToolApprovalPanel } from "./ToolApprovalPanel";
-import { LoadingDots } from "./LoadingDots";
+import { ThinkingIndicator } from "./ThinkingIndicator";
 import { MarkdownContent } from "./MarkdownContent";
 import { MessageActionBar } from "./MessageActionBar";
 import { MessageAttachments } from "./MessageAttachments";
-import { ReasoningPanel } from "./ReasoningPanel";
+import { ReasoningStream } from "./reasoning";
 import { StreamingText } from "./StreamingText";
 import { SuggestedActions } from "./SuggestedActions";
 import { VisualizationRenderer } from "./visualizations";
@@ -228,9 +228,14 @@ export interface MessageProps {
 	renderMarkdown?: boolean;
 	/** Streaming chunks for reasoning panel */
 	reasoning?: StreamingChunk[];
-	/** Execution plan for completed Plan & Execute messages */
+	/**
+	 * @deprecated No longer read. Host adapters already reconstruct these into
+	 * `reasoning` chunks, so passing them separately made the same run
+	 * describable two ways. Kept on the interface so existing callers compile;
+	 * remove in the next major.
+	 */
 	executionPlan?: unknown;
-	/** Execution timeline for completed messages (all orchestrator modes) */
+	/** @deprecated No longer read — see `executionPlan`. */
 	executionTimeline?: unknown[];
 	/** Suggested actions */
 	suggestedActions?: SuggestedAction[];
@@ -258,6 +263,11 @@ export interface MessageProps {
 	 *  (e.g. from a server snapshot) so the streaming elapsed figure stays
 	 *  correct across remounts; omit to time from when this component mounted. */
 	streamStartedAt?: number;
+	/** This turn finished moments ago. The streaming message and the completed
+	 *  message are different elements, so this component cannot see that edge
+	 *  itself — the host reports it, and it is what animates the reasoning
+	 *  steps folding into the "Thought for …" line instead of snapping shut. */
+	justCompleted?: boolean;
 	/** Pending clarification data (agent needs user input) */
 	pendingClarification?: ClarificationData;
 	/** Callback when user responds to a clarification */
@@ -296,8 +306,6 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			showTimestamp = true,
 			renderMarkdown = true,
 			reasoning,
-			executionPlan,
-			executionTimeline,
 			suggestedActions,
 			onSuggestedAction,
 			reasoningExpanded,
@@ -310,6 +318,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			baselineFontSize,
 			executionTime,
 			streamStartedAt,
+			justCompleted,
 			pendingClarification,
 			onClarificationSubmit,
 			pendingToolApproval,
@@ -348,10 +357,11 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 				// Sub-assistant dispatch (dispatch_assistant)
 				c.type === "subagent",
 		);
-		const hasReasoningChunks = reasoningChunks && reasoningChunks.length > 0;
-		const hasCompletedReasoning =
-			!isStreaming && (executionPlan || (executionTimeline && executionTimeline.length > 0));
-		const hasReasoning = hasReasoningChunks || hasCompletedReasoning;
+		// Gate on the chunks the panel actually renders from. `executionPlan` /
+		// `executionTimeline` used to open this block on their own, which left an
+		// empty wrapper whenever they carried nothing the panel could show — the
+		// host adapter already reconstructs chunks from both.
+		const hasReasoning = !!reasoningChunks && reasoningChunks.length > 0;
 
 		// Check if waiting for content
 		const isWaitingForContent = isStreaming && !message.textContent && !hasReasoning;
@@ -580,23 +590,20 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 									/>
 								</div>
 							)}
-							<div className="px-4 py-3">
-								<LoadingDots size="small" />
-							</div>
+							<ThinkingIndicator />
 						</div>
 					)}
 
-					{/* Reasoning Panel - before content for assistant */}
+					{/* The agent's work, above the answer: a rolling window of steps
+					    while the run is live, one "Thought for …" line once it ends. */}
 					{hasReasoning && isAssistant && (
 						<div className="w-full">
-									<ReasoningPanel
+							<ReasoningStream
 								isStreaming={isStreaming}
 								chunks={reasoningChunks}
-								plan={executionPlan as any}
-								executionTimeline={executionTimeline as any[]}
-								userMessageTimestamp={message.createdAt ? new Date(typeof message.createdAt === "string" ? message.createdAt : message.createdAt).getTime() / 1000 : undefined}
 								executionTime={executionTime}
 								streamStartedAt={streamStartedAt}
+								justCompleted={justCompleted}
 								expanded={reasoningExpanded}
 								onExpandedChange={onReasoningExpandedChange}
 							/>

@@ -108,6 +108,17 @@ export interface SubagentChunkData {
   durationMs?: number;
   nestedChunks: StreamingChunk[];
   /**
+   * The parent ReAct step this dispatch was launched from.
+   *
+   * `dispatch_assistant` is parallelizable, so one step can gather several
+   * children. Specialists sharing this value genuinely ran concurrently and are
+   * rendered as one group; different values ran at different times and stay
+   * separate steps. Undefined on runs that predate the field — those never
+   * group, which is the safe direction: showing two sequential dispatches as
+   * concurrent would be a claim the data does not support.
+   */
+  dispatchStep?: number;
+  /**
    * The sub-agent was handed the turn and answered the user directly, so its
    * reply is the message body rather than this panel's `result` (which stays
    * empty). The panel still shows the sub-agent's tool work; consumers use
@@ -452,6 +463,32 @@ export interface StreamingChunk {
   toolArgs?: Record<string, unknown>;
   success?: boolean;
   status?: "planned" | "executing" | "completed";
+
+  /**
+   * Whether this tool changes the customer's account, as DECLARED server-side
+   * (`writes` on the tool's schema, required and audit-gated). `undefined`
+   * means the tool declared neither — render that as unknown, never as a read.
+   *
+   * The renderer must not re-derive this from the tool name: the name-shape
+   * guess lives in `audit/checker.py` as a deliberate fallback whose default is
+   * "assume write", and a second copy on the presentation side would drift and
+   * mislabel a mutation as harmless in the one place a human is watching.
+   */
+  toolWrites?: boolean;
+
+  /**
+   * When this chunk's work began / ended, as epoch ms.
+   *
+   * Three producers fill these and they must agree on the unit: the live
+   * reducers derive them from the SSE frame's `ts` (float seconds, ×1000),
+   * falling back to arrival time on a server that predates that field; the
+   * canonical replay maps the run trace's `started_at` / `completed_at`.
+   *
+   * `endedAt` stays undefined while the chunk is still open, which is what
+   * makes a step render as running rather than as a zero-length one.
+   */
+  startedAt?: number;
+  endedAt?: number;
 
   // Historical Plan & Execute fields (kept for replaying pre-migration messages)
   subtaskId?: number;

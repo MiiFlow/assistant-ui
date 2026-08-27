@@ -1,33 +1,29 @@
-import { forwardRef } from "react";
+import { type ReactNode, forwardRef } from "react";
 import { TypingIndicator as TypingIndicatorPrimitive } from "../primitives";
 import { cn } from "../utils/cn";
-import { LoadingDots } from "./LoadingDots";
+import { ThinkingIndicator } from "./ThinkingIndicator";
 
 export interface TypingIndicatorProps {
   /** Additional CSS classes */
   className?: string;
-  /** Optional status line rendered beside the dots (e.g. "Getting started…") */
+  /** Optional status line rendered beside the mark (e.g. "Getting started…") */
   label?: string | null;
+  /** Brand mark for the waiting state, supplied by the host. */
+  mark?: ReactNode;
 }
 
 /**
- * Styled TypingIndicator with animated dots and an optional status label.
+ * The pre-first-token waiting state.
+ *
+ * Kept as a thin wrapper over `ThinkingIndicator` so the primitive's semantics
+ * (and every existing `<TypingIndicator label=… />` call site) survive the
+ * change from three bouncing dots to a decoding line.
  */
 export const TypingIndicator = forwardRef<HTMLDivElement, TypingIndicatorProps>(
-  ({ className, label }, ref) => {
+  ({ className, label, mark }, ref) => {
     return (
-      <TypingIndicatorPrimitive
-        ref={ref}
-        className={cn(
-          "inline-flex items-center gap-2",
-          "px-4 py-3",
-          className
-        )}
-      >
-        <LoadingDots size="small" />
-        {label ? (
-          <span className="text-sm text-[var(--chat-text-subtle)]">{label}</span>
-        ) : null}
+      <TypingIndicatorPrimitive ref={ref} className={cn("inline-flex", className)}>
+        <ThinkingIndicator mark={mark} label={label} />
       </TypingIndicatorPrimitive>
     );
   }
