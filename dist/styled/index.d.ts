@@ -1,5 +1,6 @@
 export { A as AttachmentPreview, j as AttachmentPreviewProps, a as Avatar, k as AvatarProps, C as ChatContainer, l as ChatContainerProps, b as ChatLayout, m as ChatLayoutProps, M as MarkdownContent, n as MarkdownContentProps, c as Message, d as MessageActionBar, o as MessageActionBarProps, e as MessageComposer, p as MessageComposerProps, f as MessageList, q as MessageListProps, r as MessageProps, S as ScrollToBottomButton, s as ScrollToBottomButtonProps, g as StreamingText, t as StreamingTextProps, h as SuggestedActions, u as SuggestedActionsProps, v as ToolStatus, T as ToolStatusIndicator, w as ToolStatusIndicatorProps, i as TypingIndicator, x as TypingIndicatorProps, W as WelcomeScreen, y as WelcomeScreenProps } from '../WelcomeScreen-DLL8JTDR.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
+import * as react from 'react';
 import react__default, { ReactNode, ComponentType } from 'react';
 import { A as Attachment, S as SourceReference } from '../message-DTNTKSQr.js';
 export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-DTNTKSQr.js';
@@ -566,7 +567,7 @@ interface SourceDetailModalProps {
     source: SourceReference | null;
     onClose: () => void;
 }
-declare function SourceDetailModal({ source, onClose, }: SourceDetailModalProps): react_jsx_runtime.JSX.Element | null;
+declare function SourceDetailModal({ source, onClose, }: SourceDetailModalProps): react.ReactPortal | null;
 /**
  * Inline citation badge - renders a small numbered badge like [1]
  * with optional tooltip on hover and click-to-open URL.
