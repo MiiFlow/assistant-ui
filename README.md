@@ -134,8 +134,9 @@ Pass a `MiiflowChatConfig` object to `useMiiflowChat`:
 | `userName` | `string` | No | User display name |
 | `userEmail` | `string` | No | User email |
 | `userMetadata` | `string` | No | JSON string of custom user metadata |
-| `hmac` | `string` | No | HMAC for identity verification |
-| `timestamp` | `string` | No | Timestamp for HMAC verification |
+| `userData` | `string` | No | The exact JSON string your server signed, sent verbatim. See [Verified identity](#verified-identity-hmac) |
+| `hmac` | `string` | No | Signature over `userData` + `timestamp`. See [Verified identity](#verified-identity-hmac) |
+| `timestamp` | `string` | No | Unix seconds (string) used in the signature |
 | `baseUrl` | `string` | No | API origin override (default: `https://api.miiflow.ai`). A trailing `/api` is stripped; the client appends `/api/...` per request |
 | `webSocketUrl` | `string` | No | WebSocket URL for tool invocations (auto-derived from `baseUrl` if not set) |
 | `initialBranding` | `BrandingData` | No | Branding rendered before session init so the shell paints instantly (SSR-safe). Server branding overrides it once init resolves |
@@ -143,6 +144,60 @@ Pass a `MiiflowChatConfig` object to `useMiiflowChat`:
 | `onToolInvocationFallback` | `(invocation: ToolInvocationRequest) => Promise<boolean>` | No | Handles tool invocations with no local handler (multi-widget routing); return `true` if handled |
 | `onUserMessageCreated` | `(message: { id: string; content: string }) => void` | No | Fired when a user message is created |
 | `onAssistantMessageComplete` | `(message: { id: string; content: string }) => void` | No | Fired when an assistant stream completes |
+
+## Verified identity (HMAC)
+
+By default a session is anonymous: the widget keys it on a random id in
+`localStorage`, and `userId`/`userName`/`userEmail` are untrusted hints the
+browser could set to anything. That is fine for a public help widget.
+
+If the assistant should act **as a signed-in person** — see their data, or use
+a connected integration on their behalf — the browser cannot be the one making
+that claim. Sign the identity on your server instead:
+
+```js
+// SERVER-SIDE ONLY. The private key must never reach the browser: anyone
+// holding it can impersonate any of your users to the assistant.
+import crypto from "node:crypto";
+
+const userData = JSON.stringify({
+  user_id: "your-internal-user-id",   // required — the session is keyed on this
+  name: "Ada Lovelace",               // optional
+  email: "ada@example.com",           // optional
+  tenant_scope: "acme-hvac",          // optional — see below
+});
+const timestamp = String(Math.floor(Date.now() / 1000));
+const hmac = crypto
+  .createHmac("sha256", process.env.MIIFLOW_EMBED_PRIVATE_KEY)
+  .update(`${userData}|${timestamp}`)
+  .digest("hex");
+```
+
+Pass all three to the hook and send nothing else:
+
+```tsx
+useMiiflowChat({ publicKey, assistantId, userData, hmac, timestamp });
+```
+
+Details that matter:
+
+- **The signature covers the exact bytes of `userData`.** Pass the same string
+  you signed — re-serializing it, even to equivalent JSON, invalidates the
+  signature. This is why `userData` is a string you supply rather than
+  something the SDK assembles for you.
+- **All three fields travel together.** Send a partial set and the session
+  falls back to anonymous rather than failing loudly.
+- **`timestamp` must be within 5 minutes** of server time. Sign per page load,
+  not once at build time.
+- **`user_id` is the session identity.** Two different signed-in users on the
+  same browser get separate sessions and separate chat histories, and neither
+  can reach the other's — an unsigned request cannot claim a signed identity.
+- **`tenant_scope`** names which of *your* tenants (workspace, shop, account)
+  the session is acting for, when one deployment serves many. It scopes the
+  credentials the assistant uses, so a session can only reach the tenant it was
+  signed for. Omit it if your users belong to exactly one.
+
+Rotate the private key from the Miiflow dashboard if it is ever exposed.
 
 ## Connecting to a Custom Backend
 

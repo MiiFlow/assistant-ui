@@ -85,6 +85,18 @@ export async function initSession(
 		headers["Authorization"] = `Bearer ${options.token}`;
 	}
 
+	// Identity the embedding site vouched for. All three headers travel
+	// together or not at all: the backend only trusts `X-Embed-User-Data` when
+	// the signature verifies against those exact bytes, so a partial set is
+	// silently ignored and the session falls back to anonymous. `userData` is
+	// forwarded verbatim for the same reason — re-serializing it here would
+	// break every signature.
+	if (config.hmac && config.timestamp && config.userData) {
+		headers["X-Embed-User-Data"] = config.userData;
+		headers["X-Embed-Timestamp"] = config.timestamp;
+		headers["X-Embed-Signature"] = config.hmac;
+	}
+
 	const response = await fetch(`${backendBaseUrl}/api/embed/init`, {
 		method: "POST",
 		headers,

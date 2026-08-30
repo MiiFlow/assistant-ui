@@ -1,10 +1,17 @@
 # @miiflow/assistant-ui
 
-## Unreleased
+## 0.15.0
 
 ### Features
 
 - **`LexicalChatInput` as a form field (`composer/LexicalChatInput.tsx`, `composer/hydrate.ts`)**: New optional props `submitOnEnter` (default `true`; `false` makes Enter insert a paragraph and Shift+Enter a line break, for a saved-prompt / scheduled-message editor that reads its value from `onChange`), `initialContent` (hydrated once on mount from the same plain-text projection the editor emits, so `/id:kind` substrings become chips again) and `resolveTokenLabel` (display label for rehydrated chips with opaque ids). `onSubmit` is now optional and the imperative handle gains `setContent(text)`. New export `$hydrateFromEncodedText` for hosts that mount their own `LexicalComposer`. Additive — the chat contract is unchanged.
+- **Host-attested embed identity (`client/session.ts`, `client/types.ts`)**: `MiiflowChatConfig` gains `userData` — the exact JSON string your server HMAC-signed — and `initSession` now forwards it verbatim as `X-Embed-User-Data` alongside `X-Embed-Signature` and `X-Embed-Timestamp`. Previously `hmac` and `timestamp` were declared on the config and never sent, so a signed session could never verify and every embed fell back to anonymous. All three fields travel together or not at all; `userData` is passed through unserialized because re-encoding it would invalidate the signature. `hmac` is now documented as hex HMAC-SHA256 of `` `${userData}|${timestamp}` `` and `timestamp` as Unix seconds within five minutes of server time.
+- **Container-driven KPI visualization (`styled/visualizations/KpiVisualization.tsx`)**: KPI cards now size from their own container — intrinsic `auto-fit` column templates and `cqi`-based `clamp()` value type — instead of Tailwind viewport breakpoints, which mis-sized every card because the chat panel is far narrower than the window. Cards shed columns and step their numbers down as the panel narrows rather than clipping, long labels and values wrap instead of overflowing, and the bento hero/satellite split stacks on container width. Rendering-only: the `KpiMetric` data contract is unchanged.
+
+### Bug Fixes
+
+- **Short user bubbles stretched to full width (`styled/Message.tsx`)**: A viewer bubble shares its wrapper with the timestamp and the invisible hover action bar, so a one-word message rendered a wide bubble padded with what looked like trailing whitespace. The bubble is now `w-fit` and end-aligned.
+- **Command chip sat below the text baseline (`composer/CommandTokenView.tsx`)**: Command pills in the composer read as optically low against adjacent text; corrected with a 1px lift.
 
 ## 0.14.0
 

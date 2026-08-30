@@ -22,9 +22,28 @@ export interface MiiflowChatConfig {
   userEmail?: string;
   /** Optional user metadata (JSON string) */
   userMetadata?: string;
-  /** HMAC for identity verification */
+  /**
+   * The exact JSON string your server signed, sent verbatim as
+   * `X-Embed-User-Data`.
+   *
+   * It must be byte-identical to what was HMAC'd — the signature covers these
+   * bytes, so re-serializing here (even to equivalent JSON) invalidates it.
+   * That is why this is a string you supply rather than something the SDK
+   * assembles from `userId`/`userName`/`userEmail`: those are convenience
+   * fields for unsigned sessions, and no client-side serializer can be relied
+   * on to reproduce your server's output byte for byte.
+   *
+   * Shape is up to you; the backend reads `user_id` (the identity the session
+   * is keyed on) and optionally `name`/`email`, and keeps the rest as
+   * session metadata.
+   *
+   * Send with `hmac` and `timestamp` — all three travel together or the
+   * backend treats the session as anonymous.
+   */
+  userData?: string;
+  /** Hex HMAC-SHA256 of `` `${userData}|${timestamp}` `` keyed by your embed private key. Server-side only. */
   hmac?: string;
-  /** Timestamp for HMAC verification */
+  /** Unix seconds, as a string. Must be within 5 minutes of server time. */
   timestamp?: string;
   /** Override base URL (auto-detected from bundleUrl otherwise) */
   baseUrl?: string;
