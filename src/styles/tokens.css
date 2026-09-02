@@ -52,7 +52,7 @@
 	/* Typography */
 	--chat-font-family: "Inter", "Assistant", system-ui, -apple-system, sans-serif;
 	--chat-font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-	--chat-message-font-size: 15px;
+	--chat-message-font-size: 16px;
 
 	/* Border radius */
 	--chat-radius-message: 0.5rem;

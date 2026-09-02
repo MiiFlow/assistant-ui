@@ -640,6 +640,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 									"flex flex-col",
 								)}
 								data-message-role={isViewer ? "viewer" : "other"}
+								data-agent-message={isAssistant ? "" : undefined}
 								style={streamingMinHeight ? { minHeight: streamingMinHeight } : undefined}
 							>
 								{isViewer && isEditing && onEditSubmit ? (
