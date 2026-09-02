@@ -4,6 +4,24 @@ import { cn } from "../utils/cn";
 import { MediaLightbox, type MediaItem } from "./MediaLightbox";
 import type { Attachment } from "../types";
 
+const THUMBNAIL_MAX_WIDTH = 320;
+const THUMBNAIL_MAX_HEIGHT = 280;
+
+function getBoundedImageSize(naturalWidth: number, naturalHeight: number) {
+  if (naturalWidth <= 0 || naturalHeight <= 0) return null;
+
+  const scale = Math.min(
+    1,
+    THUMBNAIL_MAX_WIDTH / naturalWidth,
+    THUMBNAIL_MAX_HEIGHT / naturalHeight,
+  );
+
+  return {
+    width: naturalWidth * scale,
+    height: naturalHeight * scale,
+  };
+}
+
 export interface MessageAttachmentsProps {
   /** List of attachments to display */
   attachments: Attachment[];
@@ -164,14 +182,25 @@ function AttachmentThumbnail({
   onError: () => void;
 }) {
   const source = attachment.previewUrl || attachment.url;
+  const [loadedImage, setLoadedImage] = useState<{
+    source: string | undefined;
+    width: number;
+    height: number;
+  } | null>(null);
+  const boundedSize = loadedImage && loadedImage.source === source
+    ? getBoundedImageSize(loadedImage.width, loadedImage.height)
+    : null;
 
   return (
     <div
       className={cn(
-        "group/thumb relative inline-block overflow-hidden rounded-xl",
-        "border border-[var(--chat-border)] bg-[var(--chat-panel-bg)]",
+        "group/thumb relative inline-block max-w-full overflow-hidden rounded-xl",
         "cursor-pointer transition-opacity hover:opacity-95",
       )}
+      style={boundedSize ? {
+        width: boundedSize.width,
+        aspectRatio: `${boundedSize.width} / ${boundedSize.height}`,
+      } : undefined}
       onClick={onPreview}
       role="button"
       tabIndex={0}
@@ -183,16 +212,37 @@ function AttachmentThumbnail({
       }}
       aria-label={`Open ${attachment.filename}`}
     >
-      {/* Intrinsic aspect ratio is preserved: the box only bounds the image, so
-          tall screenshots and wide banners both render undistorted. */}
+      {/* Give the wrapper the image's bounded dimensions once it loads. Relying
+          on max-width/max-height on the image alone lets flexbox size this
+          wrapper from the uncapped intrinsic width, which leaves a padded strip. */}
       <img
         src={source}
         alt={attachment.filename}
         title={attachment.filename}
         loading="lazy"
+        onLoad={(event) => {
+          setLoadedImage({
+            source,
+            width: event.currentTarget.naturalWidth,
+            height: event.currentTarget.naturalHeight,
+          });
+        }}
         onError={onError}
-        className="block max-h-[280px] max-w-[min(320px,100%)] object-contain"
+        className={cn(
+          "block object-contain",
+          boundedSize
+            ? "h-full w-full"
+            : "max-h-[280px] max-w-[min(320px,100%)]",
+        )}
       />
+
+      {/* Overlay the border so it does not alter the image's aspect-ratio box. */}
+      {boundedSize && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 rounded-xl border border-[var(--chat-border)]"
+        />
+      )}
 
       {/* Download sits on the image so the thumbnail stays uncluttered. */}
       {attachment.url && (
