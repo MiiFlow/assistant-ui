@@ -227,7 +227,13 @@ export function MarkdownContent({
   return (
     <div className={cn("chat-prose", className)} style={rootStyle}>
     <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkBreaks]}
+      // `singleTilde: false` because remark-gfm defaults it to TRUE, which
+      // GitHub itself does not: `~text~` becomes <del>. Assistants write `~`
+      // for "approximately" constantly, so any answer with two of them —
+      // "(~$25 AOV implied, 0.20-0.33x ROAS); March 2026 shifted to
+      // high-ticket purchases (~$810 AOV implied)" — struck out everything
+      // between them. Only `~~text~~` should strike.
+      remarkPlugins={[[remarkGfm, { singleTilde: false }], remarkBreaks]}
       components={{
         h1: ({ children }) => {
           const id = slugify(String(children));
