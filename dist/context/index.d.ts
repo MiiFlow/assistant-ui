@@ -1,7 +1,7 @@
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import * as react from 'react';
 import { ReactNode } from 'react';
-import { C as ChatMessage, P as ParticipantRole } from '../message-DTNTKSQr.js';
+import { C as ChatMessage, P as ParticipantRole } from '../message-C3YAZPnZ.js';
 import { g as VisualizationActionEvent } from '../streaming-BfLEgW5u.js';
 
 interface ChatContextValue {

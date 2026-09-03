@@ -340,9 +340,9 @@ Individual message with markdown rendering, reasoning panel, citations, visualiz
 | `onSuggestedAction` | `(action: SuggestedAction) => void` | — | Suggested action click handler |
 | `renderInlineSuggestedAction` | `(id: string) => ReactNode` | — | Renderer for inline `[SA:id]` markers |
 | `citations` | `SourceReference[]` | — | Citation sources to display |
-| `visualizations` | `VisualizationChunkData[]` | — | Inline visualizations (`[VIZ:id]` markers) |
-| `medias` | `MediaChunkData[]` | — | Inline images/videos |
-| `artifacts` | `ArtifactChunkData[]` | — | Inline downloadable artifacts (PDF, HTML, …) |
+| `visualizations` | `VisualizationChunkData[]` | `message.visualizations` | Inline visualizations (`[VIZ:id]` markers) |
+| `medias` | `MediaChunkData[]` | `message.medias` | Inline images/videos |
+| `artifacts` | `ArtifactChunkData[]` | `message.artifacts` | Inline downloadable artifacts (PDF, HTML, …) |
 | `onArtifactOpen` | `(artifact: ArtifactChunkData) => void` | — | Artifact inline-card click handler |
 | `baselineFontSize` | `number` | — | Base font size multiplier for markdown |
 | `pendingClarification` | `ClarificationData` | — | Agent needs user input |
@@ -549,7 +549,9 @@ The `hmac` and `timestamp` should be generated server-side using your secret key
 
 ## Visualizations
 
-Assistant messages can contain rich visualizations (charts, tables, forms, etc.) rendered inline via `[VIZ:id]` markers. The `Message` component handles this automatically when you pass the `visualizations` prop.
+Assistant messages can contain rich visualizations (charts, tables, forms, etc.) rendered inline via `[VIZ:id]` markers. `useMiiflowChat` collects them from the stream onto `message.visualizations`, and `Message` reads them from the message when you don't pass the `visualizations` prop — so `<Message message={msg} />` renders inline charts with no extra wiring. Pass the prop explicitly only to override what the message carries (the same applies to `medias` and `artifacts`).
+
+If a `[VIZ:id]` marker has no matching visualization, the marker is stripped rather than shown — a reader never sees a bare `[VIZ:<hex>]`. If you supply the transport yourself instead of using `useMiiflowChat`, that is what you'll get until you populate `visualizations`: read the `visualization` SSE frame (`visualization_data`) during the stream, and prefer `assistant_complete`'s `message.metadata.visualizations` once the turn ends — the server prunes renders the assistant left unembedded, so the persisted list is the authoritative one.
 
 ### Built-in Types
 

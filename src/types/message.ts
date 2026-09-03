@@ -72,6 +72,8 @@ export interface ChatMessage extends MessageData {
   citations?: import("./citation").SourceReference[];
   pendingClarification?: import("./streaming").ClarificationData;
   pendingToolApproval?: import("./streaming").ToolApprovalData;
+  /** Inline visualizations, resolved against the `[VIZ:id]` markers in the text */
+  visualizations?: import("./streaming").VisualizationChunkData[];
   /** Inline media (images/videos) to render within message content */
   medias?: import("./streaming").MediaChunkData[];
   /** Downloadable artifacts (PDFs, HTMLs) produced by tool calls in this message */

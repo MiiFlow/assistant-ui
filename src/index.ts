@@ -93,7 +93,7 @@ export {
 export { cn } from "./utils/cn";
 export { formatMessageTime, formatRelativeTime } from "./utils/format-date";
 export { getContrastTextColor } from "./utils/color-contrast";
-export { parseContentWithInlineMarkers, type ContentPart } from "./utils/inline-markers";
+export { parseContentWithInlineMarkers, stripInlineMarkers, type ContentPart } from "./utils/inline-markers";
 
 // Design tokens
 export { chatTokens, type ChatTokens } from "./styles/tokens";

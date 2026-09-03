@@ -1,11 +1,11 @@
-export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-DTNTKSQr.js';
+export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-C3YAZPnZ.js';
 export { a as ClarificationAnswer, C as ClarificationData, b as ClarificationQuestion, c as StreamChunk, d as StreamingOptions, e as StreamingState } from './streaming-BfLEgW5u.js';
 export { B as BrandingData } from './branding-NieTEGQf.js';
 export { ChatContext, ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from './context/index.js';
 export { u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from './use-branding-css-vars-CR2tjSV8.js';
-export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-B_AvYfE8.js';
+export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-CaXoLhq_.js';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.js';
-export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-DLL8JTDR.js';
+export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-CGr53_-g.js';
 import { ClassValue } from 'clsx';
 import 'react/jsx-runtime';
 import 'react';
@@ -43,6 +43,16 @@ declare function formatRelativeTime(date: Date | string): string;
  */
 declare function getContrastTextColor(bgColor: string): string;
 
+/**
+ * Remove every inline marker from `content`.
+ *
+ * The render floor for the plain-text branches: a marker that reached the
+ * renderer without render data behind it cannot be shown to a reader as a
+ * bare `[VIZ:9fc0ad9c…]`. Kept here, beside the parser, so the marker grammar
+ * has exactly one definition — the previous caller-local `[MEDIA:…]`-only
+ * regex is how `[VIZ:…]` came to leak.
+ */
+declare function stripInlineMarkers(content: string): string;
 type ContentPart = {
     type: "text";
     content: string;
@@ -181,4 +191,4 @@ declare const chatTokens: {
 };
 type ChatTokens = typeof chatTokens;
 
-export { type ChatTokens, type ContentPart, chatTokens, cn, formatMessageTime, formatRelativeTime, getContrastTextColor, parseContentWithInlineMarkers };
+export { type ChatTokens, type ContentPart, chatTokens, cn, formatMessageTime, formatRelativeTime, getContrastTextColor, parseContentWithInlineMarkers, stripInlineMarkers };

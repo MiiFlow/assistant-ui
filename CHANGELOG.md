@@ -1,5 +1,21 @@
 # @miiflow/assistant-ui
 
+## 0.16.0
+
+### Bug Fixes
+
+- **`[VIZ:id]` markers rendered as raw text (`client/useMiiflowChat.ts`, `styled/Message.tsx`, `types/message.ts`)**: `Message` resolves an inline visualization by looking its id up in the `visualizations` it was given, and nothing in the package ever supplied that list — the SSE parser had no `visualization` branch, and `assistant_complete` was read for `metadata.sources` only. So every consumer of `useMiiflowChat` saw a literal `[VIZ:<hex>]` in the answer where the Adlyse app, which implements its own reader, drew a chart. The parser now collects `visualization` frames (replacing by id, since ids are content-derived and a re-render reuses one) and prefers the persisted `message.metadata.visualizations` at completion, because the server prunes renders the assistant left unembedded. `ChatMessage` gains `visualizations`, and `Message` falls back to `message.visualizations` when the prop is omitted — so `<Message message={msg} />` now renders inline charts with no host changes. `medias` and `artifacts` get the same message-level fallback.
+- **`artifact` frames were dropped the same way (`client/useMiiflowChat.ts`)**: `ChatMessage.artifacts` was declared but never populated, so inline PDF/HTML cards never appeared for package consumers either. Now collected alongside visualizations.
+- **Unresolvable inline markers reached the reader (`styled/Message.tsx`, `utils/inline-markers.ts`)**: the plain-text path stripped `[MEDIA:…]`, and then only when the message had media, so an unmatched `[VIZ:…]` or `[SA:…]` was rendered verbatim. All three are now stripped through one `stripInlineMarkers` helper (newly exported) that shares the parser's marker grammar.
+
+### Features
+
+- **`HANDLED_STREAM_EVENT_TYPES` export (`client`)**: the SSE frame types the parser acts on. Pinned in CI against the server's own `SSE_EVENT_TYPES`, so a frame added on the server can no longer be silently ignored here.
+
+### Internal
+
+- `MessageProps.message` is typed `ChatMessage` rather than `MessageData`. Every added field is optional, so a plain `MessageData` still satisfies it.
+
 ## 0.15.0
 
 ### Features

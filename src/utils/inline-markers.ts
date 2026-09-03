@@ -2,6 +2,20 @@
 // VIZ/MEDIA use hex UUIDs; SA uses TokenField IDs (alphanumeric + underscore, e.g. saction_AbC123xYz)
 const INLINE_MARKER_REGEX = /\[(VIZ|MEDIA|SA):([\w-]+)\]/gi;
 
+/**
+ * Remove every inline marker from `content`.
+ *
+ * The render floor for the plain-text branches: a marker that reached the
+ * renderer without render data behind it cannot be shown to a reader as a
+ * bare `[VIZ:9fc0ad9c…]`. Kept here, beside the parser, so the marker grammar
+ * has exactly one definition — the previous caller-local `[MEDIA:…]`-only
+ * regex is how `[VIZ:…]` came to leak.
+ */
+export function stripInlineMarkers(content: string): string {
+  // Fresh regex per call: the shared literal is /g and carries `lastIndex`.
+  return content.replace(/\[(VIZ|MEDIA|SA):([\w-]+)\]/gi, "");
+}
+
 export type ContentPart =
   | { type: "text"; content: string }
   | { type: "viz"; id: string }

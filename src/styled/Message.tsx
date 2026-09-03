@@ -15,9 +15,9 @@ import {
 } from "./MediaLightbox";
 import { MessageContent as MessageContentPrimitive, Message as MessagePrimitive } from "../primitives";
 import type {
+	ChatMessage,
 	ClarificationData,
 	MediaChunkData,
-	MessageData,
 	ParticipantRole,
 	SourceReference,
 	StreamingChunk,
@@ -39,7 +39,7 @@ import { StreamingText } from "./StreamingText";
 import { SuggestedActions } from "./SuggestedActions";
 import { VisualizationRenderer } from "./visualizations";
 import { ArtifactList } from "./artifacts";
-import { parseContentWithInlineMarkers } from "../utils/inline-markers";
+import { parseContentWithInlineMarkers, stripInlineMarkers } from "../utils/inline-markers";
 import { useStreamingMinHeight } from "../hooks/use-streaming-min-height";
 
 // ── Lazy media helpers ───────────────────────────────────────────────
@@ -214,8 +214,11 @@ const MediaGridTile = ({
 };
 
 export interface MessageProps {
-	/** The message data */
-	message: MessageData;
+	/** The message data. `ChatMessage` rather than the narrower `MessageData`
+	 *  so the component can read `visualizations` / `medias` / `artifacts` off
+	 *  the message itself; every added field is optional, so a plain
+	 *  `MessageData` still satisfies it. */
+	message: ChatMessage;
 	/** The viewer's role (determines alignment) */
 	viewerRole?: ParticipantRole;
 	/** Additional CSS classes */
@@ -311,9 +314,9 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			reasoningExpanded,
 			onReasoningExpandedChange,
 			citations,
-			visualizations,
-			medias,
-			artifacts,
+			visualizations: visualizationsProp,
+			medias: mediasProp,
+			artifacts: artifactsProp,
 			onArtifactOpen,
 			baselineFontSize,
 			executionTime,
@@ -334,6 +337,16 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 		// Get visualization action callback from context (null-safe for standalone usage)
 		const chatContext = useContext(ChatContext);
 		const onVisualizationAction = chatContext?.onVisualizationAction;
+
+		// Renders, media and artifacts travel ON the message from `useMiiflowChat`
+		// and from the persisted GraphQL fields. Reading them from the message
+		// when the prop is omitted is what lets a consumer render `<Message
+		// message={msg} />` and still get inline visualizations — the explicit
+		// prop still wins, so hosts that adapt the message themselves are
+		// unaffected.
+		const visualizations = visualizationsProp ?? message.visualizations;
+		const medias = mediasProp ?? message.medias;
+		const artifacts = artifactsProp ?? message.artifacts;
 
 		// Edit-and-resubmit state for the viewer's own messages
 		const [isEditing, setIsEditing] = useState(false);
@@ -386,11 +399,16 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			return parseContentWithInlineMarkers(message.textContent);
 		}, [hasInlineMarkers, message.textContent]);
 
-		// Strip [MEDIA:...] markers from text content (media rendered separately)
+		// Strip inline markers from the plain-text branches. Media is always
+		// rendered separately, and this is also the render floor: reaching here
+		// with a `[VIZ:…]` or `[SA:…]` still in the text means we could not
+		// resolve it, and a bare `[VIZ:9fc0ad9c…]` is never something a reader
+		// should see. The inline branch below handles the resolvable ones and
+		// does not use this value.
 		const cleanTextContent = useMemo(() => {
-			if (!medias || medias.length === 0 || !message.textContent) return message.textContent;
-			return message.textContent.replace(/\[MEDIA:[a-f0-9-]+\]/gi, "").trim();
-		}, [message.textContent, medias]);
+			if (!message.textContent) return message.textContent;
+			return stripInlineMarkers(message.textContent).trim();
+		}, [message.textContent]);
 
 		const renderContent = () => {
 			if (!message.textContent) return null;

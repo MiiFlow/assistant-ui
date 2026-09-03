@@ -1,7 +1,7 @@
 // @miiflow/assistant-ui/client - Transport layer for Miiflow embedded chat
 
 // Main hook
-export { useMiiflowChat } from "./useMiiflowChat";
+export { useMiiflowChat, HANDLED_STREAM_EVENT_TYPES } from "./useMiiflowChat";
 
 // Session utilities
 export {

@@ -102,8 +102,12 @@ interface InternalMessage {
   attachments?: import("../types").Attachment[];
   pendingClarification?: ClarificationData;
   pendingToolApproval?: import("../types").ToolApprovalData;
+  /** Renders resolved against the `[VIZ:id]` markers in `textContent` */
+  visualizations?: import("../types").VisualizationChunkData[];
   /** Media items (images/videos) for inline rendering */
   medias?: import("../types").MediaChunkData[];
+  /** Downloadable artifacts (PDF, HTML, ...) produced by tool calls */
+  artifacts?: import("../types").ArtifactChunkData[];
   /** Wall-clock execution time in seconds, persisted after streaming completes */
   executionTime?: number;
 }
@@ -175,28 +179,62 @@ function mapSessionBranding(
 // SSE stream parser
 // ============================================================================
 
+/**
+ * Top-level SSE frame types `parseSSEStream` acts on.
+ *
+ * This is the client half of a contract the server states in
+ * `server/assistant/sse_converters.py::SSE_EVENT_TYPES`; a test pins the two
+ * together so a frame type added on the server cannot be silently dropped
+ * here. It was dropping `visualization` that made `[VIZ:…]` markers surface
+ * as raw text in every non-first-party build.
+ */
+export const HANDLED_STREAM_EVENT_TYPES = [
+  "assistant_chunk",
+  "subagent_dispatch",
+  "clarification_needed",
+  "tool_approval_needed",
+  "media",
+  "visualization",
+  "artifact",
+  "assistant_complete",
+  "client_tool_invocation",
+  "error",
+  "done",
+] as const;
+
+/** Everything the parser knows once the turn has finished. An object rather
+ *  than a positional list: it already carried nine arguments, and the next
+ *  field added positionally is the next one a caller silently drops. */
+interface StreamCompletion {
+  assistantMsgId: string | null;
+  finalContent: string;
+  finalId?: string;
+  chunks?: StreamingChunk[];
+  suggestedActions?: Array<{ id: string; label: string; value: string }>;
+  sources?: any[];
+  visualizations?: import("../types").VisualizationChunkData[];
+  artifacts?: import("../types").ArtifactChunkData[];
+  pendingClarification?: ClarificationData;
+  executionTime?: number;
+  pendingToolApproval?: import("../types").ToolApprovalData;
+}
+
 interface StreamParseCallbacks {
   onMessageUpdate: (msg: Partial<InternalMessage> & { id: string }) => void;
   onMessageCreate: (msg: InternalMessage) => void;
   onUserMessageIdUpdate: (optimisticId: string, newId: string) => void;
-  onComplete: (
-    assistantMsgId: string | null,
-    finalContent: string,
-    finalId?: string,
-    chunks?: StreamingChunk[],
-    suggestedActions?: Array<{ id: string; label: string; value: string }>,
-    sources?: any[],
-    pendingClarification?: ClarificationData,
-    executionTime?: number,
-    pendingToolApproval?: import("../types").ToolApprovalData,
-  ) => void;
+  onComplete: (completion: StreamCompletion) => void;
   onToolInvocation?: (invocation: ToolInvocationRequest) => void;
   /** Server setup status line ("Getting started…") for the pre-first-token
    *  window; null clears it. Optional — older consumers ignore it. */
   onStatusUpdate?: (text: string | null) => void;
 }
 
-async function parseSSEStream(
+/** Exported for tests only — deliberately NOT re-exported from
+ *  `client/index.ts`, so it stays off the package's public API. Driving it
+ *  directly is the only way to assert what a recorded stream produces without
+ *  a DOM. */
+export async function parseSSEStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   session: EmbedSession,
   optimisticId: string,
@@ -213,6 +251,12 @@ async function parseSSEStream(
   let pendingClarification: ClarificationData | undefined;
   let pendingToolApproval: import("../types").ToolApprovalData | undefined;
   let mediaItems: import("../types").MediaChunkData[] = [];
+  // Renders and downloadable files produced by tool calls in this turn. Their
+  // ids are content-derived server-side, so an identical re-render arrives
+  // under the SAME id and must replace rather than append — the server's own
+  // accumulator (`_record_visualization`) does the same.
+  let vizItems: import("../types").VisualizationChunkData[] = [];
+  let artifactItems: import("../types").ArtifactChunkData[] = [];
   let receivedComplete = false;
 
   // Chunk accumulation state
@@ -238,6 +282,15 @@ async function parseSSEStream(
     typeof frame?.ts === "number" ? frame.ts * 1000 : Date.now();
 
   const branding = session.config.branding;
+
+  /** Append, or replace in place when an entry with the same id is present. */
+  const upsertById = <T extends { id: string }>(list: T[], item: T): T[] => {
+    const idx = list.findIndex((existing) => existing.id === item.id);
+    if (idx === -1) return [...list, item];
+    const next = list.slice();
+    next[idx] = item;
+    return next;
+  };
 
   const finalizeChunk = () => {
     if (currentChunkContent || currentChunkType === "tool") {
@@ -305,7 +358,9 @@ async function parseSSEStream(
         isStreaming: true,
         reasoning: displayChunks,
         suggestedActions,
+        visualizations: vizItems.length > 0 ? vizItems : undefined,
         medias: mediaItems.length > 0 ? mediaItems : undefined,
+        artifacts: artifactItems.length > 0 ? artifactItems : undefined,
       };
       callbacks.onMessageCreate(assistantMsg);
     } else {
@@ -314,7 +369,9 @@ async function parseSSEStream(
         textContent: assistantContent,
         reasoning: displayChunks,
         suggestedActions,
+        visualizations: vizItems.length > 0 ? vizItems : undefined,
         medias: mediaItems.length > 0 ? mediaItems : undefined,
+        artifacts: artifactItems.length > 0 ? artifactItems : undefined,
       });
     }
   };
@@ -785,6 +842,30 @@ async function parseSSEStream(
             ];
             updateStreamingMessage();
           }
+        } else if (parsed.type === "visualization") {
+          // A render tool returned a chart/table/card. The answer text carries
+          // a `[VIZ:<id>]` marker; `Message` resolves it against this list.
+          const vizData = parsed.visualization_data;
+          if (vizData?.id) {
+            vizItems = upsertById(vizItems, {
+              id: vizData.id,
+              type: vizData.type,
+              title: vizData.title,
+              description: vizData.description,
+              data: vizData.data,
+              config: vizData.config,
+              context: parsed.context,
+            });
+            updateStreamingMessage();
+          }
+        } else if (parsed.type === "artifact") {
+          // A persisted downloadable file (PDF, HTML, ...) — rendered as an
+          // inline card beneath the answer.
+          const artifactData = parsed.artifact_data;
+          if (artifactData?.id) {
+            artifactItems = upsertById(artifactItems, artifactData);
+            updateStreamingMessage();
+          }
         } else if (parsed.type === "assistant_complete") {
           finalizeChunk();
           receivedComplete = true;
@@ -792,20 +873,35 @@ async function parseSSEStream(
           const finalContent =
             parsed.message?.text_content || assistantContent;
           const finalId = parsed.message?.id;
-          const sources = parsed.message?.metadata?.sources;
+          const metadata = parsed.message?.metadata;
+          const sources = metadata?.sources;
+
+          // Finalize prunes renders the model left unembedded
+          // (`visualization_policy.partition_unembedded_visualizations`), so
+          // the persisted list — not what we accumulated live — is what the
+          // message actually contains. A server old enough to send no
+          // metadata at all is the only case that keeps the streamed lists.
+          const finalVisualizations = metadata
+            ? metadata.visualizations ?? []
+            : vizItems;
+          const finalArtifacts = metadata
+            ? metadata.artifacts ?? []
+            : artifactItems;
 
           const elapsedSeconds = (Date.now() - streamStartTime) / 1000;
-          callbacks.onComplete(
+          callbacks.onComplete({
             assistantMsgId,
             finalContent,
             finalId,
-            chunks as unknown as StreamingChunk[],
+            chunks: chunks as unknown as StreamingChunk[],
             suggestedActions,
             sources,
+            visualizations: finalVisualizations,
+            artifacts: finalArtifacts,
             pendingClarification,
-            elapsedSeconds,
+            executionTime: elapsedSeconds,
             pendingToolApproval,
-          );
+          });
           assistantContent = finalContent;
           if (finalId) assistantMsgId = finalId;
           break;
@@ -824,17 +920,20 @@ async function parseSSEStream(
           if (assistantMsgId && !receivedComplete) {
             finalizeChunk();
             const elapsedSecondsDone = (Date.now() - streamStartTime) / 1000;
-            callbacks.onComplete(
+            callbacks.onComplete({
               assistantMsgId,
-              assistantContent || "",
-              parsed.message_id,
-              chunks as unknown as StreamingChunk[],
+              finalContent: assistantContent || "",
+              finalId: parsed.message_id,
+              chunks: chunks as unknown as StreamingChunk[],
               suggestedActions,
-              undefined,
+              // No `assistant_complete`, so no persisted metadata to prefer —
+              // what we accumulated live is all this turn has.
+              visualizations: vizItems,
+              artifacts: artifactItems,
               pendingClarification,
-              elapsedSecondsDone,
+              executionTime: elapsedSecondsDone,
               pendingToolApproval,
-            );
+            });
           } else if (parsed.message_id && assistantMsgId) {
             callbacks.onMessageUpdate({
               id: assistantMsgId,
@@ -1374,17 +1473,19 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
             onStatusUpdate: (text) => {
               setStatusText(text);
             },
-            onComplete: (
+            onComplete: ({
               assistantMsgId,
               finalContent,
               finalId,
               chunks,
               suggestedActions,
               sources,
+              visualizations,
+              artifacts,
               pendingClarification,
               executionTime,
               pendingToolApproval,
-            ) => {
+            }) => {
               if (assistantMsgId) {
                 setMessages((prev) =>
                   prev.map((msg) =>
@@ -1397,6 +1498,13 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
                           reasoning: chunks,
                           suggestedActions,
                           citations: sources,
+                          // Empty means the server kept none — assign either
+                          // way so a pruned draft cannot survive from the
+                          // streaming update via the spread above.
+                          visualizations: visualizations?.length
+                            ? visualizations
+                            : undefined,
+                          artifacts: artifacts?.length ? artifacts : undefined,
                           pendingClarification,
                           pendingToolApproval,
                           executionTime,
