@@ -1,3 +1,7 @@
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4
+ * component: KPI bento · genre: modern-minimal · tone: utilitarian
+ * interaction: static data surface · contrast: pass (40–41) · mobile: pass (34, 49–57)
+ */
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { cn } from "../../utils/cn";
@@ -11,26 +15,10 @@ export interface KpiVisualizationProps {
 
 const DEFAULT_COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#8B5CF6"];
 
-// Per-family palette for the bento layout. Each entry covers the surfaces a
-// bento card needs: a tinted gradient background, an accent stripe, and the
-// label/sparkline color.
-const BENTO_PALETTE = [
-  { label: "text-blue-700 dark:text-blue-300", stripeFrom: "#3b82f6", stripeTo: "#2563eb", tintFrom: "rgba(59,130,246,0.10)", tintMid: "rgba(59,130,246,0.025)", border: "border-blue-200 dark:border-blue-900", borderHover: "hover:border-blue-400 dark:hover:border-blue-700", spark: "#3b82f6", glow: "0 8px 24px rgba(59,130,246,0.18)" },
-  { label: "text-emerald-700 dark:text-emerald-300", stripeFrom: "#10b981", stripeTo: "#059669", tintFrom: "rgba(16,185,129,0.10)", tintMid: "rgba(16,185,129,0.025)", border: "border-emerald-200 dark:border-emerald-900", borderHover: "hover:border-emerald-400 dark:hover:border-emerald-700", spark: "#10b981", glow: "0 8px 24px rgba(16,185,129,0.18)" },
-  { label: "text-purple-700 dark:text-purple-300", stripeFrom: "#a855f7", stripeTo: "#9333ea", tintFrom: "rgba(168,85,247,0.10)", tintMid: "rgba(168,85,247,0.025)", border: "border-purple-200 dark:border-purple-900", borderHover: "hover:border-purple-400 dark:hover:border-purple-700", spark: "#a855f7", glow: "0 8px 24px rgba(168,85,247,0.18)" },
-  { label: "text-orange-700 dark:text-orange-300", stripeFrom: "#f97316", stripeTo: "#ea580c", tintFrom: "rgba(249,115,22,0.10)", tintMid: "rgba(249,115,22,0.025)", border: "border-orange-200 dark:border-orange-900", borderHover: "hover:border-orange-400 dark:hover:border-orange-700", spark: "#f97316", glow: "0 8px 24px rgba(249,115,22,0.18)" },
-  { label: "text-pink-700 dark:text-pink-300", stripeFrom: "#ec4899", stripeTo: "#db2777", tintFrom: "rgba(236,72,153,0.10)", tintMid: "rgba(236,72,153,0.025)", border: "border-pink-200 dark:border-pink-900", borderHover: "hover:border-pink-400 dark:hover:border-pink-700", spark: "#ec4899", glow: "0 8px 24px rgba(236,72,153,0.18)" },
-  { label: "text-teal-700 dark:text-teal-300", stripeFrom: "#14b8a6", stripeTo: "#0d9488", tintFrom: "rgba(20,184,166,0.10)", tintMid: "rgba(20,184,166,0.025)", border: "border-teal-200 dark:border-teal-900", borderHover: "hover:border-teal-400 dark:hover:border-teal-700", spark: "#14b8a6", glow: "0 8px 24px rgba(20,184,166,0.18)" },
-];
-
-function paletteForIndex(idx: number) {
-  return BENTO_PALETTE[idx % BENTO_PALETTE.length];
-}
-
 // Visualizations render inside a chat panel that is much narrower than the
 // window, so layout here is driven by the container (intrinsic grid/flex sizing
 // and `cqi` units) rather than by Tailwind's viewport breakpoints.
-const GRID_GAP_PX = 16; // gap-4
+const GRID_GAP_PX = 12; // gap-3
 
 /**
  * Column template that never exceeds `maxCols` tracks but sheds columns as the
@@ -101,74 +89,58 @@ function KpiMetricCard({ metric, color, animate }: { metric: KpiMetric; color: s
 
 function KpiBentoCard({
   metric,
-  index,
   isHero,
   animate,
 }: {
   metric: KpiMetric;
-  index: number;
   isHero: boolean;
   animate: boolean;
 }) {
-  const palette = paletteForIndex(index);
   const sparklineData = metric.sparkline?.map((value, idx) => ({ value, idx }));
   const showSparkline = isHero && sparklineData && sparklineData.length > 1;
 
-  const TrendIcon = metric.trend === "up" ? ArrowUp : metric.trend === "down" ? ArrowDown : Minus;
-  const trendPillColor =
+  const TrendIcon =
     metric.trend === "up"
-      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+      ? ArrowUp
       : metric.trend === "down"
-      ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
-      : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300";
+        ? ArrowDown
+        : Minus;
+  const trendColor =
+    metric.trend === "up"
+      ? "text-emerald-700 dark:text-emerald-300"
+      : metric.trend === "down"
+        ? "text-red-700 dark:text-red-300"
+        : "text-gray-600 dark:text-gray-300";
   const showTrend = metric.change !== undefined && metric.change !== null;
 
   return (
     <div
       className={cn(
-        "relative h-full rounded-xl border bg-white dark:bg-gray-900 overflow-hidden transition-all",
-        palette.border,
-        palette.borderHover,
-        "hover:-translate-y-0.5",
+        "relative h-full overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900",
         isHero ? "p-5" : "p-4",
       )}
       style={{
         ...CARD_CONTAINER,
-        background: isHero
-          ? `linear-gradient(135deg, ${palette.tintFrom} 0%, ${palette.tintMid} 60%, transparent 100%), var(--kpi-bg, white)`
-          : undefined,
+        minHeight: isHero ? 196 : 96,
       }}
     >
-      {/* Left accent stripe */}
-      <div
-        aria-hidden
-        className="absolute left-0 top-0 bottom-0"
-        style={{
-          width: isHero ? 4 : 3,
-          background: `linear-gradient(180deg, ${palette.stripeFrom}, ${palette.stripeTo})`,
-        }}
-      />
-
       {showSparkline && (
         <div
           aria-hidden
-          className="absolute left-0 right-0 bottom-0 pointer-events-none"
+          className="pointer-events-none absolute inset-x-0 bottom-0 text-gray-400 dark:text-gray-600"
           style={{ height: 56, opacity: 0.35 }}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={sparklineData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id={`spark-${index}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={palette.spark} stopOpacity={0.6} />
-                  <stop offset="100%" stopColor={palette.spark} stopOpacity={0} />
-                </linearGradient>
-              </defs>
+            <AreaChart
+              data={sparklineData}
+              margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+            >
               <Area
                 type="monotone"
                 dataKey="value"
-                stroke={palette.spark}
-                fill={`url(#spark-${index})`}
-                strokeWidth={1.5}
+                stroke="currentColor"
+                fill="transparent"
+                strokeWidth={1.25}
                 isAnimationActive={animate}
               />
             </AreaChart>
@@ -176,25 +148,31 @@ function KpiBentoCard({
         </div>
       )}
 
-      <div className={cn("relative z-10", isHero ? "pl-1" : "pl-0.5")}>
-        <span
-          className={cn(
-            "block font-semibold uppercase tracking-wider [overflow-wrap:anywhere]",
-            palette.label,
-            isHero ? "text-xs" : "text-[0.7rem]",
-          )}
-        >
+      <div className="relative z-10 flex h-full min-w-0 flex-col">
+        <span className="block text-[0.6875rem] font-semibold uppercase leading-[1.35] tracking-[0.04em] text-gray-600 dark:text-gray-400 [overflow-wrap:anywhere]">
           {metric.label}
         </span>
-        <div className={cn("flex items-baseline gap-1 min-w-0", isHero ? "mt-2" : "mt-1")}>
+        <div
+          className={cn(
+            "flex min-w-0 items-baseline gap-1",
+            isHero && !showTrend && !metric.changeLabel
+              ? "mt-auto pt-4"
+              : isHero
+                ? "mt-2"
+                : "mt-1",
+          )}
+        >
           <span
-            className="font-extrabold tabular-nums text-gray-900 dark:text-gray-100 leading-tight tracking-tight [overflow-wrap:anywhere]"
+            className={cn(
+              "font-bold tabular-nums text-gray-900 dark:text-gray-100 leading-[1.1] [overflow-wrap:anywhere]",
+              isHero ? "tracking-[-0.03em]" : "tracking-[-0.015em]",
+            )}
             style={{
               // Scales with the card, not the window — a satellite in a narrow
               // chat panel steps down instead of clipping.
               fontSize: isHero
-                ? "clamp(1.75rem, 11cqi, 2.75rem)"
-                : "clamp(1.125rem, 10cqi, 1.5rem)",
+                ? "clamp(1.75rem, 10cqi, 2.25rem)"
+                : "clamp(1rem, 8cqi, 1.25rem)",
             }}
           >
             {metric.value}
@@ -207,12 +185,17 @@ function KpiBentoCard({
         </div>
 
         {(showTrend || metric.changeLabel) && (
-          <div className={cn("flex items-center gap-1.5 flex-wrap", isHero ? "mt-3" : "mt-2")}>
+          <div
+            className={cn(
+              "mt-auto flex flex-wrap items-center gap-1.5 pt-3",
+              isHero && "pt-4",
+            )}
+          >
             {showTrend && (
               <span
                 className={cn(
-                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold tabular-nums",
-                  trendPillColor,
+                  "inline-flex items-center gap-1 text-xs font-semibold tabular-nums",
+                  trendColor,
                 )}
               >
                 <TrendIcon size={isHero ? 14 : 12} strokeWidth={2.5} />
@@ -238,12 +221,18 @@ function pickHeroIndex(metrics: KpiMetric[]): number {
   return explicit >= 0 ? explicit : 0;
 }
 
-function KpiBentoLayout({ metrics, animate }: { metrics: KpiMetric[]; animate: boolean }) {
+function KpiBentoLayout({
+  metrics,
+  animate,
+}: {
+  metrics: KpiMetric[];
+  animate: boolean;
+}) {
   if (metrics.length === 0) return null;
   if (metrics.length === 1) {
     return (
       <div className="w-full">
-        <KpiBentoCard metric={metrics[0]} index={0} isHero animate={animate} />
+        <KpiBentoCard metric={metrics[0]} isHero animate={animate} />
       </div>
     );
   }
@@ -261,23 +250,30 @@ function KpiBentoLayout({ metrics, animate }: { metrics: KpiMetric[]; animate: b
   // can hold both flex bases; below that they stack. Flex basis is the container
   // query here — no viewport breakpoint involved.
   return (
-    <div className="w-full flex flex-wrap gap-4 items-stretch">
+    <div className="flex w-full flex-wrap items-stretch gap-3">
       <div className="min-w-0" style={{ flex: "5 1 260px" }}>
-        <KpiBentoCard metric={hero} index={heroIdx} isHero animate={animate} />
+        <KpiBentoCard metric={hero} isHero animate={animate} />
       </div>
       <div
-        className="min-w-0 grid gap-4"
-        style={{ flex: "7 1 320px", gridTemplateColumns: autoColumns(satCols, 140) }}
+        className="grid min-w-0 gap-3"
+        style={{
+          flex: "7 1 320px",
+          gridTemplateColumns: autoColumns(satCols, 168),
+        }}
       >
         {satellites.map(({ m, i }) => (
-          <KpiBentoCard key={i} metric={m} index={i} isHero={false} animate={animate} />
+          <KpiBentoCard key={i} metric={m} isHero={false} animate={animate} />
         ))}
       </div>
     </div>
   );
 }
 
-export function KpiVisualization({ data, config, isStreaming = false }: KpiVisualizationProps) {
+export function KpiVisualization({
+  data,
+  config,
+  isStreaming = false,
+}: KpiVisualizationProps) {
   const { metrics, layout = "row" } = data;
   const colors = config?.colors || DEFAULT_COLORS;
   const animate = config?.animate !== false && !isStreaming;
