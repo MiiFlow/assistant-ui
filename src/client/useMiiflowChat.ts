@@ -86,7 +86,14 @@ function buildWebSocketProtocols(session: EmbedSession): string[] {
 // ============================================================================
 
 interface InternalMessage {
+  /** Minted client-side before the request leaves and never replaced. It is
+   *  the identity React keys on; the server's id lands in `serverId`. */
   id: string;
+  /** The persisted id the server assigned, once known. */
+  serverId?: string;
+  /** Server setup status ("Getting started…") for the pre-first-token window;
+   *  only ever set on the streaming assistant message, cleared by content. */
+  statusText?: string;
   textContent: string;
   participant: {
     id: string;
@@ -206,7 +213,7 @@ export const HANDLED_STREAM_EVENT_TYPES = [
  *  than a positional list: it already carried nine arguments, and the next
  *  field added positionally is the next one a caller silently drops. */
 interface StreamCompletion {
-  assistantMsgId: string | null;
+  assistantMsgId: string;
   finalContent: string;
   finalId?: string;
   chunks?: StreamingChunk[];
@@ -219,10 +226,23 @@ interface StreamCompletion {
   pendingToolApproval?: import("../types").ToolApprovalData;
 }
 
+/** The two ids the hook mints before the request leaves: the optimistic user
+ *  message and the assistant placeholder. Both are STABLE — the parser writes
+ *  into them and never replaces them, so a host keying rows on `id` keeps one
+ *  element from first token to completion. Server-assigned ids are reported
+ *  separately, as `serverId`. Replacing the placeholder with a freshly minted
+ *  message on the first frame, and then renaming it to the server id at
+ *  completion, remounted every message twice per turn — the second time as the
+ *  hard cut from live reasoning steps to the finished answer. */
+interface StreamMessageIds {
+  optimisticId: string;
+  assistantMsgId: string;
+}
+
 interface StreamParseCallbacks {
   onMessageUpdate: (msg: Partial<InternalMessage> & { id: string }) => void;
-  onMessageCreate: (msg: InternalMessage) => void;
-  onUserMessageIdUpdate: (optimisticId: string, newId: string) => void;
+  /** The server has named the persisted row for the optimistic user message. */
+  onUserMessagePersisted: (optimisticId: string, serverId: string) => void;
   onComplete: (completion: StreamCompletion) => void;
   onToolInvocation?: (invocation: ToolInvocationRequest) => void;
   /** Server setup status line ("Getting started…") for the pre-first-token
@@ -236,14 +256,18 @@ interface StreamParseCallbacks {
  *  a DOM. */
 export async function parseSSEStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
-  session: EmbedSession,
-  optimisticId: string,
+  ids: StreamMessageIds,
   callbacks: StreamParseCallbacks
 ): Promise<{ assistantMsgId: string | null; assistantContent: string }> {
+  const { optimisticId, assistantMsgId } = ids;
   const decoder = new TextDecoder();
   const streamStartTime = Date.now();
   let assistantContent = "";
-  let assistantMsgId: string | null = null;
+  // Set once any frame has written into the assistant message. The hook uses
+  // it to tell "this turn produced nothing" from "this turn produced an empty
+  // answer": the former drops the placeholder, the latter finalizes it.
+  let messageTouched = false;
+  let userMessagePersisted = false;
   const chunks: AccumulatedChunk[] = [];
   let suggestedActions:
     | Array<{ id: string; label: string; value: string }>
@@ -280,8 +304,6 @@ export async function parseSSEStream(
   let frameTimeMs = Date.now();
   const readFrameTime = (frame: { ts?: unknown }): number =>
     typeof frame?.ts === "number" ? frame.ts * 1000 : Date.now();
-
-  const branding = session.config.branding;
 
   /** Append, or replace in place when an entry with the same id is present. */
   const upsertById = <T extends { id: string }>(list: T[], item: T): T[] => {
@@ -340,40 +362,18 @@ export async function parseSSEStream(
   };
 
   const updateStreamingMessage = () => {
-    const displayChunks = buildDisplayChunks();
-
-    if (!assistantMsgId) {
-      assistantMsgId = `assistant-${Date.now()}`;
-      const assistantMsg: InternalMessage = {
-        id: assistantMsgId,
-        textContent: assistantContent,
-        participant: {
-          id: "assistant",
-          name:
-            branding?.custom_name || session.config.assistant_name,
-          role: "assistant",
-          avatarUrl: branding?.assistant_avatar,
-        },
-        createdAt: new Date().toISOString(),
-        isStreaming: true,
-        reasoning: displayChunks,
-        suggestedActions,
-        visualizations: vizItems.length > 0 ? vizItems : undefined,
-        medias: mediaItems.length > 0 ? mediaItems : undefined,
-        artifacts: artifactItems.length > 0 ? artifactItems : undefined,
-      };
-      callbacks.onMessageCreate(assistantMsg);
-    } else {
-      callbacks.onMessageUpdate({
-        id: assistantMsgId,
-        textContent: assistantContent,
-        reasoning: displayChunks,
-        suggestedActions,
-        visualizations: vizItems.length > 0 ? vizItems : undefined,
-        medias: mediaItems.length > 0 ? mediaItems : undefined,
-        artifacts: artifactItems.length > 0 ? artifactItems : undefined,
-      });
-    }
+    messageTouched = true;
+    callbacks.onMessageUpdate({
+      id: assistantMsgId,
+      textContent: assistantContent,
+      reasoning: buildDisplayChunks(),
+      suggestedActions,
+      visualizations: vizItems.length > 0 ? vizItems : undefined,
+      medias: mediaItems.length > 0 ? mediaItems : undefined,
+      artifacts: artifactItems.length > 0 ? artifactItems : undefined,
+      // Content has started arriving; the setup status line is over.
+      statusText: undefined,
+    });
   };
 
   while (true) {
@@ -595,15 +595,17 @@ export async function parseSSEStream(
             currentChunkContent += parsed.chunk || "";
           }
 
-          // Update user message ID
-          if (parsed.previous_message_id) {
-            callbacks.onUserMessageIdUpdate(
+          // The server names the persisted user message on every frame; record
+          // it once. It is reported as `serverId`, never written over the
+          // optimistic `id` — that id is the row's React key.
+          if (parsed.previous_message_id && !userMessagePersisted) {
+            userMessagePersisted = true;
+            callbacks.onUserMessagePersisted(
               optimisticId,
               parsed.previous_message_id
             );
           }
 
-          updateStreamingMessage();
           updateStreamingMessage();
         } else if (parsed.type === "subagent_dispatch") {
           // Sub-assistant dispatch streaming. The backend fires four sub-events
@@ -869,6 +871,7 @@ export async function parseSSEStream(
         } else if (parsed.type === "assistant_complete") {
           finalizeChunk();
           receivedComplete = true;
+          messageTouched = true;
 
           const finalContent =
             parsed.message?.text_content || assistantContent;
@@ -903,7 +906,6 @@ export async function parseSSEStream(
             pendingToolApproval,
           });
           assistantContent = finalContent;
-          if (finalId) assistantMsgId = finalId;
           break;
         } else if (
           parsed.type === "client_tool_invocation" &&
@@ -917,7 +919,7 @@ export async function parseSSEStream(
         } else if (parsed.type === "done") {
           // Fallback: if stream ended without assistant_complete (e.g. clarification early return),
           // finalize the message so the frontend still shows it properly
-          if (assistantMsgId && !receivedComplete) {
+          if (messageTouched && !receivedComplete) {
             finalizeChunk();
             const elapsedSecondsDone = (Date.now() - streamStartTime) / 1000;
             callbacks.onComplete({
@@ -934,13 +936,13 @@ export async function parseSSEStream(
               executionTime: elapsedSecondsDone,
               pendingToolApproval,
             });
-          } else if (parsed.message_id && assistantMsgId) {
+          } else if (parsed.message_id && messageTouched) {
             callbacks.onMessageUpdate({
               id: assistantMsgId,
+              serverId: parsed.message_id,
               isStreaming: false,
             });
           }
-          if (parsed.message_id) assistantMsgId = parsed.message_id;
           break;
         }
       } catch (e) {
@@ -959,7 +961,12 @@ export async function parseSSEStream(
     }
   }
 
-  return { assistantMsgId, assistantContent };
+  // `null` when no frame wrote into the message: the hook drops the
+  // placeholder instead of finalizing an empty row.
+  return {
+    assistantMsgId: messageTouched ? assistantMsgId : null,
+    assistantContent,
+  };
 }
 
 // ============================================================================
@@ -1443,19 +1450,10 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
 
         const result = await parseSSEStream(
           reader,
-          currentSession,
-          optimisticId,
+          // The placeholder IS the assistant message for this turn: every
+          // frame writes into it, and it keeps its id through completion.
+          { optimisticId, assistantMsgId: placeholderAssistantId },
           {
-            onMessageCreate: (msg) => {
-              setStreamingMessageId(msg.id);
-              // Replace placeholder with real streaming message
-              setMessages((prev) => {
-                const filtered = prev.filter(
-                  (m) => m.id !== placeholderAssistantId
-                );
-                return [...filtered, msg];
-              });
-            },
             onMessageUpdate: (update) => {
               setMessages((prev) =>
                 prev.map((msg) =>
@@ -1463,15 +1461,24 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
                 )
               );
             },
-            onUserMessageIdUpdate: (oldId, newId) => {
+            onUserMessagePersisted: (optimisticUserId, serverId) => {
               setMessages((prev) =>
                 prev.map((msg) =>
-                  msg.id === oldId ? { ...msg, id: newId } : msg
+                  msg.id === optimisticUserId ? { ...msg, serverId } : msg
                 )
               );
             },
             onStatusUpdate: (text) => {
               setStatusText(text);
+              // On the message as well, so `<Message>` can show the line in
+              // its waiting state without the host threading it through.
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === placeholderAssistantId
+                    ? { ...msg, statusText: text ?? undefined }
+                    : msg
+                )
+              );
             },
             onComplete: ({
               assistantMsgId,
@@ -1492,7 +1499,9 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
                     msg.id === assistantMsgId
                       ? {
                           ...msg,
-                          id: finalId || msg.id,
+                          // `id` is what React keys on and never changes.
+                          serverId: finalId ?? msg.serverId,
+                          statusText: undefined,
                           textContent: finalContent,
                           isStreaming: false,
                           reasoning: chunks,
@@ -1539,14 +1548,20 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           }
         );
 
-        // Ensure streaming is marked complete
+        // Ensure streaming is marked complete. A turn that ended without one
+        // frame touching the message has nothing to show; drop the placeholder
+        // rather than leave it waiting forever.
         if (result.assistantMsgId) {
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === result.assistantMsgId
-                ? { ...msg, isStreaming: false }
+                ? { ...msg, isStreaming: false, statusText: undefined }
                 : msg
             )
+          );
+        } else {
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== placeholderAssistantId)
           );
         }
       } catch (err) {
@@ -1572,11 +1587,24 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           },
           createdAt: new Date().toISOString(),
         };
-        // Remove placeholder and add error message
-        setMessages((prev) => [
-          ...prev.filter((m) => m.id !== placeholderAssistantId),
-          errorMsg,
-        ]);
+        // The failed turn's message is the placeholder itself (one id for the
+        // message's whole life). Keep it, finalized, if anything had already
+        // streamed into it — partial work is still work — and drop it if it
+        // was still empty; the error bubble follows either way.
+        setMessages((prev) => {
+          const failed = prev.find((m) => m.id === placeholderAssistantId);
+          const hasContent =
+            !!failed &&
+            (!!failed.textContent || (failed.reasoning?.length ?? 0) > 0);
+          const kept = hasContent
+            ? prev.map((m) =>
+                m.id === placeholderAssistantId
+                  ? { ...m, isStreaming: false, statusText: undefined }
+                  : m
+              )
+            : prev.filter((m) => m.id !== placeholderAssistantId);
+          return [...kept, errorMsg];
+        });
         setError(err instanceof Error ? err.message : "Send failed");
       } finally {
         abortControllerRef.current = null;
@@ -1723,16 +1751,24 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         .filter((msg) => msg.participant.role !== "system")
         .map((msg) => ({
           id: msg.id,
+          serverId: msg.serverId,
           textContent: msg.textContent?.replace(/\[ref:[^\]]+\]/g, '') || msg.textContent,
           participant: msg.participant,
           createdAt: msg.createdAt,
           isStreaming: msg.isStreaming,
+          statusText: msg.statusText,
           reasoning: msg.reasoning,
           suggestedActions: msg.suggestedActions,
           citations: msg.citations,
           attachments: msg.attachments,
           pendingClarification: msg.pendingClarification,
           pendingToolApproval: msg.pendingToolApproval,
+          // `Message` reads these off the message when the props are omitted
+          // (0.16.0); they were collected but never mapped, so that fallback
+          // never reached a `useMiiflowChat` consumer.
+          visualizations: msg.visualizations,
+          medias: msg.medias,
+          artifacts: msg.artifacts,
           executionTime: msg.executionTime,
         })),
     [messages]

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 import { useScrollLock } from "../../hooks/use-scroll-lock";
 import type { StreamingChunk } from "../../types";
+import type { RunStep } from "./types";
 import { injectBeamerKeyframes } from "../../utils/beamer";
 import { cn } from "../../utils/cn";
 import { EASE, MONO_STACK, formatDuration, formatElapsed, ink } from "./atoms";
@@ -35,6 +36,10 @@ export interface ReasoningStreamProps {
 	isStreaming?: boolean;
 	/** The turn's reasoning chunks, live or replayed from the durable trace. */
 	chunks?: StreamingChunk[];
+	/** The steps already built from `chunks`. `Message` builds them once to
+	 *  decide whether there is anything to draw and hands them down so the same
+	 *  list is not rebuilt here; omitted, they are built from `chunks`. */
+	steps?: RunStep[];
 	/** Persisted wall clock for the whole run, in seconds. */
 	executionTime?: number;
 	/**
@@ -46,10 +51,10 @@ export interface ReasoningStreamProps {
 	/**
 	 * The run finished moments ago, in a DIFFERENT component instance.
 	 *
-	 * The streaming message and the completed message are separate elements, so
-	 * this component cannot observe the streaming→complete edge itself. The host
-	 * passes it instead, and it is what turns the collapse from a jump cut into
-	 * a transition.
+	 * Needed only when the host renders the completed message as a separate
+	 * element from the streaming one, so this instance never sees the
+	 * streaming→complete edge. With a stable key the edge is observed here and
+	 * the fold runs on its own; this prop then adds nothing.
 	 */
 	justCompleted?: boolean;
 	/** Controlled disclosure of the finished turn's full trace. */
@@ -94,6 +99,7 @@ function useElapsed(isStreaming: boolean, startedAt?: number): number {
 export function ReasoningStream({
 	isStreaming = false,
 	chunks,
+	steps: stepsProp,
 	executionTime,
 	streamStartedAt,
 	justCompleted = false,
@@ -107,7 +113,10 @@ export function ReasoningStream({
 		injectBeamerKeyframes(containerRef.current);
 	}, []);
 
-	const steps = useMemo(() => buildRunSteps(chunks, isStreaming), [chunks, isStreaming]);
+	const steps = useMemo(
+		() => stepsProp ?? buildRunSteps(chunks, isStreaming),
+		[stepsProp, chunks, isStreaming],
+	);
 	const elapsed = useElapsed(isStreaming, streamStartedAt);
 
 	// Expanding a LIVE run turns the step list into its own scroll box, and new
@@ -148,20 +157,44 @@ export function ReasoningStream({
 
 	// The collapse animation.
 	//
-	// `justCompleted` arrives true on a FRESH mount (the completed message is a
-	// different element from the streaming one), so there is no open→closed
-	// prop change for a transition to key off. Instead: paint once at full
-	// height, then flip to zero on the next frame so the browser has two states
-	// to interpolate between. Two rAFs because a single one can still run
-	// before the first paint.
-	const shouldAnimateClose = justCompleted && !reducedMotion && !isExpanded;
+	// The fold needs the trace painted once at full height and then flipped to
+	// zero on the next frame, so the browser has two states to interpolate
+	// between. Two rAFs because a single one can still run before the first
+	// paint. It is requested from two places:
+	//
+	// - the streaming→complete edge observed on THIS instance, which is what a
+	//   host with stable message keys produces (`useMiiflowChat` since 0.17);
+	// - `justCompleted`, from a host that still remounts the completed message,
+	//   where the edge is invisible from in here and arrives on a fresh mount.
+	//
+	// The edge is derived during render — state set from a prop comparison,
+	// React's documented "adjust state when a prop changes" pattern — rather
+	// than in an effect: an effect runs after commit, and the frame it would
+	// fix (the trace already snapped shut) has been painted by then.
+	//
+	// A fold is a one-shot REQUEST, counted, not a standing condition: the
+	// reader collapsing a finished trace by hand must get the plain CSS
+	// transition, not a replay of the completion fold. Nothing to fold when
+	// the trace is open, and reduced motion lands on the summary directly.
+	const foldOnMount = justCompleted && !reducedMotion && !isExpanded;
+	const [foldRequest, setFoldRequest] = useState(foldOnMount ? 1 : 0);
 	const [phase, setPhase] = useState<"idle" | "open" | "closing">(
-		shouldAnimateClose ? "open" : "idle",
+		foldOnMount ? "open" : "idle",
 	);
+	const [prevStreaming, setPrevStreaming] = useState(isStreaming);
+	const [prevJustCompleted, setPrevJustCompleted] = useState(justCompleted);
+	if (prevStreaming !== isStreaming || prevJustCompleted !== justCompleted) {
+		const edge =
+			(prevStreaming && !isStreaming) || (!prevJustCompleted && justCompleted);
+		setPrevStreaming(isStreaming);
+		setPrevJustCompleted(justCompleted);
+		if (edge && !reducedMotion && !isExpanded) {
+			setFoldRequest((n) => n + 1);
+			setPhase("open");
+		}
+	}
 	useEffect(() => {
-		// Nothing to fold when the user has the trace open, and reduced motion
-		// lands on the collapsed summary directly.
-		if (!shouldAnimateClose) return;
+		if (foldRequest === 0) return;
 		setPhase("open");
 		let inner = 0;
 		const outer = requestAnimationFrame(() => {
@@ -173,7 +206,7 @@ export function ReasoningStream({
 			cancelAnimationFrame(inner);
 			clearTimeout(done);
 		};
-	}, [shouldAnimateClose]);
+	}, [foldRequest]);
 
 	// Commit after the render that used it: the value read above must be the
 	// count from the PREVIOUS pass, or every step would look already-seen.

@@ -67,6 +67,14 @@ export interface SuggestedAction {
 }
 
 export interface ChatMessage extends MessageData {
+  /** The persisted id the server assigned, once known. `id` is the identity
+   *  React keys on and never changes for the life of the message; this is the
+   *  one to send back to the server (feedback, edits, citations). */
+  serverId?: string;
+  /** Server setup status ("Getting started…") for the window before the first
+   *  token. Set only on the streaming assistant message and cleared once any
+   *  content arrives; `Message` shows it beside the waiting indicator. */
+  statusText?: string;
   suggestedActions?: SuggestedAction[];
   reasoning?: StreamingChunk[];
   citations?: import("./citation").SourceReference[];

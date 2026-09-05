@@ -34,7 +34,7 @@ import { ThinkingIndicator } from "./ThinkingIndicator";
 import { MarkdownContent } from "./MarkdownContent";
 import { MessageActionBar } from "./MessageActionBar";
 import { MessageAttachments } from "./MessageAttachments";
-import { ReasoningStream } from "./reasoning";
+import { ReasoningStream, buildRunSteps } from "./reasoning";
 import { StreamingText } from "./StreamingText";
 import { SuggestedActions } from "./SuggestedActions";
 import { VisualizationRenderer } from "./visualizations";
@@ -231,6 +231,10 @@ export interface MessageProps {
 	renderMarkdown?: boolean;
 	/** Streaming chunks for reasoning panel */
 	reasoning?: StreamingChunk[];
+	/** Line shown beside the waiting indicator before the first token. Defaults
+	 *  to `message.statusText`, which `useMiiflowChat` fills from the server's
+	 *  setup status frames ("Getting started…"). */
+	waitingLabel?: string;
 	/**
 	 * @deprecated No longer read. Host adapters already reconstruct these into
 	 * `reasoning` chunks, so passing them separately made the same run
@@ -266,10 +270,12 @@ export interface MessageProps {
 	 *  (e.g. from a server snapshot) so the streaming elapsed figure stays
 	 *  correct across remounts; omit to time from when this component mounted. */
 	streamStartedAt?: number;
-	/** This turn finished moments ago. The streaming message and the completed
-	 *  message are different elements, so this component cannot see that edge
-	 *  itself — the host reports it, and it is what animates the reasoning
-	 *  steps folding into the "Thought for …" line instead of snapping shut. */
+	/** This turn finished moments ago. Needed only by a host that renders the
+	 *  completed message as a DIFFERENT element from the streaming one (a key
+	 *  that changes at completion), where the component cannot see the edge
+	 *  itself. With a stable key — what `useMiiflowChat` guarantees — the edge
+	 *  is observed here and the reasoning steps fold into the "Thought for …"
+	 *  line on their own. */
 	justCompleted?: boolean;
 	/** Pending clarification data (agent needs user input) */
 	pendingClarification?: ClarificationData;
@@ -309,6 +315,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			showTimestamp = true,
 			renderMarkdown = true,
 			reasoning,
+			waitingLabel,
 			suggestedActions,
 			onSuggestedAction,
 			reasoningExpanded,
@@ -360,21 +367,33 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 
 		// Filter reasoning chunks for display.
 		// `subtask` is kept to replay historical (pre-unified-ReAct) messages.
-		const reasoningChunks = reasoning?.filter(
-			(c) =>
-				c.type === "thinking" ||
-				c.type === "tool" ||
-				c.type === "observation" ||
-				c.type === "planning" ||
-				c.type === "subtask" ||
-				// Sub-assistant dispatch (dispatch_assistant)
-				c.type === "subagent",
+		const reasoningChunks = useMemo(
+			() =>
+				reasoning?.filter(
+					(c) =>
+						c.type === "thinking" ||
+						c.type === "tool" ||
+						c.type === "observation" ||
+						c.type === "planning" ||
+						c.type === "subtask" ||
+						// Sub-assistant dispatch (dispatch_assistant)
+						c.type === "subagent",
+				),
+			[reasoning],
 		);
-		// Gate on the chunks the panel actually renders from. `executionPlan` /
-		// `executionTimeline` used to open this block on their own, which left an
-		// empty wrapper whenever they carried nothing the panel could show — the
-		// host adapter already reconstructs chunks from both.
-		const hasReasoning = !!reasoningChunks && reasoningChunks.length > 0;
+		// Gate on what the panel will actually DRAW, not on what arrived. The
+		// chunk list is non-empty while `buildRunSteps` yields nothing whenever a
+		// run's only work so far is an internal tool (`tool_search` opens most
+		// turns on a tool-heavy assistant), and gating on the raw list there hid
+		// the waiting indicator and mounted a panel that rendered null — a blank
+		// row until the first real tool. (`executionPlan` / `executionTimeline`
+		// used to open this block on their own and left an empty wrapper the same
+		// way.) The steps are built once here and handed down.
+		const reasoningSteps = useMemo(
+			() => buildRunSteps(reasoningChunks, !!isStreaming),
+			[reasoningChunks, isStreaming],
+		);
+		const hasReasoning = reasoningSteps.length > 0;
 
 		// Check if waiting for content
 		const isWaitingForContent = isStreaming && !message.textContent && !hasReasoning;
@@ -608,7 +627,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 									/>
 								</div>
 							)}
-							<ThinkingIndicator />
+							<ThinkingIndicator label={waitingLabel ?? message.statusText} />
 						</div>
 					)}
 
@@ -619,6 +638,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 							<ReasoningStream
 								isStreaming={isStreaming}
 								chunks={reasoningChunks}
+								steps={reasoningSteps}
 								executionTime={executionTime}
 								streamStartedAt={streamStartedAt}
 								justCompleted={justCompleted}

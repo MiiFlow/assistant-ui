@@ -227,7 +227,7 @@ const result = useMiiflowChat(config);
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `messages` | `ChatMessage[]` | Messages in the conversation |
+| `messages` | `ChatMessage[]` | Messages in the conversation. `id` is stable for a message's whole life — key rows on it; the server's persisted id arrives as `serverId` once known |
 | `isStreaming` | `boolean` | Whether a response is currently streaming |
 | `streamingMessageId` | `string \| null` | ID of the message being streamed |
 | `loading` | `boolean` | Whether the session is still initializing |
@@ -324,18 +324,20 @@ Individual message with markdown rendering, reasoning panel, citations, visualiz
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `message` | `MessageData` | — | **Required.** Message data object |
+| `message` | `ChatMessage` | — | **Required.** Message data object (a plain `MessageData` also satisfies it) |
 | `viewerRole` | `ParticipantRole` | `"user"` | Viewer's role (determines alignment) |
 | `showAvatar` | `boolean` | `true` | Show participant avatar |
 | `showTimestamp` | `boolean` | `true` | Show message timestamp |
 | `renderMarkdown` | `boolean` | `true` | Render content as markdown |
-| `reasoning` | `StreamingChunk[]` | — | Reasoning/thinking chunks for collapsible panel |
+| `reasoning` | `StreamingChunk[]` | — | Reasoning/thinking chunks; rendered live as steps, then as a "Thought for …" line. Pass `msg.reasoning` — there is no message-level fallback |
+| `waitingLabel` | `string` | `message.statusText` | Line beside the waiting indicator before the first token |
 | `reasoningExpanded` | `boolean` | — | Controlled expansion of the reasoning panel |
 | `onReasoningExpandedChange` | `(expanded: boolean) => void` | — | Reasoning panel expansion callback |
 | `executionPlan` | `unknown` | — | Execution plan for completed agent messages |
 | `executionTimeline` | `unknown[]` | — | Execution timeline for completed messages |
 | `executionTime` | `number` | — | Total execution time in seconds (persisted) |
 | `streamStartedAt` | `number` | — | Epoch ms the in-progress run started, so the live elapsed counter survives remounts |
+| `justCompleted` | `boolean` | — | Only for hosts that render the completed message as a different element from the streaming one; with a stable `key` the fold animates on its own |
 | `suggestedActions` | `SuggestedAction[]` | — | Suggested follow-up actions |
 | `onSuggestedAction` | `(action: SuggestedAction) => void` | — | Suggested action click handler |
 | `renderInlineSuggestedAction` | `(id: string) => ReactNode` | — | Renderer for inline `[SA:id]` markers |
