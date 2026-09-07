@@ -161,7 +161,17 @@ function AttachmentBar({
 
 export interface MessageComposerProps {
   /** Callback when message is submitted */
-  onSubmit: (content: string, attachments?: File[], attachmentIds?: string[]) => Promise<void>;
+  /**
+   * Resolves once the message is ACCEPTED. A host that rejects the send (an
+   * upload that failed, a suspended org, a run already in progress) resolves
+   * `{ accepted: false }` so the composer can hand the draft back instead of
+   * swallowing it (BUG-069).
+   */
+  onSubmit: (
+    content: string,
+    attachments?: File[],
+    attachmentIds?: string[],
+  ) => Promise<void | { accepted?: boolean }>;
   /** Callback when files are attached (for upload handling) */
   onAttach?: (files: File[]) => void;
   /** Upload a file to backend, returning an attachment ID. When provided, enables server-side upload flow. */
@@ -311,14 +321,24 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         setHasText(false);
         setAttachments([]);
 
+        const restoreDraft = () => {
+          inputRef.current?.setContent(text);
+          setHasText(text.trim().length > 0);
+          setAttachments(savedAttachments);
+        };
+
         try {
-          if (onUploadFile && uploadedIds.length > 0) {
-            await onSubmit(text, undefined, uploadedIds);
-          } else {
-            await onSubmit(text, rawFiles.length > 0 ? rawFiles : undefined);
+          const result =
+            onUploadFile && uploadedIds.length > 0
+              ? await onSubmit(text, undefined, uploadedIds)
+              : await onSubmit(text, rawFiles.length > 0 ? rawFiles : undefined);
+          // A rejected send resolves rather than throwing, so without this the
+          // text and files were cleared for a message that never went.
+          if (result && result.accepted === false) {
+            restoreDraft();
           }
         } catch {
-          setAttachments(savedAttachments);
+          restoreDraft();
         } finally {
           isSubmittingRef.current = false;
         }

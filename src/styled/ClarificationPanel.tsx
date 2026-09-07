@@ -136,6 +136,18 @@ export function ClarificationPanel({
   );
 
   /**
+   * A question counts as answered by picking options, typing a custom value,
+   * or both. Submit already used this rule while the counter, the tab tick and
+   * auto-advance each looked at selections only, so a free-text-only answer
+   * enabled Submit while still being reported as unanswered (BUG-070).
+   */
+  const isQuestionAnswered = useCallback(
+    (index: number, sel: Record<number, string[]> = selections, txt: Record<number, string> = freeText) =>
+      (sel[index] || []).length > 0 || (txt[index] || "").trim().length > 0,
+    [selections, freeText],
+  );
+
+  /**
    * Move to the first still-unanswered question after `from`, falling back to
    * the next question. Keeps the user moving forward without forcing them past
    * questions they've already handled out of order.
@@ -143,14 +155,14 @@ export function ClarificationPanel({
   const advanceFrom = useCallback(
     (from: number, sel: Record<number, string[]>) => {
       for (let i = from + 1; i < questions.length; i++) {
-        if ((sel[i] || []).length === 0) {
+        if (!isQuestionAnswered(i, sel)) {
           setActiveTab(i);
           return;
         }
       }
       if (from + 1 < questions.length) setActiveTab(from + 1);
     },
-    [questions.length],
+    [questions.length, isQuestionAnswered],
   );
 
   const toggle = useCallback(
@@ -180,13 +192,8 @@ export function ClarificationPanel({
     [onOptionSelect, advanceFrom],
   );
 
-  // A question is answered by picking options, typing a custom value, or both.
   const allAnswered =
-    questions.length > 0 &&
-    questions.every(
-      (_, i) =>
-        (selections[i] || []).length > 0 || (freeText[i] || "").trim().length > 0,
-    );
+    questions.length > 0 && questions.every((_, i) => isQuestionAnswered(i));
 
   const submit = useCallback(() => {
     if (!onSubmit || !allAnswered) return;
@@ -356,7 +363,7 @@ export function ClarificationPanel({
         >
           {questions.map((_, qi) => {
             const isActive = qi === active;
-            const isDone = (selections[qi] || []).length > 0;
+            const isDone = isQuestionAnswered(qi);
             return (
               <button
                 key={qi}
@@ -393,7 +400,7 @@ export function ClarificationPanel({
         {multiQuestion ? (
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {(() => {
-              const done = questions.filter((_, i) => (selections[i] || []).length > 0).length;
+              const done = questions.filter((_, i) => isQuestionAnswered(i)).length;
               return `${done} of ${questions.length} answered`;
             })()}
           </span>
