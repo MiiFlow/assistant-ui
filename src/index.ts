@@ -91,6 +91,7 @@ export {
 
 // Utilities
 export { cn } from "./utils/cn";
+export { normalizeMedia, upsertMedia, toChatMediaProxyUrl, replaceMediaUrls } from "./utils/media";
 export { formatMessageTime, formatRelativeTime } from "./utils/format-date";
 export { getContrastTextColor } from "./utils/color-contrast";
 export { parseContentWithInlineMarkers, stripInlineMarkers, type ContentPart } from "./utils/inline-markers";

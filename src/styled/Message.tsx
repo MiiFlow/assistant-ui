@@ -25,6 +25,7 @@ import type {
 	VisualizationChunkData,
 } from "../types";
 import { cn } from "../utils/cn";
+import { replaceMediaUrls } from "../utils/media";
 import { ChatContext } from "../context/ChatProvider";
 import { Avatar } from "./Avatar";
 import { CitationSources } from "./CitationSources";
@@ -415,8 +416,8 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 		const hasInlineMarkers = hasVizInlineContent || (message.textContent && /\[SA:[\w-]+\]/i.test(message.textContent));
 		const contentParts = useMemo(() => {
 			if (!hasInlineMarkers || !message.textContent) return null;
-			return parseContentWithInlineMarkers(message.textContent);
-		}, [hasInlineMarkers, message.textContent]);
+			return parseContentWithInlineMarkers(replaceMediaUrls(message.textContent, medias));
+		}, [hasInlineMarkers, message.textContent, medias]);
 
 		// Strip inline markers from the plain-text branches. Media is always
 		// rendered separately, and this is also the render floor: reaching here
@@ -426,8 +427,8 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 		// does not use this value.
 		const cleanTextContent = useMemo(() => {
 			if (!message.textContent) return message.textContent;
-			return stripInlineMarkers(message.textContent).trim();
-		}, [message.textContent]);
+			return replaceMediaUrls(stripInlineMarkers(message.textContent).trim(), medias);
+		}, [message.textContent, medias]);
 
 		const renderContent = () => {
 			if (!message.textContent) return null;
@@ -501,9 +502,10 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			const textContent = cleanTextContent || "";
 			return medias
 				.filter((media) => {
+					if (!media.url || media.status === "pending" || media.status === "failed") return false;
 					if (media.mediaType !== "image") return true;
 					// Skip media items already rendered inline as markdown images
-					return !textContent.includes(media.url);
+					return !!media.url && !textContent.includes(media.url);
 				})
 				.map((m) => ({
 					id: m.id,
@@ -519,6 +521,16 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			close: closeLightbox,
 			navigate: navigateLightbox,
 		} = useMediaLightbox(filteredMedias);
+
+		const renderMediaStatuses = () => (
+			<>{(medias || [])
+				.filter((media) => media.status === "pending" || media.status === "failed")
+				.map((media) => (
+					<p key={media.id} role="status" className="my-3 text-sm text-muted-foreground">
+						{media.status === "pending" ? "Loading image…" : media.errorMessage || "Image unavailable."}
+					</p>
+				))}</>
+		);
 
 		const renderMediaItems = () => {
 			if (filteredMedias.length === 0) return null;
@@ -705,6 +717,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 										color: isViewer ? "var(--chat-user-message-text, #ffffff)" : "var(--chat-text)",
 									}}>
 									<MessageContentPrimitive>{renderContent()}</MessageContentPrimitive>
+									{renderMediaStatuses()}
 									{renderMediaItems()}
 									{lightboxIndex !== null && (
 										<MediaLightbox

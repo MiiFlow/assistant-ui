@@ -408,6 +408,10 @@ export interface MediaChunkData {
   url: string;
   mediaType: string; // "image", "video", "audio"
   altText?: string;
+  fileAssetId?: string;
+  sourceUrl?: string;
+  status?: "pending" | "ready" | "failed";
+  errorMessage?: string;
   context?: {
     orchestratorType?: string;
     toolName?: string;

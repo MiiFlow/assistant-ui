@@ -34,6 +34,7 @@ export function parseMediaValue(
 		url: string;
 		mediaType?: string;
 		altText?: string;
+		sourceUrl?: string;
 	}>,
 ): MediaItem | null {
 	if (typeof value === "string") {
@@ -55,7 +56,7 @@ export function parseMediaValue(
 				altText: hit.altText,
 			};
 		}
-		const url = raw;
+		const url = medias?.find((m) => m.sourceUrl === raw)?.url || raw;
 		const isVideo =
 			YOUTUBE_ID_RE.test(url) || /\.(mp4|mov|webm|m4v|mkv)(\?|$)/i.test(url);
 		return {
@@ -66,7 +67,8 @@ export function parseMediaValue(
 	}
 	if (value && typeof value === "object") {
 		const v = value as Record<string, unknown>;
-		const url = (v.url || v.image_url || v.video_url) as string | undefined;
+		const rawUrl = (v.url || v.image_url || v.video_url) as string | undefined;
+		const url = medias?.find((m) => (!!v.id && m.id === v.id) || (!!rawUrl && m.sourceUrl === rawUrl))?.url || rawUrl;
 		if (!url || typeof url !== "string") return null;
 		const type = (v.media_type || v.mediaType || v.type) as
 			| string

@@ -15,6 +15,8 @@ import type {
   SubagentChunkData,
 } from "../types";
 import type { BrandingData } from "../types/branding";
+import { deliveredMedia, useMediaDelivery } from "./use-media-delivery";
+import { normalizeMedia, upsertMedia } from "../utils/media";
 import { findToolChunkIndex } from "./tool-chunk-matching";
 import type {
   MiiflowChatConfig,
@@ -833,15 +835,7 @@ export async function parseSSEStream(
           // Media event (image/video) from image generation tools
           const mediaData = parsed.media_data;
           if (mediaData) {
-            mediaItems = [
-              ...mediaItems,
-              {
-                id: mediaData.id,
-                url: mediaData.url,
-                mediaType: mediaData.media_type || "image",
-                altText: mediaData.alt_text,
-              },
-            ];
+            mediaItems = upsertMedia(mediaItems, normalizeMedia(mediaData));
             updateStreamingMessage();
           }
         } else if (parsed.type === "visualization") {
@@ -1742,6 +1736,15 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     [] // stable — reads sessionRef
   );
 
+  const updateMediaToken = useCallback((token: string) => {
+    setSession((current) => current ? { ...current, token } : current);
+  }, []);
+  const mediaResources = useMediaDelivery(
+    messages.flatMap((message) => message.medias || []),
+    getBackendBaseUrl(config), session?.token, config.publicKey,
+    session?.session_id || "", updateMediaToken,
+  );
+
   // Convert internal messages to ChatMessage format.
   // Hidden page-context messages (role=system) are never rendered — they exist
   // only in history for the LLM's benefit.
@@ -1767,11 +1770,11 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           // (0.16.0); they were collected but never mapped, so that fallback
           // never reached a `useMiiflowChat` consumer.
           visualizations: msg.visualizations,
-          medias: msg.medias,
+          medias: msg.medias?.map((media) => deliveredMedia(media, mediaResources)),
           artifacts: msg.artifacts,
           executionTime: msg.executionTime,
         })),
-    [messages]
+    [messages, mediaResources]
   );
 
   // Allow external session updates (e.g. token refresh from widget class)
