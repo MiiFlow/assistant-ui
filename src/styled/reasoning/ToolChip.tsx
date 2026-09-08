@@ -36,6 +36,8 @@ export function ToolChip({ tool }: { tool: RunStepTool }) {
 
 	const isRunning = tool.status === "running" || tool.status === "pending";
 	const isFailed = tool.status === "failed";
+	// Open when the run ended: not a failure, and emphatically not a success.
+	const isInterrupted = tool.status === "interrupted";
 	const isWrite = tool.kind === "write";
 	const seconds = durationSeconds(tool.startedAt, tool.endedAt);
 
@@ -47,13 +49,24 @@ export function ToolChip({ tool }: { tool: RunStepTool }) {
 	useEffect(() => {
 		const justLanded = wasRunning.current && !isRunning;
 		wasRunning.current = isRunning;
-		if (!justLanded || !isWrite || isFailed || reducedMotion) return;
+		// An interrupted write transitions running → interrupted, which looks
+		// exactly like landing. Celebrating it would animate a confirmation for
+		// a change nobody can confirm happened.
+		if (!justLanded || !isWrite || isFailed || isInterrupted || reducedMotion) return;
 		setCommitted(true);
 		const id = setTimeout(() => setCommitted(false), 820);
 		return () => clearTimeout(id);
-	}, [isRunning, isWrite, isFailed, reducedMotion]);
+	}, [isRunning, isWrite, isFailed, isInterrupted, reducedMotion]);
 
-	const tone = isFailed
+	const tone = isInterrupted
+		? {
+				// Warning, not error: the call did not fail, its outcome is
+				// unknown. A muted amber reads as "unresolved" rather than "bad".
+				fill: "color-mix(in srgb, var(--chat-warning, #b45309) 7%, transparent)",
+				label: "color-mix(in srgb, var(--chat-warning, #b45309) 82%, var(--chat-text))",
+				figure: "color-mix(in srgb, var(--chat-warning, #b45309) 50%, transparent)",
+			}
+		: isFailed
 		? {
 				fill: "color-mix(in srgb, var(--chat-error) 8%, transparent)",
 				label: "color-mix(in srgb, var(--chat-error) 82%, var(--chat-text))",

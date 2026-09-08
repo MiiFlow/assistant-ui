@@ -105,6 +105,10 @@ interface InternalMessage {
   };
   createdAt: string;
   isStreaming?: boolean;
+  /** The server's message metadata, carried whole so late additions reach the
+   *  renderer without a new field here each time. `Message` reads
+   *  `turn_outcome` from it. */
+  metadata?: Record<string, unknown>;
   reasoning?: StreamingChunk[];
   suggestedActions?: Array<{ id: string; label: string; value: string }>;
   citations?: import("../types").SourceReference[];
@@ -226,6 +230,14 @@ interface StreamCompletion {
   pendingClarification?: ClarificationData;
   executionTime?: number;
   pendingToolApproval?: import("../types").ToolApprovalData;
+  /** The server's message metadata, carried whole.
+   *
+   *  Previously three keys were plucked out of it (`sources`,
+   *  `visualizations`, `artifacts`) and the rest dropped, so anything the
+   *  server added later — `turn_outcome`, which tells the reasoning panel
+   *  whether an open tool finished or was abandoned — could not reach the
+   *  renderer on the published package's path, only the first-party app's. */
+  metadata?: Record<string, unknown>;
 }
 
 /** The two ids the hook mints before the request leaves: the optimistic user
@@ -898,6 +910,7 @@ export async function parseSSEStream(
             pendingClarification,
             executionTime: elapsedSeconds,
             pendingToolApproval,
+            metadata,
           });
           assistantContent = finalContent;
           break;
@@ -1486,6 +1499,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
               pendingClarification,
               executionTime,
               pendingToolApproval,
+              metadata,
             }) => {
               if (assistantMsgId) {
                 setMessages((prev) =>
@@ -1511,6 +1525,10 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
                           pendingClarification,
                           pendingToolApproval,
                           executionTime,
+                          // Kept whole: `Message` reads `turn_outcome` from
+                          // here, and an allow-list is how the last four
+                          // server-side additions got lost on this path.
+                          metadata: metadata ?? msg.metadata,
                         }
                       : msg
                   )

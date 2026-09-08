@@ -225,9 +225,16 @@ export function ReasoningStream({
 	// A write that FAILED changed nothing, so it is not counted as a change —
 	// "1 change · 1 failed" on a single rejected budget update says two
 	// contradictory things about the same event.
-	const writeCount = allTools.filter((t) => t.kind === "write" && t.status !== "failed").length;
+	// An INTERRUPTED write is excluded for the same reason a failed one is, and
+	// it is the more dangerous of the two: the run ended before the call closed,
+	// so nobody knows whether the budget moved. Counting it as a change told the
+	// reader "1 change" about something that may never have happened.
+	const writeCount = allTools.filter(
+		(t) => t.kind === "write" && t.status !== "failed" && t.status !== "interrupted",
+	).length;
 	const agentCount = steps.filter((step) => step.kind === "subagent").length;
 	const failedCount = allTools.filter((t) => t.status === "failed").length;
+	const interruptedCount = allTools.filter((t) => t.status === "interrupted").length;
 
 	// ---------------------------------------------------------------- streaming
 	if (isStreaming) {
@@ -304,6 +311,7 @@ export function ReasoningStream({
 				writeCount={writeCount}
 				agentCount={agentCount}
 				failedCount={failedCount}
+				interruptedCount={interruptedCount}
 				open={isExpanded}
 				reducedMotion={reducedMotion}
 				onToggle={() => setExpanded(!isExpanded)}
@@ -369,6 +377,7 @@ function SummaryLine({
 	writeCount,
 	agentCount,
 	failedCount,
+	interruptedCount,
 	open,
 	reducedMotion,
 	onToggle,
@@ -378,6 +387,7 @@ function SummaryLine({
 	writeCount: number;
 	agentCount: number;
 	failedCount: number;
+	interruptedCount: number;
 	open: boolean;
 	reducedMotion: boolean;
 	onToggle: () => void;
@@ -473,6 +483,17 @@ function SummaryLine({
 					<Dot />
 					<span style={{ color: "var(--chat-error)", fontWeight: 560 }}>
 						{failedCount} failed
+					</span>
+				</>
+			)}
+
+			{interruptedCount > 0 && (
+				<>
+					<Dot />
+					{/* Deliberately not the error colour: these did not fail, and
+					    saying they did would be a different wrong answer. */}
+					<span style={{ color: "var(--chat-warning, #b45309)", fontWeight: 560 }}>
+						{interruptedCount} unfinished
 					</span>
 				</>
 			)}

@@ -41,6 +41,7 @@ export {
 	stepsWallClockSeconds,
 	INTERNAL_TOOLS,
 	type RunStep,
+	type RunOutcome,
 	type RunStepStatus,
 	type RunStepTool,
 	type RunStepToolKind,

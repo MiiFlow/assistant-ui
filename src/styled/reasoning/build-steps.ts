@@ -1,5 +1,11 @@
 import type { StreamingChunk, SubagentChunkData } from "../../types";
-import type { RunStep, RunStepStatus, RunStepTool, RunStepToolKind } from "./types";
+import type {
+	RunOutcome,
+	RunStep,
+	RunStepStatus,
+	RunStepTool,
+	RunStepToolKind,
+} from "./types";
 
 /**
  * Tools that are machinery rather than work the user asked for.
@@ -72,10 +78,17 @@ function isProse(chunk: StreamingChunk): boolean {
  *
  * `isStreaming` decides only whether the trailing step may render as running:
  * on a finished run nothing is open, however the last chunk happened to look.
+ *
+ * `outcome` is how the run ENDED, from `Message.metadata.turn_outcome`. Without
+ * it this function could only see that the stream had stopped, and it closed
+ * every open tool as `completed` — which is a claim of success, not an
+ * observation. Omitted (a sub-agent's nested trace, or a server too old to
+ * publish one), it falls back to that older assumption.
  */
 export function buildRunSteps(
 	chunks: readonly StreamingChunk[] | undefined,
 	isStreaming = false,
+	outcome?: RunOutcome,
 ): RunStep[] {
 	if (!chunks || chunks.length === 0) return [];
 
@@ -238,7 +251,7 @@ export function buildRunSteps(
 		}
 	});
 
-	return finalizeStatuses(steps, isStreaming);
+	return finalizeStatuses(steps, isStreaming, outcome);
 }
 
 /**
@@ -274,14 +287,41 @@ function findTool(steps: RunStep[], chunk: StreamingChunk): RunStepTool | undefi
  * it hard-coded every thought to `completed`, so the shimmer and the breathing
  * marker it had built for live reasoning never fired on a thought at all.
  */
-function finalizeStatuses(steps: RunStep[], isStreaming: boolean): RunStep[] {
+/**
+ * What an open tool becomes once the run is over.
+ *
+ * A run that ANSWERED reached its end normally, so a tool still marked open is
+ * a missing close event, not an abandoned call — closing it as `completed` is
+ * right. A run that halted, errored, or was stopped did NOT finish its work,
+ * and the tools still open when it ended are exactly the ones whose outcome
+ * nobody knows.
+ *
+ * A paused run (clarification/approval) has not ended at all; its open tools
+ * are genuinely still open and are left alone.
+ */
+function closedStatus(outcome?: RunOutcome): RunStepStatus | null {
+	if (!outcome) return "completed";
+	if (outcome.outcome === "clarification" || outcome.outcome === "approval") {
+		return null;
+	}
+	if (outcome.stopped || !outcome.ok) return "interrupted";
+	return "completed";
+}
+
+function finalizeStatuses(
+	steps: RunStep[],
+	isStreaming: boolean,
+	outcome?: RunOutcome,
+): RunStep[] {
 	steps.forEach((step, index) => {
 		const isLast = index === steps.length - 1;
 
 		if (step.kind === "subagent") {
 			// Nothing is open on a finished run; a specialist left mid-flight is a
 			// run that was stopped, not one still working.
-			if (!isStreaming && step.status === "running") step.status = "completed";
+			if (!isStreaming && step.status === "running") {
+				step.status = closedStatus(outcome) ?? step.status;
+			}
 			return;
 		}
 
@@ -289,12 +329,23 @@ function finalizeStatuses(steps: RunStep[], isStreaming: boolean): RunStep[] {
 		const toolOpen = step.tools.some((t) => t.status === "pending" || t.status === "running");
 
 		if (!isStreaming) {
-			// Nothing is open on a finished run; a tool left mid-flight is a
-			// run that was stopped, not a tool still working.
-			step.tools.forEach((t) => {
-				if (t.status === "pending" || t.status === "running") t.status = "completed";
-			});
-			step.status = failed ? "failed" : "completed";
+			// Nothing is left spinning on a finished run — but "not still
+			// working" is not the same as "worked". `closedStatus` decides
+			// which, from how the run actually ended.
+			const closed = closedStatus(outcome);
+			if (closed) {
+				step.tools.forEach((t) => {
+					if (t.status === "pending" || t.status === "running") t.status = closed;
+				});
+			}
+			const interrupted = step.tools.some((t) => t.status === "interrupted");
+			step.status = failed
+				? "failed"
+				: interrupted
+					? "interrupted"
+					: closed === null && toolOpen
+						? "running"
+						: "completed";
 			return;
 		}
 

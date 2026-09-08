@@ -35,7 +35,7 @@ import { ThinkingIndicator } from "./ThinkingIndicator";
 import { MarkdownContent } from "./MarkdownContent";
 import { MessageActionBar } from "./MessageActionBar";
 import { MessageAttachments } from "./MessageAttachments";
-import { ReasoningStream, buildRunSteps } from "./reasoning";
+import { ReasoningStream, buildRunSteps, type RunOutcome } from "./reasoning";
 import { StreamingText } from "./StreamingText";
 import { SuggestedActions } from "./SuggestedActions";
 import { VisualizationRenderer } from "./visualizations";
@@ -390,9 +390,13 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 		// row until the first real tool. (`executionPlan` / `executionTimeline`
 		// used to open this block on their own and left an empty wrapper the same
 		// way.) The steps are built once here and handed down.
+		// How the run ended, published by the server on the message. Without it
+		// `buildRunSteps` can only see that the stream stopped, and it closed
+		// every open tool as `completed` — asserting a success nobody observed.
+		const turnOutcome = message.metadata?.turn_outcome as RunOutcome | undefined;
 		const reasoningSteps = useMemo(
-			() => buildRunSteps(reasoningChunks, !!isStreaming),
-			[reasoningChunks, isStreaming],
+			() => buildRunSteps(reasoningChunks, !!isStreaming, turnOutcome),
+			[reasoningChunks, isStreaming, turnOutcome],
 		);
 		const hasReasoning = reasoningSteps.length > 0;
 

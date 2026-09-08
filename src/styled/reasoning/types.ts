@@ -1,6 +1,42 @@
 import type { SubagentChunkData } from "../../types";
 
-export type RunStepStatus = "pending" | "running" | "completed" | "failed";
+/**
+ * `interrupted` is not `failed` and not `completed`.
+ *
+ * A tool still open when the run ended did not fail — it was abandoned, and we
+ * do not know its outcome. Drawing it as completed asserted a success that may
+ * never have happened; for an agent that changes ad spend, "did this run?" is
+ * not a question to answer with a green check on a guess.
+ */
+export type RunStepStatus =
+	| "pending"
+	| "running"
+	| "completed"
+	| "failed"
+	| "interrupted";
+
+/**
+ * How the run ended, as published by the server in
+ * `Message.metadata.turn_outcome`.
+ *
+ * The renderer used to infer this from `isStreaming` alone, which cannot tell
+ * "everything finished" from "the stream stopped". Now it is told.
+ */
+export interface RunOutcome {
+	outcome: "answered" | "halted" | "error" | "clarification" | "approval";
+	ok: boolean;
+	description?: string;
+	/** Orthogonal to `outcome`: a user can stop a turn that already answered. */
+	stopped?: boolean;
+	degradations?: Array<{
+		kind: string;
+		step?: number;
+		finish_reason?: string;
+		output_tokens?: number;
+		max_tokens?: number;
+		tool_names?: string[];
+	}>;
+}
 
 /**
  * What a tool call DID, as declared server-side.

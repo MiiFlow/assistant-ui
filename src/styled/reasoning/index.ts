@@ -11,4 +11,10 @@ export {
 	stepsWallClockSeconds,
 	INTERNAL_TOOLS,
 } from "./build-steps";
-export type { RunStep, RunStepStatus, RunStepTool, RunStepToolKind } from "./types";
+export type {
+	RunOutcome,
+	RunStep,
+	RunStepStatus,
+	RunStepTool,
+	RunStepToolKind,
+} from "./types";
