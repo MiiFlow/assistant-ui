@@ -47,7 +47,7 @@ export function decodeFrame(text: string, progress: number, frame: number): stri
  * something is being computed, which is truer and buys the same second.
  *
  */
-function DecodingText({ text, className }: { text: string; className?: string }) {
+export function DecodingText({ text, className }: { text: string; className?: string }) {
 	const reducedMotion = usePrefersReducedMotion();
 	const [shown, setShown] = useState(reducedMotion ? text : "");
 

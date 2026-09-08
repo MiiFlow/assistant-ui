@@ -26,6 +26,8 @@ export {
 } from "./token-utils";
 
 // Off-DOM text measurement
+/** @deprecated No longer used by `Message`; the transcript reserves space for a
+ *  live turn from the viewport instead (`MessageList`). Removed next major. */
 export {
   measureMessageHeight,
   clearMeasurementCache,
@@ -34,6 +36,18 @@ export type {
   MeasureOptions,
   MeasuredText,
 } from "../utils/measureMessage";
+
+// Citation markers: one grammar for both clients
+export { CITATION_MARKER_RE, stripCitationMarkers } from "../utils/citations";
+
+// Commit coalescing for streamed updates (shared with the web dashboard)
+export {
+  createCommitScheduler,
+  createManualScheduler,
+  scheduleAnimationFrame,
+  scheduleSync,
+} from "./frame-scheduler";
+export type { CommitScheduler, ScheduleFn } from "./frame-scheduler";
 
 // Tool-frame → chunk correlation (shared with the web dashboard's reducers)
 export { findToolChunkIndex } from "./tool-chunk-matching";

@@ -1,8 +1,8 @@
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import * as react from 'react';
 import { ReactNode } from 'react';
-import { C as ChatMessage, P as ParticipantRole } from '../message-C3YAZPnZ.js';
-import { g as VisualizationActionEvent } from '../streaming-BfLEgW5u.js';
+import { C as ChatMessage, P as ParticipantRole } from '../message-CZCTXL_Y.js';
+import { g as VisualizationActionEvent } from '../streaming-BHoElBGX.js';
 
 interface ChatContextValue {
     /** List of messages in the conversation */
@@ -40,6 +40,26 @@ interface ChatContextValue {
     isDarkSurface: boolean;
 }
 declare const ChatContext: react.Context<ChatContextValue | null>;
+/**
+ * The subset of the chat context a RENDERER needs: how to draw a chip, which
+ * code theme to use, what to do when a visualization is acted on.
+ *
+ * Kept as a separate context because `ChatContextValue` carries `messages`,
+ * which changes on every streamed token. A message body that read the chip
+ * resolver from there re-rendered on every delta of every OTHER message in
+ * the transcript. This value changes only when the host reconfigures the
+ * surface, so bodies that read from it stay memoised through a stream.
+ */
+interface ChatRenderContextValue {
+    viewerRole: ParticipantRole;
+    onVisualizationAction?: (event: VisualizationActionEvent) => void;
+    resolveCommandToken?: (id: string, kind: string) => {
+        label?: string;
+        tag?: ReactNode;
+    } | undefined;
+    isDarkSurface: boolean;
+}
+declare const ChatRenderContext: react.Context<ChatRenderContextValue | null>;
 interface ChatProviderProps {
     children: ReactNode;
     messages: ChatMessage[];
@@ -60,4 +80,4 @@ interface ChatProviderProps {
 declare function ChatProvider({ children, messages, isStreaming, streamingMessageId, viewerRole, onSendMessage, onStopStreaming, onRetryLastMessage, customData, onVisualizationAction, resolveCommandToken, isDarkSurface, }: ChatProviderProps): react_jsx_runtime.JSX.Element;
 declare function useChatContext(): ChatContextValue;
 
-export { ChatContext, type ChatContextValue, ChatProvider, type ChatProviderProps, useChatContext };
+export { ChatContext, type ChatContextValue, ChatProvider, type ChatProviderProps, ChatRenderContext, type ChatRenderContextValue, useChatContext };

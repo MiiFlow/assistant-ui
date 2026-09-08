@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 import { useScrollLock } from "../../hooks/use-scroll-lock";
 import type { StreamingChunk } from "../../types";
 import type { RunStep } from "./types";
 import { injectBeamerKeyframes } from "../../utils/beamer";
 import { cn } from "../../utils/cn";
+import { DecodingText } from "../ThinkingIndicator";
 import { EASE, MONO_STACK, formatDuration, formatElapsed, ink } from "./atoms";
 import { buildRunSteps, stepsWallClockSeconds } from "./build-steps";
 import { StepBlock } from "./StepBlock";
@@ -28,12 +29,53 @@ const STEP_GAP = 9;
  *  reveal has to land well inside the time it takes to look down the list. */
 const REVEAL_STAGGER_MS = 26;
 const REVEAL_STAGGER_CAP_MS = 220;
-/** How long the completion collapse runs. Also the scroll-lock duration. */
+/** How long a fold runs. Also the scroll-lock duration. */
 const COLLAPSE_MS = 280;
+/** The header line's height, constant across every phase so the row above
+ *  the answer never changes size as the run moves from waiting to working to
+ *  done. */
+const HEADER_MIN_HEIGHT = 26;
+
+/**
+ * Which face the panel shows.
+ *
+ * - `waiting`: the run has started and produced nothing yet — one status line.
+ * - `live-open`: steps are arriving and the answer has not begun — the last
+ *   few steps are on screen, newest at full strength.
+ * - `live-collapsed`: the answer is streaming — the body is folded so nothing
+ *   above the text changes height while it types; the header keeps counting.
+ * - `done`: the run ended — one "Thought for …" line, re-openable.
+ * - `hidden`: the answer is streaming and there was never a step. Nothing is
+ *   drawn — the finished row will have nothing to draw either, and a header
+ *   that showed here and vanished at completion would move the text.
+ */
+export type ReasoningPhase = "waiting" | "live-open" | "live-collapsed" | "done" | "hidden";
+
+export function resolveReasoningPhase({
+	isStreaming,
+	answerStarted,
+	stepCount,
+}: {
+	isStreaming: boolean;
+	answerStarted: boolean;
+	stepCount: number;
+}): ReasoningPhase {
+	if (!isStreaming) return "done";
+	if (answerStarted) return stepCount === 0 ? "hidden" : "live-collapsed";
+	if (stepCount === 0) return "waiting";
+	return "live-open";
+}
 
 export interface ReasoningStreamProps {
 	/** Whether the run is still producing steps. */
 	isStreaming?: boolean;
+	/** The answer body has begun. The host derives it from the message text;
+	 *  from this moment the step list folds so it stops pushing the text. */
+	answerStarted?: boolean;
+	/** Status line for the pre-step window ("Getting started…"). */
+	waitingLabel?: string | null;
+	/** Brand mark for the pre-step window, supplied by the host. */
+	waitingMark?: ReactNode;
 	/** The turn's reasoning chunks, live or replayed from the durable trace. */
 	chunks?: StreamingChunk[];
 	/** The steps already built from `chunks`. `Message` builds them once to
@@ -51,13 +93,12 @@ export interface ReasoningStreamProps {
 	/**
 	 * The run finished moments ago, in a DIFFERENT component instance.
 	 *
-	 * Needed only when the host renders the completed message as a separate
-	 * element from the streaming one, so this instance never sees the
-	 * streaming→complete edge. With a stable key the edge is observed here and
-	 * the fold runs on its own; this prop then adds nothing.
+	 * @deprecated Only needed by a host that remounts the completed message under
+	 * a new key. With a stable key the streaming→complete edge is observed here
+	 * and the fold runs on its own. Kept working for one minor; removed next major.
 	 */
 	justCompleted?: boolean;
-	/** Controlled disclosure of the finished turn's full trace. */
+	/** Controlled disclosure of the full trace. */
 	expanded?: boolean;
 	onExpandedChange?: (expanded: boolean) => void;
 	className?: string;
@@ -89,15 +130,19 @@ function useElapsed(isStreaming: boolean, startedAt?: number): number {
 /**
  * The agent's work, rendered as steps in the transcript.
  *
- * Live, it is a rolling window of the last few steps — the newest at full
- * strength, older ones fading out above. A long run therefore costs a fixed
- * amount of vertical space instead of pushing the composer off the screen.
- *
- * Finished, it collapses to one line: `Thought for 2:14 · 6 steps`, which
- * re-opens to the full trace on click.
+ * One layout for every phase: a header line of constant height, then a body
+ * that is a CSS grid row animating between `0fr` and `1fr`. Live and before
+ * the answer, the body is a rolling window of the last few steps — the newest
+ * at full strength, older ones fading out above, so a long run costs a fixed
+ * amount of vertical space. The moment the answer begins the body folds: from
+ * then on nothing above the streaming text changes height. Finished, the
+ * header reads `Thought for 2:14 · 6 steps` and re-opens to the full trace.
  */
 export function ReasoningStream({
 	isStreaming = false,
+	answerStarted = false,
+	waitingLabel,
+	waitingMark,
 	chunks,
 	steps: stepsProp,
 	executionTime,
@@ -118,25 +163,13 @@ export function ReasoningStream({
 		[stepsProp, chunks, isStreaming],
 	);
 	const elapsed = useElapsed(isStreaming, streamStartedAt);
+	const phase = resolveReasoningPhase({ isStreaming, answerStarted, stepCount: steps.length });
 
-	// Expanding a LIVE run turns the step list into its own scroll box, and new
-	// steps land at the bottom of it — outside the visible area, where the outer
-	// transcript's auto-scroll cannot reach them. Follow the newest step here,
-	// but only while the reader is already at the bottom: someone who scrolled
-	// up to re-read an earlier step must not be yanked back down.
 	// Highest step count this instance has rendered. Steps at or below it were
 	// already on screen, so only what arrives ABOVE it animates in — a replayed
 	// trace, and a re-opened one, must not perform an entrance for work that
 	// finished minutes ago.
 	const seenStepsRef = useRef(0);
-	const liveScrollRef = useRef<HTMLDivElement>(null);
-	useEffect(() => {
-		const el = liveScrollRef.current;
-		if (!el) return;
-		const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-		if (distanceFromBottom > 48) return;
-		el.scrollTop = el.scrollHeight;
-	}, [steps.length]);
 
 	// One disclosure flag for both phases: "show all steps" during the run and
 	// "the trace is open" after it. Sharing them is what lets a trace the user
@@ -155,52 +188,59 @@ export function ReasoningStream({
 		[lockScroll, onExpandedChange],
 	);
 
-	// The collapse animation.
+	// The fold.
 	//
-	// The fold needs the trace painted once at full height and then flipped to
-	// zero on the next frame, so the browser has two states to interpolate
-	// between. Two rAFs because a single one can still run before the first
-	// paint. It is requested from two places:
+	// It needs the window painted once at full height and then flipped to zero
+	// on the next frame, so the browser has two states to interpolate between.
+	// Two rAFs because a single one can still run before the first paint. It is
+	// requested on two edges, both derived during render (state set from a prop
+	// comparison — React's "adjust state when a prop changes" pattern) rather
+	// than in an effect, which would run after the snapped-shut frame painted:
 	//
-	// - the streaming→complete edge observed on THIS instance, which is what a
-	//   host with stable message keys produces (`useMiiflowChat` since 0.17);
-	// - `justCompleted`, from a host that still remounts the completed message,
-	//   where the edge is invisible from in here and arrives on a fresh mount.
+	// - `live-open` → `live-collapsed` or `done` observed on THIS instance;
+	// - `justCompleted`, from a host that still remounts the completed message.
 	//
-	// The edge is derived during render — state set from a prop comparison,
-	// React's documented "adjust state when a prop changes" pattern — rather
-	// than in an effect: an effect runs after commit, and the frame it would
-	// fix (the trace already snapped shut) has been painted by then.
+	// What folds is the window that was on screen, captured at the request:
+	// painting the full trace open for one frame — the previous behaviour — was
+	// a height spike of the whole run's steps right above the answer.
 	//
 	// A fold is a one-shot REQUEST, counted, not a standing condition: the
-	// reader collapsing a finished trace by hand must get the plain CSS
-	// transition, not a replay of the completion fold. Nothing to fold when
-	// the trace is open, and reduced motion lands on the summary directly.
+	// reader collapsing a finished trace by hand gets the plain CSS transition,
+	// not a replay of the completion fold. Nothing to fold when the trace is
+	// open, and reduced motion lands on the summary directly.
 	const foldOnMount = justCompleted && !reducedMotion && !isExpanded;
+	const foldStepsRef = useRef<RunStep[]>(foldOnMount ? steps.slice(-WINDOW_SIZE) : []);
 	const [foldRequest, setFoldRequest] = useState(foldOnMount ? 1 : 0);
-	const [phase, setPhase] = useState<"idle" | "open" | "closing">(
+	const [foldPhase, setFoldPhase] = useState<"idle" | "open" | "closing">(
 		foldOnMount ? "open" : "idle",
 	);
-	const [prevStreaming, setPrevStreaming] = useState(isStreaming);
+	const [prevPhase, setPrevPhase] = useState(phase);
 	const [prevJustCompleted, setPrevJustCompleted] = useState(justCompleted);
-	if (prevStreaming !== isStreaming || prevJustCompleted !== justCompleted) {
-		const edge =
-			(prevStreaming && !isStreaming) || (!prevJustCompleted && justCompleted);
-		setPrevStreaming(isStreaming);
+	if (prevPhase !== phase || prevJustCompleted !== justCompleted) {
+		const closingEdge =
+			prevPhase === "live-open" && (phase === "live-collapsed" || phase === "done");
+		const remountEdge = !prevJustCompleted && justCompleted;
+		setPrevPhase(phase);
 		setPrevJustCompleted(justCompleted);
-		if (edge && !reducedMotion && !isExpanded) {
+		if ((closingEdge || remountEdge) && !reducedMotion && !isExpanded) {
+			foldStepsRef.current = steps.slice(-WINDOW_SIZE);
 			setFoldRequest((n) => n + 1);
-			setPhase("open");
+			setFoldPhase("open");
 		}
 	}
 	useEffect(() => {
 		if (foldRequest === 0) return;
-		setPhase("open");
+		setFoldPhase("open");
+		// Deliberately NOT scroll-locked. `useScrollLock` hides the scrollbar
+		// for the duration, and a layout scrollbar vanishing changes the
+		// column width and rewraps every line in the transcript — a bigger
+		// shift than the fold. An anchored host reserves the fold's height in
+		// the row (`MessageList`'s turn fill); a following host follows.
 		let inner = 0;
 		const outer = requestAnimationFrame(() => {
-			inner = requestAnimationFrame(() => setPhase("closing"));
+			inner = requestAnimationFrame(() => setFoldPhase("closing"));
 		});
-		const done = setTimeout(() => setPhase("idle"), COLLAPSE_MS + 48);
+		const done = setTimeout(() => setFoldPhase("idle"), COLLAPSE_MS + 48);
 		return () => {
 			cancelAnimationFrame(outer);
 			cancelAnimationFrame(inner);
@@ -208,12 +248,25 @@ export function ReasoningStream({
 		};
 	}, [foldRequest]);
 
+	// Expanding a LIVE run turns the step list into its own scroll box, and new
+	// steps land at the bottom of it. Follow the newest step here, but only
+	// while the reader is already at the bottom: someone who scrolled up to
+	// re-read an earlier step must not be yanked back down.
+	const liveScrollRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		const el = liveScrollRef.current;
+		if (!el) return;
+		const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+		if (distanceFromBottom > 48) return;
+		el.scrollTop = el.scrollHeight;
+	}, [steps.length]);
+
 	// Commit after the render that used it: the value read above must be the
 	// count from the PREVIOUS pass, or every step would look already-seen.
 	const previouslySeen = seenStepsRef.current;
 	seenStepsRef.current = Math.max(seenStepsRef.current, steps.length);
 
-	if (steps.length === 0) return null;
+	if (steps.length === 0 && (!isStreaming || phase === "hidden")) return null;
 
 	const totalSeconds =
 		executionTime && executionTime > 0 ? executionTime : stepsWallClockSeconds(steps);
@@ -236,86 +289,62 @@ export function ReasoningStream({
 	const failedCount = allTools.filter((t) => t.status === "failed").length;
 	const interruptedCount = allTools.filter((t) => t.status === "interrupted").length;
 
-	// ---------------------------------------------------------------- streaming
-	if (isStreaming) {
-		const windowed = isExpanded ? steps : steps.slice(-WINDOW_SIZE);
-		const hiddenCount = steps.length - windowed.length;
-		// Fade only applies to the rolling window; the full list is a document.
-		const opacityFor = (index: number) => {
-			if (isExpanded) return 1;
-			const fromEnd = windowed.length - 1 - index;
-			return WINDOW_OPACITY[Math.max(0, WINDOW_OPACITY.length - 1 - fromEnd)] ?? 1;
-		};
+	// ------------------------------------------------------------------ body
+	const folding = foldPhase !== "idle" && !isExpanded;
+	const windowed = phase === "live-open" && !isExpanded;
+	const bodyOpen = isExpanded || windowed || foldPhase === "open";
+	// Stagger only when the READER opened a finished trace. During the fold the
+	// body is open purely so it has somewhere to fold from, and steps animating
+	// in while it folds away is two motions fighting.
+	const revealing = isExpanded && foldPhase === "idle" && phase === "done";
 
-		return (
-			<div ref={containerRef} className={cn("max-w-full", className)}>
-				<div
-					ref={liveScrollRef}
-					style={{
-						position: "relative",
-						display: "flex",
-						flexDirection: "column",
-						gap: STEP_GAP,
-						...(isExpanded
-							? {}
-							: hiddenCount > 0
-								? {
-										// Dissolve the outgoing step into the top edge
-										// rather than clipping it on a hard line.
-										maskImage: "linear-gradient(to bottom, transparent 0%, black 26%)",
-										WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 26%)",
-									}
-								: {}),
-					}}
-				>
-					{windowed.map((step, index) => (
-						<div
-							key={step.id}
-							style={{
-								opacity: opacityFor(index),
-								transition: reducedMotion ? undefined : `opacity 520ms ${EASE}`,
-							}}
-						>
-							<StepBlock
-								step={step}
-								dimmed={!isExpanded && opacityFor(index) < 1}
-								entering={isStreaming && step.sequence >= previouslySeen}
-							/>
-						</div>
-					))}
-				</div>
+	let bodySteps: RunStep[];
+	if (isExpanded) bodySteps = steps;
+	else if (windowed) bodySteps = steps.slice(-WINDOW_SIZE);
+	else if (folding) bodySteps = foldStepsRef.current;
+	// Finished and closed: the trace stays in the DOM at zero height, so
+	// re-opening it costs no re-render and the caret has something to reveal.
+	else if (phase === "done") bodySteps = steps;
+	else bodySteps = [];
 
-				<LiveFooter
-					elapsed={elapsed}
-					totalSteps={steps.length}
-					showingAll={isExpanded}
-					canToggle={steps.length > WINDOW_SIZE}
-					reducedMotion={reducedMotion}
-					onToggle={() => {
-						setExpanded(!isExpanded);
-					}}
-				/>
-			</div>
-		);
-	}
+	const hiddenCount = windowed ? steps.length - bodySteps.length : 0;
+	// Fade only applies to the rolling window; the full list is a document.
+	const opacityFor = (index: number) => {
+		if (!windowed) return 1;
+		const fromEnd = bodySteps.length - 1 - index;
+		return WINDOW_OPACITY[Math.max(0, WINDOW_OPACITY.length - 1 - fromEnd)] ?? 1;
+	};
 
-	// ---------------------------------------------------------------- completed
-	const bodyOpen = isExpanded || phase === "open";
-	const revealing = isExpanded && phase === "idle";
+	const canToggle =
+		phase === "live-collapsed" ? steps.length > 0 : steps.length > WINDOW_SIZE;
 
 	return (
 		<div ref={containerRef} className={cn("max-w-full", className)}>
-			<SummaryLine
-				seconds={totalSeconds}
-				stepCount={steps.length}
-				writeCount={writeCount}
-				agentCount={agentCount}
-				failedCount={failedCount}
-				interruptedCount={interruptedCount}
-				open={isExpanded}
-				reducedMotion={reducedMotion}
-				onToggle={() => setExpanded(!isExpanded)}
-			/>
+			{phase === "waiting" ? (
+				<WaitingLine label={waitingLabel} mark={waitingMark} reducedMotion={reducedMotion} />
+			) : phase === "done" ? (
+				<SummaryLine
+					seconds={totalSeconds}
+					stepCount={steps.length}
+					writeCount={writeCount}
+					agentCount={agentCount}
+					failedCount={failedCount}
+					interruptedCount={interruptedCount}
+					open={isExpanded}
+					reducedMotion={reducedMotion}
+					onToggle={() => setExpanded(!isExpanded)}
+				/>
+			) : (
+				<LiveLine
+					elapsed={elapsed}
+					totalSteps={steps.length}
+					showingAll={isExpanded}
+					collapsed={phase === "live-collapsed"}
+					canToggle={canToggle}
+					reducedMotion={reducedMotion}
+					onToggle={() => setExpanded(!isExpanded)}
+				/>
+			)}
 
 			<div
 				style={{
@@ -333,28 +362,98 @@ export function ReasoningStream({
 			>
 				<div style={{ overflow: "hidden", minHeight: 0 }}>
 					<div
+						ref={liveScrollRef}
 						style={{
+							position: "relative",
 							display: "flex",
 							flexDirection: "column",
 							gap: STEP_GAP,
 							paddingTop: 9,
+							...(hiddenCount > 0
+								? {
+										// Dissolve the outgoing step into the top edge
+										// rather than clipping it on a hard line.
+										maskImage: "linear-gradient(to bottom, transparent 0%, black 26%)",
+										WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 26%)",
+									}
+								: {}),
 						}}
 					>
-						{steps.map((step, i) => (
-							<StepBlock
+						{bodySteps.map((step, i) => (
+							<div
 								key={step.id}
-								step={step}
-								// Stagger only when the READER opened this. During the
-								// auto-collapse the body is mounted open purely so it has
-								// somewhere to fold from, and steps animating in while it
-								// folds away is two motions fighting.
-								entering={revealing}
-								enterDelayMs={Math.min(i * REVEAL_STAGGER_MS, REVEAL_STAGGER_CAP_MS)}
-							/>
+								style={{
+									opacity: opacityFor(i),
+									transition: reducedMotion ? undefined : `opacity 520ms ${EASE}`,
+								}}
+							>
+								<StepBlock
+									step={step}
+									dimmed={windowed && opacityFor(i) < 1}
+									entering={
+										revealing || (windowed && isStreaming && step.sequence >= previouslySeen)
+									}
+									enterDelayMs={
+										revealing ? Math.min(i * REVEAL_STAGGER_MS, REVEAL_STAGGER_CAP_MS) : 0
+									}
+								/>
+							</div>
 						))}
 					</div>
 				</div>
 			</div>
+		</div>
+	);
+}
+
+/** Shared chrome for the three header variants: same height, same type. */
+const HEADER_STYLE = {
+	display: "inline-flex",
+	alignItems: "center",
+	gap: 7,
+	minHeight: HEADER_MIN_HEIGHT,
+	padding: "4px 9px 4px 8px",
+	marginLeft: -8,
+	borderRadius: 6,
+	fontSize: 12.5,
+	letterSpacing: "-0.004em",
+} as const;
+
+/**
+ * The pre-step line: the run has started and there is genuinely nothing to
+ * report yet. The label resolves out of noise so the row reads as something
+ * being computed rather than as dead air.
+ */
+function WaitingLine({
+	label,
+	mark,
+	reducedMotion,
+}: {
+	label?: string | null;
+	mark?: ReactNode;
+	reducedMotion: boolean;
+}) {
+	return (
+		<div style={{ ...HEADER_STYLE, color: ink(52) }} role="status">
+			<span
+				aria-hidden
+				style={{
+					display: "inline-flex",
+					alignItems: "center",
+					justifyContent: "center",
+					width: 14,
+					height: 14,
+					flexShrink: 0,
+					animation: reducedMotion || !mark ? undefined : `mf-mark-breathe 2.6s ${EASE} infinite`,
+				}}
+			>
+				{mark ?? <ActivityMeter reducedMotion={reducedMotion} />}
+			</span>
+			{label ? (
+				<DecodingText text={label} className="text-[var(--chat-text-subtle)]" />
+			) : (
+				<span style={{ color: ink(52), fontWeight: 500 }}>Working</span>
+			)}
 		</div>
 	);
 }
@@ -403,18 +502,12 @@ function SummaryLine({
 			onMouseLeave={() => setHover(false)}
 			aria-expanded={open}
 			style={{
-				display: "inline-flex",
-				alignItems: "center",
-				gap: 7,
-				padding: "4px 9px 4px 8px",
-				marginLeft: -8,
-				borderRadius: 6,
+				...HEADER_STYLE,
 				background: hover ? ink(4) : "transparent",
 				border: "none",
 				cursor: "pointer",
 				font: "inherit",
-				fontSize: 12.5,
-				letterSpacing: "-0.004em",
+				fontSize: HEADER_STYLE.fontSize,
 				transition: reducedMotion ? undefined : `background 180ms ${EASE}`,
 			}}
 		>
@@ -520,10 +613,11 @@ function SummaryLine({
 }
 
 /** Live status line: what is happening, for how long, and a way to see it all. */
-function LiveFooter({
+function LiveLine({
 	elapsed,
 	totalSteps,
 	showingAll,
+	collapsed,
 	canToggle,
 	reducedMotion,
 	onToggle,
@@ -531,21 +625,19 @@ function LiveFooter({
 	elapsed: number;
 	totalSteps: number;
 	showingAll: boolean;
+	/** The answer has started and the steps are folded away. */
+	collapsed: boolean;
 	canToggle: boolean;
 	reducedMotion: boolean;
 	onToggle: () => void;
 }) {
+	const toggleLabel = showingAll
+		? "Show less"
+		: collapsed
+			? `Show ${totalSteps} ${totalSteps === 1 ? "step" : "steps"}`
+			: `Show all ${totalSteps} steps`;
 	return (
-		<div
-			style={{
-				display: "flex",
-				alignItems: "center",
-				gap: 8,
-				marginTop: 8,
-				fontSize: 11.5,
-				color: ink(42),
-			}}
-		>
+		<div style={{ ...HEADER_STYLE, color: ink(42) }}>
 			<span style={{ display: "inline-flex", color: ink(52) }}>
 				<ActivityMeter reducedMotion={reducedMotion} />
 			</span>
@@ -569,6 +661,7 @@ function LiveFooter({
 					type="button"
 					className="mf-focus"
 					onClick={onToggle}
+					aria-expanded={showingAll}
 					style={{
 						display: "inline-flex",
 						alignItems: "center",
@@ -582,7 +675,7 @@ function LiveFooter({
 						color: ink(42),
 					}}
 				>
-					{showingAll ? "Show less" : `Show all ${totalSteps} steps`}
+					{toggleLabel}
 					<span
 						aria-hidden
 						style={{

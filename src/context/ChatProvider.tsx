@@ -45,6 +45,28 @@ export interface ChatContextValue {
 
 const ChatContext = createContext<ChatContextValue | null>(null);
 
+/**
+ * The subset of the chat context a RENDERER needs: how to draw a chip, which
+ * code theme to use, what to do when a visualization is acted on.
+ *
+ * Kept as a separate context because `ChatContextValue` carries `messages`,
+ * which changes on every streamed token. A message body that read the chip
+ * resolver from there re-rendered on every delta of every OTHER message in
+ * the transcript. This value changes only when the host reconfigures the
+ * surface, so bodies that read from it stay memoised through a stream.
+ */
+export interface ChatRenderContextValue {
+  viewerRole: ParticipantRole;
+  onVisualizationAction?: (event: VisualizationActionEvent) => void;
+  resolveCommandToken?: (
+    id: string,
+    kind: string,
+  ) => { label?: string; tag?: ReactNode } | undefined;
+  isDarkSurface: boolean;
+}
+
+const ChatRenderContext = createContext<ChatRenderContextValue | null>(null);
+
 export interface ChatProviderProps {
   children: ReactNode;
   messages: ChatMessage[];
@@ -113,7 +135,16 @@ export function ChatProvider({
     ]
   );
 
-  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
+  const renderValue = useMemo<ChatRenderContextValue>(
+    () => ({ viewerRole, onVisualizationAction, resolveCommandToken, isDarkSurface }),
+    [viewerRole, onVisualizationAction, resolveCommandToken, isDarkSurface]
+  );
+
+  return (
+    <ChatContext.Provider value={value}>
+      <ChatRenderContext.Provider value={renderValue}>{children}</ChatRenderContext.Provider>
+    </ChatContext.Provider>
+  );
 }
 
 export function useChatContext() {
@@ -124,4 +155,4 @@ export function useChatContext() {
   return context;
 }
 
-export { ChatContext };
+export { ChatContext, ChatRenderContext };

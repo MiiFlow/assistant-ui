@@ -18,6 +18,8 @@ import type { BrandingData } from "../types/branding";
 import { deliveredMedia, useMediaDelivery } from "./use-media-delivery";
 import { normalizeMedia, upsertMedia } from "../utils/media";
 import { findToolChunkIndex } from "./tool-chunk-matching";
+import { createCommitScheduler, type ScheduleFn } from "./frame-scheduler";
+import { stripCitationMarkers } from "../utils/citations";
 import type {
   MiiflowChatConfig,
   MiiflowChatResult,
@@ -271,7 +273,8 @@ interface StreamParseCallbacks {
 export async function parseSSEStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   ids: StreamMessageIds,
-  callbacks: StreamParseCallbacks
+  callbacks: StreamParseCallbacks,
+  options: { schedule?: ScheduleFn } = {}
 ): Promise<{ assistantMsgId: string | null; assistantContent: string }> {
   const { optimisticId, assistantMsgId } = ids;
   const decoder = new TextDecoder();
@@ -375,8 +378,10 @@ export async function parseSSEStream(
     return display;
   };
 
-  const updateStreamingMessage = () => {
-    messageTouched = true;
+  // One `onMessageUpdate` per animation frame, however many frames arrived
+  // in it. The accumulators above are the source of truth; a commit is a
+  // snapshot of them, so frame order can never be inverted by batching.
+  const commitStreamingMessage = () => {
     callbacks.onMessageUpdate({
       id: assistantMsgId,
       textContent: assistantContent,
@@ -389,583 +394,601 @@ export async function parseSSEStream(
       statusText: undefined,
     });
   };
+  const scheduler = createCommitScheduler(commitStreamingMessage, options.schedule);
+  const updateStreamingMessage = () => {
+    messageTouched = true;
+    scheduler.request();
+  };
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    const rawChunk = decoder.decode(value, { stream: true });
-    const text = lineBuffer + rawChunk;
-    const lines = text.split("\n");
+      const rawChunk = decoder.decode(value, { stream: true });
+      const text = lineBuffer + rawChunk;
+      const lines = text.split("\n");
 
-    if (!rawChunk.endsWith("\n")) {
-      lineBuffer = lines.pop() || "";
-    } else {
-      lineBuffer = "";
-    }
+      if (!rawChunk.endsWith("\n")) {
+        lineBuffer = lines.pop() || "";
+      } else {
+        lineBuffer = "";
+      }
 
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
 
-      const data = line.slice(6);
-      if (data === "[DONE]") break;
+        const data = line.slice(6);
+        if (data === "[DONE]") break;
 
-      try {
-        const parsed = JSON.parse(data);
-        frameTimeMs = readFrameTime(parsed);
+        try {
+          const parsed = JSON.parse(data);
+          frameTimeMs = readFrameTime(parsed);
 
-        if (parsed.type === "assistant_chunk") {
-          // Setup status frame: carries no content — surface the text and
-          // skip all accumulation (an empty chunk must not create or touch
-          // the streaming message).
-          if (parsed.is_status_update) {
-            callbacks.onStatusUpdate?.(parsed.status_text || null);
-            continue;
-          }
-
-          // Server retracted optimistically streamed answer text: it was
-          // preamble narration before a tool call (or a max_tokens
-          // truncation). Clear the answer buffer; the text re-arrives as a
-          // thinking chunk. The is_tool_planned clear below stays as a
-          // backstop for older servers that don't emit retractions.
-          if (parsed.is_answer_retraction) {
-            assistantContent = "";
-            updateStreamingMessage();
-            continue;
-          }
-
-          // A tool_use block started streaming: show the pending tool chip
-          // immediately — argument generation can run tens of seconds with no
-          // other event; the is_tool_planned frame that follows once args are
-          // complete merges into this chip by tool_call_id.
-          if (parsed.is_tool_streaming) {
-            if (currentChunkContent || currentChunkType !== "answer") {
-              finalizeChunk();
-              currentChunkType = "answer";
-            }
-            if (findToolChunkIndex(chunks, parsed) < 0) {
-              chunks.push({
-                type: "tool",
-                content: "",
-                toolName: parsed.tool_name,
-                toolCallId: parsed.tool_call_id,
-                status: "planned",
-                subtaskId: parsed.subtask_id,
-                toolWrites: parsed.tool_writes,
-                // A tool's clock starts when its block opens — argument
-                // generation is real waiting the user is watching.
-                startedAt: frameTimeMs,
-              });
-            }
-            updateStreamingMessage();
-            continue;
-          }
-
-          // Handle tool planned
-          if (parsed.is_tool_planned) {
-            if (currentChunkContent || currentChunkType !== "answer") {
-              finalizeChunk();
-              currentChunkType = "answer";
+          if (parsed.type === "assistant_chunk") {
+            // Setup status frame: carries no content — surface the text and
+            // skip all accumulation (an empty chunk must not create or touch
+            // the streaming message).
+            if (parsed.is_status_update) {
+              scheduler.flushNow();
+              callbacks.onStatusUpdate?.(parsed.status_text || null);
+              continue;
             }
 
-            // Any text the model streamed before this tool call was preamble
-            // narration for the call ("Let me pull X..."), not part of the
-            // final answer. Clear the answer buffer so it doesn't bleed into
-            // — and concatenate with — the actual final-answer text streamed
-            // on the closing turn. The orchestrator can't know mid-stream
-            // whether text is preamble or answer; the tool call announcement
-            // is the earliest reliable signal that everything before it on
-            // this turn was preamble.
-            assistantContent = "";
-
-            // Merge into the chip the is_tool_streaming frame already created.
-            // Only by tool_call_id — the name-based fallback could wrongly
-            // resurrect a COMPLETED chip for a repeated same-name call on
-            // id-less legacy paths, where pushing a fresh chip is correct.
-            const plannedIdx = parsed.tool_call_id
-              ? findToolChunkIndex(chunks, parsed)
-              : -1;
-            if (plannedIdx >= 0) {
-              chunks[plannedIdx] = {
-                ...chunks[plannedIdx],
-                toolDescription:
-                  parsed.tool_description ?? chunks[plannedIdx].toolDescription,
-                status: "planned",
-                // Keep the earlier start from the is_tool_streaming frame.
-                startedAt: chunks[plannedIdx].startedAt ?? frameTimeMs,
-                toolWrites: chunks[plannedIdx].toolWrites ?? parsed.tool_writes,
-              };
-            } else {
-              chunks.push({
-                type: "tool",
-                content: "",
-                toolName: parsed.tool_name,
-                toolCallId: parsed.tool_call_id,
-                toolDescription: parsed.tool_description,
-                status: "planned",
-                subtaskId: parsed.subtask_id,
-                toolWrites: parsed.tool_writes,
-                startedAt: frameTimeMs,
-              });
+            // Server retracted optimistically streamed answer text: it was
+            // preamble narration before a tool call (or a max_tokens
+            // truncation). Clear the answer buffer; the text re-arrives as a
+            // thinking chunk. The is_tool_planned clear below stays as a
+            // backstop for older servers that don't emit retractions.
+            if (parsed.is_answer_retraction) {
+              assistantContent = "";
+              updateStreamingMessage();
+              continue;
             }
-            updateStreamingMessage();
-            continue;
-          }
 
-          // Handle tool executing
-          if (parsed.is_tool_executing) {
-            const idx = findToolChunkIndex(chunks, parsed);
-            if (idx >= 0) {
-              chunks[idx].status = "executing";
-              chunks[idx].startedAt ??= frameTimeMs;
-              chunks[idx].toolWrites ??= parsed.tool_writes;
-            }
-            updateStreamingMessage();
-            continue;
-          }
-
-          // Handle observation
-          if (parsed.is_observation) {
-            const idx = findToolChunkIndex(chunks, parsed);
-            if (idx >= 0) {
-              chunks[idx].status = "completed";
-              // The observation IS the tool's completion — the only frame
-              // that closes a tool's clock.
-              chunks[idx].endedAt = frameTimeMs;
-              if (parsed.success === false) chunks[idx].success = false;
-            }
-            updateStreamingMessage();
-            continue;
-          }
-
-          // Handle suggested actions
-          if (parsed.suggested_actions) {
-            suggestedActions = parsed.suggested_actions.map(
-              (a: { action: string; label: string }) => ({
-                id: a.action,
-                label: a.label,
-                value: a.action,
-              })
-            );
-            updateStreamingMessage();
-            continue;
-          }
-
-          if (parsed.tool_args) currentToolArgs = parsed.tool_args;
-          if (parsed.progress) currentProgress = parsed.progress;
-
-          // Determine chunk type. Subtask/replan/plan-complete branches that
-          // existed for the legacy Plan & Execute orchestrator were removed in
-          // the unified-ReAct migration; `is_planning` now means
-          // `enter_plan_mode`/`exit_plan_mode` and emits a plain text chunk.
-          let newChunkType: ChunkType = "answer";
-          if (parsed.is_thinking) {
-            newChunkType = "thinking";
-          } else if (parsed.is_planning) {
-            newChunkType = "planning";
-          } else if (parsed.is_progress_update) {
-            newChunkType = "progress";
-          }
-
-          if (newChunkType !== currentChunkType) {
-            finalizeChunk();
-            currentChunkType = newChunkType;
-          }
-
-          // First frame of this chunk opens its clock; finalizeChunk closes it.
-          currentChunkStartedAt ??= frameTimeMs;
-
-          if (parsed.tool_name) currentToolName = parsed.tool_name;
-          if (parsed.success !== undefined) currentSuccess = parsed.success;
-          if (parsed.subtask_id !== undefined)
-            currentSubtaskId = parsed.subtask_id;
-
-          // Accumulate content
-          if (newChunkType === "thinking") {
-            currentChunkContent += parsed.chunk || "";
-            const match = currentChunkContent.match(
-              /"thought"\s*:\s*"((?:[^"\\]|\\.)*)"/
-            );
-            if (match) {
-              currentChunkContent = match[1]
-                .replace(/\\n/g, "\n")
-                .replace(/\\"/g, '"')
-                .replace(/\\t/g, "\t")
-                .replace(/\\\\/g, "\\");
-            }
-          } else if (newChunkType === "answer") {
-            const chunkTrimmed = parsed.chunk?.trim() || "";
-            const accumulatedTrimmed = assistantContent.trim();
-            if (
-              !(
-                chunkTrimmed &&
-                accumulatedTrimmed &&
-                chunkTrimmed === accumulatedTrimmed
-              )
-            ) {
-              assistantContent += parsed.chunk || "";
-            }
-          } else {
-            currentChunkContent += parsed.chunk || "";
-          }
-
-          // The server names the persisted user message on every frame; record
-          // it once. It is reported as `serverId`, never written over the
-          // optimistic `id` — that id is the row's React key.
-          if (parsed.previous_message_id && !userMessagePersisted) {
-            userMessagePersisted = true;
-            callbacks.onUserMessagePersisted(
-              optimisticId,
-              parsed.previous_message_id
-            );
-          }
-
-          updateStreamingMessage();
-        } else if (parsed.type === "subagent_dispatch") {
-          // Sub-assistant dispatch streaming. The backend fires four sub-events
-          // per dispatched child (start, progress*, complete | failed). For a
-          // depth-1 dispatch, the path is just [subagent_id] and the chunk
-          // lives at the top of `chunks[]`. For nested dispatches, the path
-          // is [root_child_id, ..., this_id] — we walk it to place the chunk
-          // inside the correct ancestor's `nestedChunks` array.
-          const subEvent: string = parsed.sub_event || "";
-          const path: string[] =
-            Array.isArray(parsed.subagent_path) && parsed.subagent_path.length > 0
-              ? (parsed.subagent_path as string[])
-              : [parsed.subagent_id || ""];
-
-          // Walk path. Each step either finds the existing chunk for that
-          // segment's id, or (only for the final segment on a "start" event)
-          // creates a new one.
-          let container: AccumulatedChunk[] = chunks;
-          let targetChunk: AccumulatedChunk | undefined;
-          let pathBroken = false;
-
-          for (let i = 0; i < path.length; i++) {
-            const segmentId = path[i];
-            const idx = container.findIndex(
-              (c) =>
-                c.type === "subagent" &&
-                c.subagentData?.subagentId === segmentId
-            );
-
-            if (i === path.length - 1) {
-              // Final segment: this is the target.
-              if (idx >= 0) {
-                targetChunk = container[idx];
-              } else if (subEvent === "start") {
-                const newChunk: AccumulatedChunk = {
-                  type: "subagent",
-                  content: "",
-                  subagentData: {
-                    subagentId: segmentId,
-                    subagentType: parsed.handle || "",
-                    status: "running",
-                    result: "",
-                    nestedChunks: [],
-                    // Which parent step gathered this child. Specialists sharing
-                    // it ran concurrently and render as one group.
-                    dispatchStep:
-                      typeof parsed.dispatch_step === "number" ? parsed.dispatch_step : undefined,
-                  },
-                };
-                container.push(newChunk);
-                targetChunk = newChunk;
-              } else {
-                // progress/complete/failed for an unknown subagent_id — the
-                // start event was probably dropped. Bail rather than create a
-                // ghost chunk.
-                pathBroken = true;
+            // A tool_use block started streaming: show the pending tool chip
+            // immediately — argument generation can run tens of seconds with no
+            // other event; the is_tool_planned frame that follows once args are
+            // complete merges into this chip by tool_call_id.
+            if (parsed.is_tool_streaming) {
+              if (currentChunkContent || currentChunkType !== "answer") {
+                finalizeChunk();
+                currentChunkType = "answer";
               }
-            } else {
-              // Intermediate segment: must already exist.
-              if (idx < 0) {
-                pathBroken = true;
-                break;
-              }
-              // Descend into the intermediate's nestedChunks.
-              const inner = container[idx].subagentData;
-              if (!inner) {
-                pathBroken = true;
-                break;
-              }
-              container = inner.nestedChunks as AccumulatedChunk[];
-            }
-          }
-
-          if (!pathBroken && targetChunk?.subagentData) {
-            const data = targetChunk.subagentData;
-            if (subEvent === "progress") {
-              const chunk = (parsed.chunk as string) || "";
-              data.result = (data.result || "") + chunk;
-            } else if (subEvent === "complete") {
-              data.status = "completed";
-              if (parsed.result) data.result = parsed.result as string;
-              if (parsed.duration_ms != null)
-                data.durationMs = parsed.duration_ms as number;
-            } else if (subEvent === "failed") {
-              data.status = "failed";
-              if (parsed.error)
-                data.result =
-                  (data.result || "") + `\n\nError: ${parsed.error}`;
-              else if (parsed.result) data.result = parsed.result as string;
-              if (parsed.duration_ms != null)
-                data.durationMs = parsed.duration_ms as number;
-            } else if (subEvent === "thinking") {
-              const delta = (parsed.chunk as string) || "";
-              if (delta) {
-                const nested = data.nestedChunks as AccumulatedChunk[];
-                const last = nested[nested.length - 1];
-                if (last && last.type === "thinking") {
-                  last.content = (last.content || "") + delta;
-                } else {
-                  nested.push({ type: "thinking", content: delta });
-                }
-              }
-            } else if (subEvent === "tool") {
-              const toolName = (parsed.tool_name as string) || "";
-              const toolDescription = parsed.tool_description as string | undefined;
-              const status = (parsed.status as
-                | "planned"
-                | "executing"
-                | "completed") || "planned";
-              const nested = data.nestedChunks as AccumulatedChunk[];
-              let toolIdx = -1;
-              for (let k = nested.length - 1; k >= 0; k--) {
-                if (nested[k].type === "tool" && nested[k].toolName === toolName) {
-                  toolIdx = k;
-                  break;
-                }
-              }
-              if (toolIdx >= 0) {
-                nested[toolIdx] = {
-                  ...nested[toolIdx],
-                  status,
-                  toolDescription:
-                    toolDescription || nested[toolIdx].toolDescription,
-                };
-              } else {
-                nested.push({
+              if (findToolChunkIndex(chunks, parsed) < 0) {
+                chunks.push({
                   type: "tool",
                   content: "",
-                  toolName,
-                  toolDescription,
-                  status,
+                  toolName: parsed.tool_name,
+                  toolCallId: parsed.tool_call_id,
+                  status: "planned",
+                  subtaskId: parsed.subtask_id,
+                  toolWrites: parsed.tool_writes,
+                  // A tool's clock starts when its block opens — argument
+                  // generation is real waiting the user is watching.
+                  startedAt: frameTimeMs,
                 });
               }
-            } else if (subEvent === "observation") {
-              const toolName = (parsed.tool_name as string) || "";
-              const success = parsed.success !== false;
-              const obsText = (parsed.chunk as string) || "";
-              const nested = data.nestedChunks as AccumulatedChunk[];
-              for (let k = nested.length - 1; k >= 0; k--) {
-                if (nested[k].type === "tool" && nested[k].toolName === toolName) {
-                  nested[k] = {
-                    ...nested[k],
-                    status: "completed",
-                    success,
+              updateStreamingMessage();
+              continue;
+            }
+
+            // Handle tool planned
+            if (parsed.is_tool_planned) {
+              if (currentChunkContent || currentChunkType !== "answer") {
+                finalizeChunk();
+                currentChunkType = "answer";
+              }
+
+              // Any text the model streamed before this tool call was preamble
+              // narration for the call ("Let me pull X..."), not part of the
+              // final answer. Clear the answer buffer so it doesn't bleed into
+              // — and concatenate with — the actual final-answer text streamed
+              // on the closing turn. The orchestrator can't know mid-stream
+              // whether text is preamble or answer; the tool call announcement
+              // is the earliest reliable signal that everything before it on
+              // this turn was preamble.
+              assistantContent = "";
+
+              // Merge into the chip the is_tool_streaming frame already created.
+              // Only by tool_call_id — the name-based fallback could wrongly
+              // resurrect a COMPLETED chip for a repeated same-name call on
+              // id-less legacy paths, where pushing a fresh chip is correct.
+              const plannedIdx = parsed.tool_call_id
+                ? findToolChunkIndex(chunks, parsed)
+                : -1;
+              if (plannedIdx >= 0) {
+                chunks[plannedIdx] = {
+                  ...chunks[plannedIdx],
+                  toolDescription:
+                    parsed.tool_description ?? chunks[plannedIdx].toolDescription,
+                  status: "planned",
+                  // Keep the earlier start from the is_tool_streaming frame.
+                  startedAt: chunks[plannedIdx].startedAt ?? frameTimeMs,
+                  toolWrites: chunks[plannedIdx].toolWrites ?? parsed.tool_writes,
+                };
+              } else {
+                chunks.push({
+                  type: "tool",
+                  content: "",
+                  toolName: parsed.tool_name,
+                  toolCallId: parsed.tool_call_id,
+                  toolDescription: parsed.tool_description,
+                  status: "planned",
+                  subtaskId: parsed.subtask_id,
+                  toolWrites: parsed.tool_writes,
+                  startedAt: frameTimeMs,
+                });
+              }
+              updateStreamingMessage();
+              continue;
+            }
+
+            // Handle tool executing
+            if (parsed.is_tool_executing) {
+              const idx = findToolChunkIndex(chunks, parsed);
+              if (idx >= 0) {
+                chunks[idx].status = "executing";
+                chunks[idx].startedAt ??= frameTimeMs;
+                chunks[idx].toolWrites ??= parsed.tool_writes;
+              }
+              updateStreamingMessage();
+              continue;
+            }
+
+            // Handle observation
+            if (parsed.is_observation) {
+              const idx = findToolChunkIndex(chunks, parsed);
+              if (idx >= 0) {
+                chunks[idx].status = "completed";
+                // The observation IS the tool's completion — the only frame
+                // that closes a tool's clock.
+                chunks[idx].endedAt = frameTimeMs;
+                if (parsed.success === false) chunks[idx].success = false;
+              }
+              updateStreamingMessage();
+              continue;
+            }
+
+            // Handle suggested actions
+            if (parsed.suggested_actions) {
+              suggestedActions = parsed.suggested_actions.map(
+                (a: { action: string; label: string }) => ({
+                  id: a.action,
+                  label: a.label,
+                  value: a.action,
+                })
+              );
+              updateStreamingMessage();
+              continue;
+            }
+
+            if (parsed.tool_args) currentToolArgs = parsed.tool_args;
+            if (parsed.progress) currentProgress = parsed.progress;
+
+            // Determine chunk type. Subtask/replan/plan-complete branches that
+            // existed for the legacy Plan & Execute orchestrator were removed in
+            // the unified-ReAct migration; `is_planning` now means
+            // `enter_plan_mode`/`exit_plan_mode` and emits a plain text chunk.
+            let newChunkType: ChunkType = "answer";
+            if (parsed.is_thinking) {
+              newChunkType = "thinking";
+            } else if (parsed.is_planning) {
+              newChunkType = "planning";
+            } else if (parsed.is_progress_update) {
+              newChunkType = "progress";
+            }
+
+            if (newChunkType !== currentChunkType) {
+              finalizeChunk();
+              currentChunkType = newChunkType;
+            }
+
+            // First frame of this chunk opens its clock; finalizeChunk closes it.
+            currentChunkStartedAt ??= frameTimeMs;
+
+            if (parsed.tool_name) currentToolName = parsed.tool_name;
+            if (parsed.success !== undefined) currentSuccess = parsed.success;
+            if (parsed.subtask_id !== undefined)
+              currentSubtaskId = parsed.subtask_id;
+
+            // Accumulate content
+            if (newChunkType === "thinking") {
+              currentChunkContent += parsed.chunk || "";
+              const match = currentChunkContent.match(
+                /"thought"\s*:\s*"((?:[^"\\]|\\.)*)"/
+              );
+              if (match) {
+                currentChunkContent = match[1]
+                  .replace(/\\n/g, "\n")
+                  .replace(/\\"/g, '"')
+                  .replace(/\\t/g, "\t")
+                  .replace(/\\\\/g, "\\");
+              }
+            } else if (newChunkType === "answer") {
+              const chunkTrimmed = parsed.chunk?.trim() || "";
+              const accumulatedTrimmed = assistantContent.trim();
+              if (
+                !(
+                  chunkTrimmed &&
+                  accumulatedTrimmed &&
+                  chunkTrimmed === accumulatedTrimmed
+                )
+              ) {
+                assistantContent += parsed.chunk || "";
+              }
+            } else {
+              currentChunkContent += parsed.chunk || "";
+            }
+
+            // The server names the persisted user message on every frame; record
+            // it once. It is reported as `serverId`, never written over the
+            // optimistic `id` — that id is the row's React key.
+            if (parsed.previous_message_id && !userMessagePersisted) {
+              userMessagePersisted = true;
+              callbacks.onUserMessagePersisted(
+                optimisticId,
+                parsed.previous_message_id
+              );
+            }
+
+            updateStreamingMessage();
+          } else if (parsed.type === "subagent_dispatch") {
+            // Sub-assistant dispatch streaming. The backend fires four sub-events
+            // per dispatched child (start, progress*, complete | failed). For a
+            // depth-1 dispatch, the path is just [subagent_id] and the chunk
+            // lives at the top of `chunks[]`. For nested dispatches, the path
+            // is [root_child_id, ..., this_id] — we walk it to place the chunk
+            // inside the correct ancestor's `nestedChunks` array.
+            const subEvent: string = parsed.sub_event || "";
+            const path: string[] =
+              Array.isArray(parsed.subagent_path) && parsed.subagent_path.length > 0
+                ? (parsed.subagent_path as string[])
+                : [parsed.subagent_id || ""];
+
+            // Walk path. Each step either finds the existing chunk for that
+            // segment's id, or (only for the final segment on a "start" event)
+            // creates a new one.
+            let container: AccumulatedChunk[] = chunks;
+            let targetChunk: AccumulatedChunk | undefined;
+            let pathBroken = false;
+
+            for (let i = 0; i < path.length; i++) {
+              const segmentId = path[i];
+              const idx = container.findIndex(
+                (c) =>
+                  c.type === "subagent" &&
+                  c.subagentData?.subagentId === segmentId
+              );
+
+              if (i === path.length - 1) {
+                // Final segment: this is the target.
+                if (idx >= 0) {
+                  targetChunk = container[idx];
+                } else if (subEvent === "start") {
+                  const newChunk: AccumulatedChunk = {
+                    type: "subagent",
+                    content: "",
+                    subagentData: {
+                      subagentId: segmentId,
+                      subagentType: parsed.handle || "",
+                      status: "running",
+                      result: "",
+                      nestedChunks: [],
+                      // Which parent step gathered this child. Specialists sharing
+                      // it ran concurrently and render as one group.
+                      dispatchStep:
+                        typeof parsed.dispatch_step === "number" ? parsed.dispatch_step : undefined,
+                    },
                   };
+                  container.push(newChunk);
+                  targetChunk = newChunk;
+                } else {
+                  // progress/complete/failed for an unknown subagent_id — the
+                  // start event was probably dropped. Bail rather than create a
+                  // ghost chunk.
+                  pathBroken = true;
+                }
+              } else {
+                // Intermediate segment: must already exist.
+                if (idx < 0) {
+                  pathBroken = true;
                   break;
                 }
+                // Descend into the intermediate's nestedChunks.
+                const inner = container[idx].subagentData;
+                if (!inner) {
+                  pathBroken = true;
+                  break;
+                }
+                container = inner.nestedChunks as AccumulatedChunk[];
               }
-              nested.push({
-                type: "observation",
-                content: obsText,
-                toolName,
-                success,
-              });
             }
-          }
-          updateStreamingMessage();
-        } else if (parsed.type === "clarification_needed") {
-          // Agent is requesting user clarification
-          finalizeChunk();
 
-          const clarificationData: ClarificationData = {
-            questions: (parsed.questions as ClarificationData["questions"]) || [],
-            context: parsed.context,
-            subtaskId: parsed.subtask_id,
-            subtaskDescription: parsed.subtask_description,
-            subagentName: parsed.subagent_name,
-            subagentRole: parsed.subagent_role,
-            toolCallId: parsed.tool_call_id,
-            interruptId: parsed.interrupt_id,
-            // legacy single-question tolerance for old streams/history
-            question: (parsed.question as string) || undefined,
-            options: (parsed.options as string[]) || undefined,
-          };
-
-          // Display string: prefer shared context, else the first question.
-          const clarificationText =
-            clarificationData.context ||
-            clarificationData.questions?.[0]?.question ||
-            clarificationData.question ||
-            "";
-
-          // Add clarification chunk
-          chunks.push({
-            type: "clarification_needed",
-            content: clarificationText,
-            clarificationData,
-            subtaskId: parsed.subtask_id,
-          });
-
-          pendingClarification = clarificationData;
-
-          // Set as message body so user sees the question
-          if (!assistantContent) {
-            assistantContent = clarificationText;
-          }
-
-          updateStreamingMessage();
-        } else if (parsed.type === "tool_approval_needed") {
-          // Tool requires user approval before execution
-          finalizeChunk();
-
-          const toolApprovalData: import("../types").ToolApprovalData = {
-            toolName: parsed.tool_name || "",
-            toolDescription: parsed.tool_description || "",
-            toolInputs: parsed.tool_inputs || {},
-            toolSchema: parsed.tool_schema,
-            toolCallId: parsed.tool_call_id,
-            interruptId: parsed.interrupt_id,
-            toolLabel: parsed.tool_label,
-            // Opaque host-interpreted preview (e.g. ad-mutation diff). Transported as-is.
-            preview: parsed.tool_preview,
-          };
-
-          chunks.push({
-            type: "tool_approval_needed",
-            content: toolApprovalData.toolDescription,
-            toolApprovalData,
-          } as AccumulatedChunk);
-
-          pendingToolApproval = toolApprovalData;
-
-          updateStreamingMessage();
-        } else if (parsed.type === "media") {
-          // Media event (image/video) from image generation tools
-          const mediaData = parsed.media_data;
-          if (mediaData) {
-            mediaItems = upsertMedia(mediaItems, normalizeMedia(mediaData));
+            if (!pathBroken && targetChunk?.subagentData) {
+              const data = targetChunk.subagentData;
+              if (subEvent === "progress") {
+                const chunk = (parsed.chunk as string) || "";
+                data.result = (data.result || "") + chunk;
+              } else if (subEvent === "complete") {
+                data.status = "completed";
+                if (parsed.result) data.result = parsed.result as string;
+                if (parsed.duration_ms != null)
+                  data.durationMs = parsed.duration_ms as number;
+              } else if (subEvent === "failed") {
+                data.status = "failed";
+                if (parsed.error)
+                  data.result =
+                    (data.result || "") + `\n\nError: ${parsed.error}`;
+                else if (parsed.result) data.result = parsed.result as string;
+                if (parsed.duration_ms != null)
+                  data.durationMs = parsed.duration_ms as number;
+              } else if (subEvent === "thinking") {
+                const delta = (parsed.chunk as string) || "";
+                if (delta) {
+                  const nested = data.nestedChunks as AccumulatedChunk[];
+                  const last = nested[nested.length - 1];
+                  if (last && last.type === "thinking") {
+                    last.content = (last.content || "") + delta;
+                  } else {
+                    nested.push({ type: "thinking", content: delta });
+                  }
+                }
+              } else if (subEvent === "tool") {
+                const toolName = (parsed.tool_name as string) || "";
+                const toolDescription = parsed.tool_description as string | undefined;
+                const status = (parsed.status as
+                  | "planned"
+                  | "executing"
+                  | "completed") || "planned";
+                const nested = data.nestedChunks as AccumulatedChunk[];
+                let toolIdx = -1;
+                for (let k = nested.length - 1; k >= 0; k--) {
+                  if (nested[k].type === "tool" && nested[k].toolName === toolName) {
+                    toolIdx = k;
+                    break;
+                  }
+                }
+                if (toolIdx >= 0) {
+                  nested[toolIdx] = {
+                    ...nested[toolIdx],
+                    status,
+                    toolDescription:
+                      toolDescription || nested[toolIdx].toolDescription,
+                  };
+                } else {
+                  nested.push({
+                    type: "tool",
+                    content: "",
+                    toolName,
+                    toolDescription,
+                    status,
+                  });
+                }
+              } else if (subEvent === "observation") {
+                const toolName = (parsed.tool_name as string) || "";
+                const success = parsed.success !== false;
+                const obsText = (parsed.chunk as string) || "";
+                const nested = data.nestedChunks as AccumulatedChunk[];
+                for (let k = nested.length - 1; k >= 0; k--) {
+                  if (nested[k].type === "tool" && nested[k].toolName === toolName) {
+                    nested[k] = {
+                      ...nested[k],
+                      status: "completed",
+                      success,
+                    };
+                    break;
+                  }
+                }
+                nested.push({
+                  type: "observation",
+                  content: obsText,
+                  toolName,
+                  success,
+                });
+              }
+            }
             updateStreamingMessage();
-          }
-        } else if (parsed.type === "visualization") {
-          // A render tool returned a chart/table/card. The answer text carries
-          // a `[VIZ:<id>]` marker; `Message` resolves it against this list.
-          const vizData = parsed.visualization_data;
-          if (vizData?.id) {
-            vizItems = upsertById(vizItems, {
-              id: vizData.id,
-              type: vizData.type,
-              title: vizData.title,
-              description: vizData.description,
-              data: vizData.data,
-              config: vizData.config,
-              context: parsed.context,
-            });
-            updateStreamingMessage();
-          }
-        } else if (parsed.type === "artifact") {
-          // A persisted downloadable file (PDF, HTML, ...) — rendered as an
-          // inline card beneath the answer.
-          const artifactData = parsed.artifact_data;
-          if (artifactData?.id) {
-            artifactItems = upsertById(artifactItems, artifactData);
-            updateStreamingMessage();
-          }
-        } else if (parsed.type === "assistant_complete") {
-          finalizeChunk();
-          receivedComplete = true;
-          messageTouched = true;
-
-          const finalContent =
-            parsed.message?.text_content || assistantContent;
-          const finalId = parsed.message?.id;
-          const metadata = parsed.message?.metadata;
-          const sources = metadata?.sources;
-
-          // Finalize prunes renders the model left unembedded
-          // (`visualization_policy.partition_unembedded_visualizations`), so
-          // the persisted list — not what we accumulated live — is what the
-          // message actually contains. A server old enough to send no
-          // metadata at all is the only case that keeps the streamed lists.
-          const finalVisualizations = metadata
-            ? metadata.visualizations ?? []
-            : vizItems;
-          const finalArtifacts = metadata
-            ? metadata.artifacts ?? []
-            : artifactItems;
-
-          const elapsedSeconds = (Date.now() - streamStartTime) / 1000;
-          callbacks.onComplete({
-            assistantMsgId,
-            finalContent,
-            finalId,
-            chunks: chunks as unknown as StreamingChunk[],
-            suggestedActions,
-            sources,
-            visualizations: finalVisualizations,
-            artifacts: finalArtifacts,
-            pendingClarification,
-            executionTime: elapsedSeconds,
-            pendingToolApproval,
-            metadata,
-          });
-          assistantContent = finalContent;
-          break;
-        } else if (
-          parsed.type === "client_tool_invocation" &&
-          parsed.invocation &&
-          callbacks.onToolInvocation
-        ) {
-          // Execute async — don't block the stream
-          callbacks.onToolInvocation(parsed.invocation);
-        } else if (parsed.type === "error") {
-          throw new Error(parsed.error || "Stream error");
-        } else if (parsed.type === "done") {
-          // Fallback: if stream ended without assistant_complete (e.g. clarification early return),
-          // finalize the message so the frontend still shows it properly
-          if (messageTouched && !receivedComplete) {
+          } else if (parsed.type === "clarification_needed") {
+            // Agent is requesting user clarification
             finalizeChunk();
-            const elapsedSecondsDone = (Date.now() - streamStartTime) / 1000;
+
+            const clarificationData: ClarificationData = {
+              questions: (parsed.questions as ClarificationData["questions"]) || [],
+              context: parsed.context,
+              subtaskId: parsed.subtask_id,
+              subtaskDescription: parsed.subtask_description,
+              subagentName: parsed.subagent_name,
+              subagentRole: parsed.subagent_role,
+              toolCallId: parsed.tool_call_id,
+              interruptId: parsed.interrupt_id,
+              // legacy single-question tolerance for old streams/history
+              question: (parsed.question as string) || undefined,
+              options: (parsed.options as string[]) || undefined,
+            };
+
+            // Display string: prefer shared context, else the first question.
+            const clarificationText =
+              clarificationData.context ||
+              clarificationData.questions?.[0]?.question ||
+              clarificationData.question ||
+              "";
+
+            // Add clarification chunk
+            chunks.push({
+              type: "clarification_needed",
+              content: clarificationText,
+              clarificationData,
+              subtaskId: parsed.subtask_id,
+            });
+
+            pendingClarification = clarificationData;
+
+            // Set as message body so user sees the question
+            if (!assistantContent) {
+              assistantContent = clarificationText;
+            }
+
+            updateStreamingMessage();
+          } else if (parsed.type === "tool_approval_needed") {
+            // Tool requires user approval before execution
+            finalizeChunk();
+
+            const toolApprovalData: import("../types").ToolApprovalData = {
+              toolName: parsed.tool_name || "",
+              toolDescription: parsed.tool_description || "",
+              toolInputs: parsed.tool_inputs || {},
+              toolSchema: parsed.tool_schema,
+              toolCallId: parsed.tool_call_id,
+              interruptId: parsed.interrupt_id,
+              toolLabel: parsed.tool_label,
+              // Opaque host-interpreted preview (e.g. ad-mutation diff). Transported as-is.
+              preview: parsed.tool_preview,
+            };
+
+            chunks.push({
+              type: "tool_approval_needed",
+              content: toolApprovalData.toolDescription,
+              toolApprovalData,
+            } as AccumulatedChunk);
+
+            pendingToolApproval = toolApprovalData;
+
+            updateStreamingMessage();
+          } else if (parsed.type === "media") {
+            // Media event (image/video) from image generation tools
+            const mediaData = parsed.media_data;
+            if (mediaData) {
+              mediaItems = upsertMedia(mediaItems, normalizeMedia(mediaData));
+              updateStreamingMessage();
+            }
+          } else if (parsed.type === "visualization") {
+            // A render tool returned a chart/table/card. The answer text carries
+            // a `[VIZ:<id>]` marker; `Message` resolves it against this list.
+            const vizData = parsed.visualization_data;
+            if (vizData?.id) {
+              vizItems = upsertById(vizItems, {
+                id: vizData.id,
+                type: vizData.type,
+                title: vizData.title,
+                description: vizData.description,
+                data: vizData.data,
+                config: vizData.config,
+                context: parsed.context,
+              });
+              updateStreamingMessage();
+            }
+          } else if (parsed.type === "artifact") {
+            // A persisted downloadable file (PDF, HTML, ...) — rendered as an
+            // inline card beneath the answer.
+            const artifactData = parsed.artifact_data;
+            if (artifactData?.id) {
+              artifactItems = upsertById(artifactItems, artifactData);
+              updateStreamingMessage();
+            }
+          } else if (parsed.type === "assistant_complete") {
+            finalizeChunk();
+            receivedComplete = true;
+            messageTouched = true;
+
+            const finalContent =
+              parsed.message?.text_content || assistantContent;
+            const finalId = parsed.message?.id;
+            const metadata = parsed.message?.metadata;
+            const sources = metadata?.sources;
+
+            // Finalize prunes renders the model left unembedded
+            // (`visualization_policy.partition_unembedded_visualizations`), so
+            // the persisted list — not what we accumulated live — is what the
+            // message actually contains. A server old enough to send no
+            // metadata at all is the only case that keeps the streamed lists.
+            const finalVisualizations = metadata
+              ? metadata.visualizations ?? []
+              : vizItems;
+            const finalArtifacts = metadata
+              ? metadata.artifacts ?? []
+              : artifactItems;
+
+            const elapsedSeconds = (Date.now() - streamStartTime) / 1000;
+            scheduler.flushNow();
             callbacks.onComplete({
               assistantMsgId,
-              finalContent: assistantContent || "",
-              finalId: parsed.message_id,
+              finalContent,
+              finalId,
               chunks: chunks as unknown as StreamingChunk[],
               suggestedActions,
-              // No `assistant_complete`, so no persisted metadata to prefer —
-              // what we accumulated live is all this turn has.
-              visualizations: vizItems,
-              artifacts: artifactItems,
+              sources,
+              visualizations: finalVisualizations,
+              artifacts: finalArtifacts,
               pendingClarification,
-              executionTime: elapsedSecondsDone,
+              executionTime: elapsedSeconds,
               pendingToolApproval,
+              metadata,
             });
-          } else if (parsed.message_id && messageTouched) {
-            callbacks.onMessageUpdate({
-              id: assistantMsgId,
-              serverId: parsed.message_id,
-              isStreaming: false,
-            });
-          }
-          break;
-        }
-      } catch (e) {
-        // If it's a real error (not JSON parse), re-throw
-        if (e instanceof Error && e.message !== "Stream error") {
-          // Check if this is a thrown stream error vs JSON parse error
-          if (
-            e.message.startsWith("Stream error") ||
-            e.message.startsWith("HTTP error")
+            assistantContent = finalContent;
+            break;
+          } else if (
+            parsed.type === "client_tool_invocation" &&
+            parsed.invocation &&
+            callbacks.onToolInvocation
           ) {
-            throw e;
+            // Execute async — don't block the stream
+            scheduler.flushNow();
+            callbacks.onToolInvocation(parsed.invocation);
+          } else if (parsed.type === "error") {
+            throw new Error(parsed.error || "Stream error");
+          } else if (parsed.type === "done") {
+            // Fallback: if stream ended without assistant_complete (e.g. clarification early return),
+            // finalize the message so the frontend still shows it properly
+            if (messageTouched && !receivedComplete) {
+              finalizeChunk();
+              const elapsedSecondsDone = (Date.now() - streamStartTime) / 1000;
+              scheduler.flushNow();
+              callbacks.onComplete({
+                assistantMsgId,
+                finalContent: assistantContent || "",
+                finalId: parsed.message_id,
+                chunks: chunks as unknown as StreamingChunk[],
+                suggestedActions,
+                // No `assistant_complete`, so no persisted metadata to prefer —
+                // what we accumulated live is all this turn has.
+                visualizations: vizItems,
+                artifacts: artifactItems,
+                pendingClarification,
+                executionTime: elapsedSecondsDone,
+                pendingToolApproval,
+              });
+            } else if (parsed.message_id && messageTouched) {
+              scheduler.flushNow();
+              callbacks.onMessageUpdate({
+                id: assistantMsgId,
+                serverId: parsed.message_id,
+                isStreaming: false,
+              });
+            }
+            break;
           }
+        } catch (e) {
+          // If it's a real error (not JSON parse), re-throw
+          if (e instanceof Error && e.message !== "Stream error") {
+            // Check if this is a thrown stream error vs JSON parse error
+            if (
+              e.message.startsWith("Stream error") ||
+              e.message.startsWith("HTTP error")
+            ) {
+              throw e;
+            }
+          }
+          // Skip invalid JSON lines
         }
-        // Skip invalid JSON lines
       }
     }
+
+  } finally {
+    // Whatever the last frames staged is committed before the caller sees
+    // the result; a thrown error still leaves the message consistent.
+    scheduler.flushNow();
+    scheduler.dispose();
   }
 
   // `null` when no frame wrote into the message: the hook drops the
@@ -1773,7 +1796,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         .map((msg) => ({
           id: msg.id,
           serverId: msg.serverId,
-          textContent: msg.textContent?.replace(/\[ref:[^\]]+\]/g, '') || msg.textContent,
+          textContent: msg.textContent ? stripCitationMarkers(msg.textContent) : msg.textContent,
           participant: msg.participant,
           createdAt: msg.createdAt,
           isStreaming: msg.isStreaming,

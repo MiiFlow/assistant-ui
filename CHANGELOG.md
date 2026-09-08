@@ -1,5 +1,31 @@
 # @miiflow/assistant-ui
 
+## 0.18.0
+
+Streaming without layout shift. Four things moved the transcript while an answer arrived; all four are gone.
+
+### Bug Fixes
+
+- **Every token remounted the whole answer (`styled/MarkdownContent.tsx`)**: the react-markdown `components` map was built inline on each render, which hands React a new component type for every `<p>`, `<li>` and `<code>` — and React answers a new type by unmounting and rebuilding the subtree. Every streamed delta re-parsed the full document and tore its DOM down; images re-requested, code re-highlighted, text selection lost. The overrides are now defined once at module scope (`styled/markdown/components.tsx`) and read their inputs from a render context. The document is split into top-level blocks (`marked` lexer) rendered by a memoised `MarkdownBlock`, so only the block still receiving text re-parses.
+- **Completion remounted it again (`styled/Message.tsx`)**: the body swapped from a `StreamingText` wrapper to a bare `MarkdownContent` when `isStreaming` flipped. One tree now, for both states; `StreamingText` is deprecated. The timestamp/action row is in the layout from the first token, invisible, so nothing below the answer moves when it lands.
+- **Unterminated markdown flashed (`styled/markdown/repair.ts`)**: `**bold` showed as asterisks, then re-laid-out bold when the close arrived; an open fence swallowed the rest of the message as prose-turned-code. The live block's tail is repaired with `remend` and an open fence is closed, so the styled form appears from the first token.
+- **One React commit per model token (`client/useMiiflowChat.ts`)**: `onMessageUpdate` fired per SSE frame. Frames are now coalesced to one update per animation frame (`client/frame-scheduler.ts`); a commit is a snapshot of the accumulators, so frame order cannot be inverted by batching. `parseSSEStream` takes `{ schedule }` for tests (`scheduleSync` restores per-frame updates).
+- **The reasoning panel folded from the full trace, unlocked (`styled/reasoning/ReasoningStream.tsx`)**: at completion it painted every step open for a frame, then folded, with no scroll lock. It now folds the window that was on screen and locks the transcript for the fold. It also folds the moment the answer starts (`answerStarted`, derived by `Message` from the text), so nothing above the streaming text changes height while it types; the header keeps counting and offers "Show N steps". A trace the reader opened stays open.
+- **Three waiting affordances swapped before the first token**: typing dots, then a thinking row, then the panel — each a different height. The panel now owns the whole run for an assistant row: a waiting line (`waitingLabel`, `waitingMark`), the live steps and the finished summary are three faces of one element with a constant header height.
+- **`useStreamingMinHeight` reserved the wrong height and dropped it at completion**: it measured plain text at line-height 1.5 while prose renders at 1.65 under a 37em cap, ignored block margins, bailed on fences, and released in one frame at the end. Removed; the transcript reserves a live turn's space from the viewport instead (see `MessageList`). `measureMessageHeight` / `clearMeasurementCache` remain exported but are deprecated.
+
+### Features
+
+- **Anchored turns (`styled/MessageList.tsx`)**: opt a turn in with `data-message-id` and `data-scroll-anchor="true"` on the direct child and the user's message pins near the top while the answer streams down into reserved space (`--chat-turn-fill`), ChatGPT-style. Hosts that pass plain rows keep the following behaviour. New props `scrollPreviousItemPeek` and `defaultScrollPosition`.
+- **Per-word reveal (`styled/markdown/rehype-animate-words.ts`)**: newly arrived words in the live block fade in over 160ms (`--chat-word-in-ms`). A block keeps its (inert) word spans once it has streamed, so completion re-renders nothing; blocks that never streamed carry no extra markup. Honours reduced motion. `MarkdownContent` gains `isStreaming` and `animateText`.
+- **Lists re-parse one item at a time (`styled/markdown/split-blocks.ts`)**: a tight list is one `<ul>`/`<ol>` built around per-item memoised blocks, so a growing list — the commonest answer shape — re-parses only the item still receiving text instead of the whole list on every frame.
+- **`ChatRenderContext` (`context`)**: the render inputs (`resolveCommandToken`, `isDarkSurface`, `onVisualizationAction`, `viewerRole`) on their own context, so a message body does not re-render when the message list changes.
+- `Message` is memoised. Pass referentially stable callbacks to benefit.
+
+### Deprecations
+
+- `StreamingText`, `justCompleted`, `measureMessageHeight`, `clearMeasurementCache` — removed in the next major.
+
 ## 0.17.0
 
 ### Bug Fixes

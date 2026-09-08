@@ -309,14 +309,43 @@ Empty state with rotating placeholder text and suggestion cards.
 
 ### `MessageList`
 
-Scrollable message transcript built on a scroll engine that follows streamed output only while the reader is pinned to the live edge, and preserves the reader's position when earlier content changes height. Each direct child is wrapped in a scroll-anchored item.
+Scrollable message transcript built on a scroll engine with two modes:
+
+- **Following** (default): follows streamed output only while the reader is pinned to the live edge, and preserves the reader's position when earlier content changes height.
+- **Anchored** (opt-in per turn): a direct child carrying `data-scroll-anchor="true"` — the user's latest message, typically — is pinned near the top of the viewport with a slice of the previous turn peeking above it, and the answer streams *down* into reserved space. The viewport does not move while text arrives; the engine releases the anchor on any wheel, touch or keyboard scroll, and the scroll-to-bottom button re-enables following for the rest of that turn.
+
+Children opt in through data attributes on the direct child element:
+
+| Attribute | Effect |
+|-----------|--------|
+| `data-message-id="<id>"` | Registers the row with the engine (position preservation, visibility) |
+| `data-scroll-anchor="true"` | Makes the row the turn anchor. Give it to the live turn only |
+
+The list publishes two pixel custom properties on the transcript content element: `--chat-turn-fill` (the height the row *after* the anchor needs to fill the viewport) and `--chat-turn-fill-self` (the same for a row that is itself the anchor). Put `min-height: var(--chat-turn-fill)` on the live assistant row so the transcript stays still when content inside it shrinks (a step window folding, an action bar appearing). Keep the anchor and the fill on the finished turn until the next one starts.
+
+```tsx
+<MessageList>
+  {messages.map((msg, i) => (
+    <div
+      key={msg.id}
+      data-message-id={msg.id}
+      data-scroll-anchor={msg.id === liveUserMessageId ? "true" : undefined}
+      style={msg.id === liveAssistantMessageId ? { minHeight: "var(--chat-turn-fill)" } : undefined}
+    >
+      <Message message={msg} />
+    </div>
+  ))}
+</MessageList>
+```
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `children` | `ReactNode` | — | **Required.** Message elements |
-| `autoScroll` | `boolean` | `true` | Follow streamed output while at the live edge (not "always jump to bottom") |
+| `autoScroll` | `boolean` | `true` | Follow streamed output while at the live edge. Ignored while a turn is anchored, unless the reader presses the scroll-to-bottom button |
 | `showScrollToBottom` | `boolean` | `true` | Render the floating scroll-to-bottom button |
 | `className` | `string` | — | Classes applied to the inner transcript content container |
+| `scrollPreviousItemPeek` | `number` | `64` | Pixels of the previous turn left visible above an anchored one |
+| `defaultScrollPosition` | `"end" \| "last-anchor"` | `"last-anchor"` | Where the transcript opens; `last-anchor` equals `end` when no child is an anchor. Must not change between renders |
 
 ### `Message`
 
@@ -331,13 +360,14 @@ Individual message with markdown rendering, reasoning panel, citations, visualiz
 | `renderMarkdown` | `boolean` | `true` | Render content as markdown |
 | `reasoning` | `StreamingChunk[]` | — | Reasoning/thinking chunks; rendered live as steps, then as a "Thought for …" line. Pass `msg.reasoning` — there is no message-level fallback |
 | `waitingLabel` | `string` | `message.statusText` | Line beside the waiting indicator before the first token |
+| `waitingMark` | `ReactNode` | — | Brand mark for the waiting line; the host owns its logo |
 | `reasoningExpanded` | `boolean` | — | Controlled expansion of the reasoning panel |
 | `onReasoningExpandedChange` | `(expanded: boolean) => void` | — | Reasoning panel expansion callback |
 | `executionPlan` | `unknown` | — | Execution plan for completed agent messages |
 | `executionTimeline` | `unknown[]` | — | Execution timeline for completed messages |
 | `executionTime` | `number` | — | Total execution time in seconds (persisted) |
 | `streamStartedAt` | `number` | — | Epoch ms the in-progress run started, so the live elapsed counter survives remounts |
-| `justCompleted` | `boolean` | — | Only for hosts that render the completed message as a different element from the streaming one; with a stable `key` the fold animates on its own |
+| `justCompleted` | `boolean` | — | **Deprecated.** Only for hosts that render the completed message as a different element from the streaming one; with a stable `key` the fold animates on its own |
 | `suggestedActions` | `SuggestedAction[]` | — | Suggested follow-up actions |
 | `onSuggestedAction` | `(action: SuggestedAction) => void` | — | Suggested action click handler |
 | `renderInlineSuggestedAction` | `(id: string) => ReactNode` | — | Renderer for inline `[SA:id]` markers |

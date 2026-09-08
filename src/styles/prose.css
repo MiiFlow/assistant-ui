@@ -365,3 +365,27 @@
 .chat-prose--compact hr {
 	margin: 12px 0;
 }
+
+/* Streaming reveal. The live block's words are each wrapped in a span by
+   `rehypeAnimateWords`; a span that just mounted runs this once, a span that
+   was already on screen does not. Opacity only — no transform, no
+   will-change — so hundreds of spans in a paragraph cost no compositor
+   layers. Finished blocks carry no spans at all. */
+.chat-prose [data-mf-word] {
+	animation: mf-word-in var(--chat-word-in-ms, 160ms) ease-out both;
+}
+
+@keyframes mf-word-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.chat-prose [data-mf-word] {
+		animation: none;
+	}
+}

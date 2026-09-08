@@ -21,8 +21,10 @@ export interface StreamingTextProps {
 /**
  * Styled StreamingText that renders content directly as tokens arrive.
  *
- * Text appears instantly (no artificial typewriter delay), matching
- * platform-standard behavior. A blinking cursor is shown during streaming.
+ * @deprecated `Message` no longer uses this: swapping it for the plain
+ * renderer at completion remounted the whole answer. Render
+ * `<MarkdownContent isStreaming>` instead, which is what this now wraps.
+ * Kept for hosts that import it directly; removed in the next major.
  */
 export const StreamingText = forwardRef<HTMLDivElement, StreamingTextProps>(
   (
@@ -47,6 +49,7 @@ export const StreamingText = forwardRef<HTMLDivElement, StreamingTextProps>(
         {renderMarkdown ? (
           <MarkdownContent
             baselineFontSize={baselineFontSize}
+            isStreaming={isStreaming}
             {...markdownProps}
           >
             {content}

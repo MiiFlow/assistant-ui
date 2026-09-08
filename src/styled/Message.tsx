@@ -1,5 +1,6 @@
 import {
 	forwardRef,
+	memo,
 	useContext,
 	useEffect,
 	useMemo,
@@ -26,7 +27,7 @@ import type {
 } from "../types";
 import { cn } from "../utils/cn";
 import { replaceMediaUrls } from "../utils/media";
-import { ChatContext } from "../context/ChatProvider";
+import { ChatRenderContext } from "../context/ChatProvider";
 import { Avatar } from "./Avatar";
 import { CitationSources } from "./CitationSources";
 import { ClarificationPanel } from "./ClarificationPanel";
@@ -36,12 +37,14 @@ import { MarkdownContent } from "./MarkdownContent";
 import { MessageActionBar } from "./MessageActionBar";
 import { MessageAttachments } from "./MessageAttachments";
 import { ReasoningStream, buildRunSteps, type RunOutcome } from "./reasoning";
-import { StreamingText } from "./StreamingText";
 import { SuggestedActions } from "./SuggestedActions";
 import { VisualizationRenderer } from "./visualizations";
 import { ArtifactList } from "./artifacts";
-import { parseContentWithInlineMarkers, stripInlineMarkers } from "../utils/inline-markers";
-import { useStreamingMinHeight } from "../hooks/use-streaming-min-height";
+import {
+	parseContentWithInlineMarkers,
+	stripInlineMarkers,
+	trimPartialTrailingMarker,
+} from "../utils/inline-markers";
 
 // ── Lazy media helpers ───────────────────────────────────────────────
 // Videos are mounted only after the user clicks the poster. This keeps
@@ -236,6 +239,9 @@ export interface MessageProps {
 	 *  to `message.statusText`, which `useMiiflowChat` fills from the server's
 	 *  setup status frames ("Getting started…"). */
 	waitingLabel?: string;
+	/** Brand mark for the waiting state, supplied by the host: chat-ui is
+	 *  published standalone and does not know what the host's logo looks like. */
+	waitingMark?: React.ReactNode;
 	/**
 	 * @deprecated No longer read. Host adapters already reconstruct these into
 	 * `reasoning` chunks, so passing them separately made the same run
@@ -305,8 +311,12 @@ export interface MessageProps {
  * Styled Message component with grid layout matching the main app.
  * Uses grid to align avatar and content, with reasoning above content.
  * Supports attachments, citations, inline visualizations, and streaming text.
+ *
+ * Memoised: the transcript re-renders on every streamed token, and a
+ * finished message has nothing to redraw. The memo only pays off when the
+ * host passes referentially stable callbacks; inline arrows defeat it.
  */
-export const Message = forwardRef<HTMLDivElement, MessageProps>(
+const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 	(
 		{
 			message,
@@ -317,6 +327,7 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			renderMarkdown = true,
 			reasoning,
 			waitingLabel,
+			waitingMark,
 			suggestedActions,
 			onSuggestedAction,
 			reasoningExpanded,
@@ -342,9 +353,11 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 		},
 		ref,
 	) => {
-		// Get visualization action callback from context (null-safe for standalone usage)
-		const chatContext = useContext(ChatContext);
-		const onVisualizationAction = chatContext?.onVisualizationAction;
+		// Render inputs only (null-safe for standalone usage). Deliberately not
+		// `ChatContext`: that one carries the message list, which changes on
+		// every streamed token and would re-render every message per delta.
+		const renderContext = useContext(ChatRenderContext);
+		const onVisualizationAction = renderContext?.onVisualizationAction;
 
 		// Renders, media and artifacts travel ON the message from `useMiiflowChat`
 		// and from the persisted GraphQL fields. Reading them from the message
@@ -400,8 +413,25 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 		);
 		const hasReasoning = reasoningSteps.length > 0;
 
-		// Check if waiting for content
-		const isWaitingForContent = isStreaming && !message.textContent && !hasReasoning;
+		// The panel owns the whole run for an assistant row: the waiting line
+		// before the first step, the live steps, and the finished summary are
+		// three faces of ONE element of constant header height. Mounting three
+		// different components in sequence — typing dots, then a thinking row,
+		// then the panel — changed the row's height twice before the first
+		// token arrived.
+		const answerStarted = !!message.textContent;
+
+		// Not for an answer that is streaming with no step and no waiting line
+
+		// to show: the finished row will have no panel either, so mounting one
+
+		// now would put a header above the text that vanishes at completion.
+
+		const showPanel = isAssistant && (hasReasoning || (!!isStreaming && !answerStarted));
+
+		// Waiting state for non-assistant rows only; the panel covers the
+		// assistant's.
+		const isWaitingForContent = !showPanel && isStreaming && !message.textContent && !hasReasoning;
 
 		// Attachments from message data
 		const attachments = message.attachments;
@@ -415,13 +445,18 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 			return map;
 		}, [visualizations]);
 
-		// Parse content for inline viz/SA markers
-		const hasVizInlineContent = vizMap && vizMap.size > 0;
-		const hasInlineMarkers = hasVizInlineContent || (message.textContent && /\[SA:[\w-]+\]/i.test(message.textContent));
+		// The body is ALWAYS rendered as inline parts — text pieces and the
+		// visualizations / suggested actions embedded between them — even when
+		// there is not a marker in sight. It used to switch to this shape only
+		// once a visualization existed, and React answered the switch by
+		// remounting the whole body: the text a reader was following vanished
+		// and reappeared the moment a tool returned its chart. A marker still
+		// being typed is held back so its raw prefix never shows.
 		const contentParts = useMemo(() => {
-			if (!hasInlineMarkers || !message.textContent) return null;
-			return parseContentWithInlineMarkers(replaceMediaUrls(message.textContent, medias));
-		}, [hasInlineMarkers, message.textContent, medias]);
+			if (!message.textContent) return null;
+			const text = isStreaming ? trimPartialTrailingMarker(message.textContent) : message.textContent;
+			return parseContentWithInlineMarkers(replaceMediaUrls(text, medias));
+		}, [isStreaming, message.textContent, medias]);
 
 		// Strip inline markers from the plain-text branches. Media is always
 		// rendered separately, and this is also the render floor: reaching here
@@ -437,18 +472,20 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 		const renderContent = () => {
 			if (!message.textContent) return null;
 
-			// Content with inline visualization/suggested action markers
-			if (contentParts && contentParts.length > 0 && hasInlineMarkers) {
+			if (!renderMarkdown) {
+				return <p className="whitespace-pre-wrap">{cleanTextContent}</p>;
+			}
+
+			if (contentParts && contentParts.length > 0) {
 				const renderedVizIds = new Set<string>();
 				return (
 					<>
 						{contentParts.map((part, idx) => {
 							if (part.type === "text") {
-								return isStreaming ? (
-									<StreamingText key={idx} content={part.content} isStreaming baselineFontSize={baselineFontSize} />
-								) : (
+								return (
 									<MarkdownContent
-										key={idx}
+										key={`text-${idx}`}
+										isStreaming={!!isStreaming}
 										baselineFontSize={baselineFontSize}
 										className={isViewer ? "prose-invert" : ""}>
 										{part.content}
@@ -470,35 +507,15 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 								}
 								return null;
 							}
-							// Media markers stripped — rendered below
+							// Media markers stripped — rendered below. An unresolvable
+							// marker of any kind renders nothing: the render floor.
 							return null;
 						})}
 					</>
 				);
 			}
 
-			// Streaming text with typewriter
-			if (isStreaming && renderMarkdown) {
-				return (
-					<StreamingText
-						content={cleanTextContent || ""}
-						isStreaming
-						baselineFontSize={baselineFontSize}
-						className={isViewer ? "prose-invert" : ""}
-					/>
-				);
-			}
-
-			// Static markdown
-			if (renderMarkdown) {
-				return (
-					<MarkdownContent baselineFontSize={baselineFontSize} className={isViewer ? "prose-invert" : ""}>
-						{cleanTextContent || ""}
-					</MarkdownContent>
-				);
-			}
-
-			return <p className="whitespace-pre-wrap">{cleanTextContent}</p>;
+			return null;
 		};
 
 		const filteredMedias: MediaItem[] = useMemo(() => {
@@ -612,15 +629,6 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 		if (isStreaming) wasStreamingRef.current = true;
 		const showFadeIn = !isStreaming && !wasStreamingRef.current;
 
-		// Reserve vertical space for streaming text bodies (off-DOM measurement
-		// via @chenglou/pretext) so the scroll anchor doesn't jitter per token.
-		const bubbleRef = useRef<HTMLDivElement>(null);
-		const streamingMinHeight = useStreamingMinHeight(
-			bubbleRef,
-			message.textContent,
-			!!isStreaming,
-		);
-
 		return (
 			<MessagePrimitive
 				ref={ref}
@@ -649,10 +657,13 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 
 					{/* The agent's work, above the answer: a rolling window of steps
 					    while the run is live, one "Thought for …" line once it ends. */}
-					{hasReasoning && isAssistant && (
+					{showPanel && (
 						<div className="w-full">
 							<ReasoningStream
 								isStreaming={isStreaming}
+								answerStarted={answerStarted}
+								waitingLabel={waitingLabel ?? message.statusText}
+								waitingMark={waitingMark}
 								chunks={reasoningChunks}
 								steps={reasoningSteps}
 								executionTime={executionTime}
@@ -688,14 +699,12 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 
 							{/* Message bubble */}
 							<div
-								ref={bubbleRef}
 								className={cn(
 									isViewer ? (isEditing ? "w-full" : "max-w-[85%]") : "min-w-0 flex-1",
 									"flex flex-col",
 								)}
 								data-message-role={isViewer ? "viewer" : "other"}
 								data-agent-message={isAssistant ? "" : undefined}
-								style={streamingMinHeight ? { minHeight: streamingMinHeight } : undefined}
 							>
 								{isViewer && isEditing && onEditSubmit ? (
 									<UserMessageEditor
@@ -732,8 +741,13 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 										/>
 									)}
 
-									{/* Unreferenced visualizations (not embedded inline via [VIZ:id] markers) */}
-									{visualizations && visualizations.length > 0 && (() => {
+									{/* Unreferenced visualizations (not embedded inline via [VIZ:id]
+									    markers). Not while streaming: a render usually lands before
+									    the sentence that places it, and showing it at the bottom
+									    until then made it jump inline a moment later. Finalize
+									    prunes renders the answer never embedded, so what appears
+									    here after the stream is exactly what the message keeps. */}
+									{!isStreaming && visualizations && visualizations.length > 0 && (() => {
 										const textContent = message.textContent || "";
 										const unreferenced = visualizations.filter(
 											(viz) => !textContent.includes(`[VIZ:${viz.id}]`)
@@ -781,9 +795,15 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 									</div>
 								)}
 
-								{/* Timestamp + action bar row */}
-								{!isStreaming && !isEditing && (showTimestamp && message.createdAt || message.textContent) && (
-									<div className={cn("flex items-center gap-2 mt-1", isViewer && "flex-row-reverse")}>
+								{/* Timestamp + action bar row. For an assistant message the row is
+								    in the layout from the first token, invisible, at its real
+								    height, so nothing below the answer moves when it completes;
+								    it only becomes visible. A viewer message is never streaming. */}
+								{!isEditing && (!isStreaming || isAssistant) && (showTimestamp && message.createdAt || message.textContent) && (
+									<div
+										className={cn("flex items-center gap-2 mt-1", isViewer && "flex-row-reverse")}
+										style={isStreaming ? { visibility: "hidden" } : undefined}
+										aria-hidden={isStreaming ? true : undefined}>
 										{showTimestamp && message.createdAt && (
 											<MessageTimestamp
 												createdAt={
@@ -894,7 +914,9 @@ export const Message = forwardRef<HTMLDivElement, MessageProps>(
 	},
 );
 
-Message.displayName = "Message";
+MessageImpl.displayName = "Message";
+
+export const Message = memo(MessageImpl);
 
 /**
  * Inline editor shown when the viewer edits one of their own messages

@@ -1,11 +1,12 @@
-export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-C3YAZPnZ.js';
-export { a as ClarificationAnswer, C as ClarificationData, b as ClarificationQuestion, c as StreamChunk, d as StreamingOptions, e as StreamingState } from './streaming-BfLEgW5u.js';
+export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-CZCTXL_Y.js';
+import { M as MediaChunkData } from './streaming-BHoElBGX.js';
+export { a as ClarificationAnswer, C as ClarificationData, b as ClarificationQuestion, c as StreamChunk, d as StreamingOptions, e as StreamingState } from './streaming-BHoElBGX.js';
 export { B as BrandingData } from './branding-NieTEGQf.js';
 export { ChatContext, ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from './context/index.js';
-export { u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from './use-branding-css-vars-CR2tjSV8.js';
-export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-CaXoLhq_.js';
+export { u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from './use-branding-css-vars-DQG3Zyyq.js';
+export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-BvYUQ6M2.js';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.js';
-export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-CGr53_-g.js';
+export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-xGg1sA0Q.js';
 import { ClassValue } from 'clsx';
 import 'react/jsx-runtime';
 import 'react';
@@ -20,6 +21,11 @@ import './types-Du00UBst.js';
  * cn("text-red-500", isActive && "text-blue-500") // => "text-blue-500" when isActive
  */
 declare function cn(...inputs: ClassValue[]): string;
+
+declare function normalizeMedia(value: Record<string, any>): MediaChunkData;
+declare function upsertMedia(items: MediaChunkData[], item: MediaChunkData): MediaChunkData[];
+declare function toChatMediaProxyUrl(url: string, anonymousId?: string | null): string;
+declare function replaceMediaUrls(text: string, medias?: ReadonlyArray<MediaChunkData>): string;
 
 /**
  * Format a date for display in chat messages.
@@ -191,4 +197,4 @@ declare const chatTokens: {
 };
 type ChatTokens = typeof chatTokens;
 
-export { type ChatTokens, type ContentPart, chatTokens, cn, formatMessageTime, formatRelativeTime, getContrastTextColor, parseContentWithInlineMarkers, stripInlineMarkers };
+export { type ChatTokens, type ContentPart, chatTokens, cn, formatMessageTime, formatRelativeTime, getContrastTextColor, normalizeMedia, parseContentWithInlineMarkers, replaceMediaUrls, stripInlineMarkers, toChatMediaProxyUrl, upsertMedia };
