@@ -64,6 +64,12 @@ export interface LexicalChatInputHandle {
 
 export interface LexicalChatInputProps {
   placeholder?: string;
+  /**
+   * Accessible name for the editable region. The visible placeholder is a
+   * painted overlay, not an attribute, and it often rotates, so a screen
+   * reader needs a stable name of its own.
+   */
+  ariaLabel?: string;
   disabled?: boolean;
   className?: string;
   /** Tailwind classes applied to the inner ContentEditable element. */
@@ -134,6 +140,7 @@ export const LexicalChatInput = forwardRef<LexicalChatInputHandle, LexicalChatIn
   function LexicalChatInput(
     {
       placeholder = "Type a message...",
+      ariaLabel = "Message",
       disabled = false,
       className,
       inputClassName,
@@ -173,6 +180,7 @@ export const LexicalChatInput = forwardRef<LexicalChatInputHandle, LexicalChatIn
       <LexicalComposer initialConfig={initialConfig}>
         <ChatInputBody
           placeholder={placeholder}
+          ariaLabel={ariaLabel}
           disabled={disabled}
           className={className}
           inputClassName={inputClassName}
@@ -194,6 +202,7 @@ export const LexicalChatInput = forwardRef<LexicalChatInputHandle, LexicalChatIn
 
 function ChatInputBody({
   placeholder,
+  ariaLabel,
   disabled,
   className,
   inputClassName,
@@ -308,6 +317,8 @@ function ChatInputBody({
         <RichTextPlugin
           contentEditable={
             <ContentEditable
+              ariaLabel={ariaLabel}
+              ariaMultiline
               className={cn(
                 "outline-none w-full text-sm leading-relaxed",
                 "min-h-[24px] max-h-[200px] overflow-y-auto",
