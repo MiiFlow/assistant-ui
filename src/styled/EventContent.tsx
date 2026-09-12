@@ -3,6 +3,7 @@ import { cn } from "../utils/cn";
 import { injectBeamerKeyframes } from "../utils/beamer";
 import { convertChunkToEvent, EventTimeline } from "./EventTimeline";
 import { MarkdownContent } from "./MarkdownContent";
+import { humanizeToolName } from "./reasoning/tool-label";
 import type { Event } from "../types";
 
 interface EventContentProps {
@@ -218,14 +219,15 @@ export function EventContent({
 
   if (event.type === "tool") {
     // Prefer the LLM-provided description (user-facing prose); when
-    // absent, fall back to the raw tool name. The previous "Working…"
+    // absent, fall back to the humanized tool name ("Render table";
+    // the raw slug stays in the hover title). The previous "Working…"
     // placeholder looked weird in completed states — a slug, even if
     // implementation-y, reads as a real event. The chip-style display
     // that exposed the slug ALONGSIDE the description is what got
     // dropped; this single-label fallback is fine.
     const description = event.toolDescription?.trim();
     const hasDescription = !!description && description.length > 0;
-    const label = hasDescription ? description! : event.toolName || "Tool call";
+    const label = hasDescription ? description! : humanizeToolName(event.toolName);
 
     return (
       <div
@@ -255,15 +257,13 @@ export function EventContent({
           style={{
             display: "inline-flex",
             alignItems: "center",
-            // Slug fallbacks render in mono so a raw `render_table` reads
-            // as a code identifier rather than malformed prose. Real
-            // descriptions stay in sans body text.
-            fontFamily: hasDescription ? undefined : MONO_STACK,
-            fontVariantLigatures: hasDescription ? undefined : "none",
-            fontSize: hasDescription ? 14 : 12.5,
+            // A call with no description is labelled with its humanized
+            // name ("Render table"), which is prose, so both cases share
+            // sans body text. The raw slug stays in the hover title.
+            fontSize: 14,
             lineHeight: 1.5,
             letterSpacing: "-0.005em",
-            fontWeight: hasDescription ? 450 : 500,
+            fontWeight: 450,
             fontVariantNumeric: "tabular-nums",
             flex: 1,
             minWidth: 0,

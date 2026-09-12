@@ -1,4 +1,5 @@
 import type { StreamingChunk, SubagentChunkData } from "../../types";
+import { humanizeToolName } from "./tool-label";
 import type {
 	RunOutcome,
 	RunStep,
@@ -223,7 +224,7 @@ export function buildRunSteps(
 			open.tools.push({
 				id: chunk.toolCallId || `${chunk.toolName ?? "tool"}-${index}`,
 				name: chunk.toolName || "Tool call",
-				label: hasDescription ? description! : chunk.toolName || "Tool call",
+				label: hasDescription ? description! : humanizeToolName(chunk.toolName),
 				isSlugOnly: !hasDescription,
 				kind: toolKind(chunk),
 				status: toolStatus(chunk),

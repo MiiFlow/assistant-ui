@@ -11,6 +11,7 @@ export {
 	stepsWallClockSeconds,
 	INTERNAL_TOOLS,
 } from "./build-steps";
+export { humanizeToolName } from "./tool-label";
 export type {
 	RunOutcome,
 	RunStep,

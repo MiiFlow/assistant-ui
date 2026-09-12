@@ -40,6 +40,7 @@ export {
 	isInternalTool,
 	stepsWallClockSeconds,
 	INTERNAL_TOOLS,
+	humanizeToolName,
 	type RunStep,
 	type RunOutcome,
 	type RunStepStatus,

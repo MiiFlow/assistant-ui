@@ -56,9 +56,9 @@ export interface RunStepTool {
 	id: string;
 	/** Raw slug (`get_ad_performance`) — the hover title. */
 	name: string;
-	/** LLM-written prose, falling back to the slug. */
+	/** LLM-written prose, falling back to the humanized slug ("Render table"). */
 	label: string;
-	/** True when `label` is only the slug, so it can render as an identifier. */
+	/** True when the call carried no description, so `label` was derived from the slug. */
 	isSlugOnly: boolean;
 	/** Read, write, or undeclared. Drives the mark and the chip's weight. */
 	kind: RunStepToolKind;

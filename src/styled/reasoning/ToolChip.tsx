@@ -141,11 +141,10 @@ export function ToolChip({ tool }: { tool: RunStepTool }) {
 
 			<span
 				style={{
-					// A raw slug renders in mono so `render_table` reads as an
-					// identifier rather than as malformed prose.
-					fontFamily: tool.isSlugOnly ? MONO_STACK : undefined,
-					fontVariantLigatures: tool.isSlugOnly ? "none" : undefined,
-					fontSize: tool.isSlugOnly ? 11.5 : 12.5,
+					// A call with no description is labelled with its humanized name
+					// ("Render table"), which is prose, so it shares the sans face.
+					// The raw slug stays in the hover title.
+					fontSize: 12.5,
 					lineHeight: 1.45,
 					letterSpacing: "-0.004em",
 					fontWeight: tone.weight,

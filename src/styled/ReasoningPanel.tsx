@@ -5,6 +5,7 @@ import { injectBeamerKeyframes } from "../utils/beamer";
 import { cn } from "../utils/cn";
 import { EventTimeline, convertChunkToEvent } from "./EventTimeline";
 import { PlanTimeline } from "./PlanTimeline";
+import { humanizeToolName } from "./reasoning/tool-label";
 
 /**
  * Live duration counter for the streaming header.
@@ -406,8 +407,8 @@ export function ReasoningPanel({
 	const hasSubagent = hasSubagentChunks(chunks);
 
 	// Live operation label — only shown while streaming. Prefers the
-	// LLM-provided description; falls back to the raw tool name when
-	// absent, mirroring the body-row fallback.
+	// LLM-provided description; falls back to the humanized tool name
+	// when absent, mirroring the body-row fallback.
 	const getLiveLabel = () => {
 		// Sub-assistant mode — subagent type slugs are presentation-grade
 		// handles (configured by the team), so they're safe to render.
@@ -417,7 +418,7 @@ export function ReasoningPanel({
 		const lastToolName = lastChunk?.toolName?.toLowerCase().trim();
 		const lastIsInternal = !!lastToolName && INTERNAL_TOOLS.has(lastToolName);
 		if (!lastIsInternal && lastChunk?.toolDescription) return lastChunk.toolDescription;
-		if (!lastIsInternal && lastChunk?.toolName) return lastChunk.toolName;
+		if (!lastIsInternal && lastChunk?.toolName) return humanizeToolName(lastChunk.toolName);
 		switch (lastChunk?.type) {
 			case "planning":
 				return "Planning…";
