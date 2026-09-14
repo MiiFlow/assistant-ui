@@ -82,7 +82,7 @@ function useRotatingPlaceholder(placeholders: string[], intervalMs = 3000) {
 }
 
 // ---------------------------------------------------------------------------
-// Default inline input (simple textarea, no Lexical)
+// Default inline Lexical input
 // ---------------------------------------------------------------------------
 
 function DefaultInput({
@@ -163,8 +163,10 @@ function DefaultInput({
 				commandProvider={commandProvider ?? null}
 				commandProviders={commandProviders}
 				className="px-4 sm:px-5 pt-3.5 sm:pt-4 pb-1"
-				inputClassName="text-sm sm:text-base text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-500"
-				placeholderClassName="text-sm sm:text-base"
+				// Keep the welcome editor at 16px, including on phones where iOS
+				// zooms smaller focused inputs. Override the shared desktop size too.
+				inputClassName="text-base md:text-base text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-500"
+				placeholderClassName="text-base md:text-base"
 				onChange={({ text }) => setHasText(text.trim().length > 0)}
 				onSubmit={({ text }) => handleSubmit(text)}
 			/>
