@@ -320,7 +320,8 @@ function ChatInputBody({
               ariaLabel={ariaLabel}
               ariaMultiline
               className={cn(
-                "outline-none w-full text-sm leading-relaxed",
+                // iOS zooms focused editors below 16px. Preserve desktop sizing.
+                "outline-none w-full text-base md:text-sm leading-relaxed",
                 "min-h-[24px] max-h-[200px] overflow-y-auto",
                 "text-gray-900 dark:text-zinc-100",
                 disabled && "opacity-50 cursor-not-allowed",
@@ -332,7 +333,7 @@ function ChatInputBody({
             <div
               className={cn(
                 "pointer-events-none absolute inset-0 flex items-center overflow-hidden",
-                "text-sm text-gray-400 dark:text-zinc-500 select-none",
+                "text-base md:text-sm text-gray-400 dark:text-zinc-500 select-none",
                 placeholderClassName,
               )}
             >

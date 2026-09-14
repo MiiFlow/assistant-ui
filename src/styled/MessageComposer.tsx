@@ -509,7 +509,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
               commandProvider={commandProvider ?? null}
               commandProviders={commandProviders}
               inputClassName={cn(
-                "text-sm leading-relaxed",
+                "leading-relaxed",
                 "text-gray-900 dark:text-zinc-100",
                 "placeholder:text-gray-400 dark:placeholder:text-zinc-500",
               )}
