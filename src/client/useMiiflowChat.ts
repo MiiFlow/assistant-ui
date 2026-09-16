@@ -33,6 +33,8 @@ import type {
 } from "./types";
 import {
   initSession,
+  refreshSessionToken,
+  sessionWithRefreshedToken,
   getBackendBaseUrl,
   getOrCreateUserId,
   createThread,
@@ -45,6 +47,14 @@ import {
   saveCachedSession,
   clearCachedSession,
 } from "./session";
+import {
+  fetchOrNetworkError,
+  HttpError,
+  isTransientFailure,
+  toNetworkError,
+} from "./network";
+import { describeInitFailure, describeSendFailure } from "./failure-text";
+import { TOKEN_REFRESH_LEAD_MS, isTokenExpiringSoon } from "./token-utils";
 import { validateToolDefinition, serializeToolDefinition } from "./tool-validator";
 import { useBrandingCSSVars } from "../hooks/use-branding-css-vars";
 import { compressImageIfNeeded } from "../utils/compress-image";
@@ -56,11 +66,52 @@ import { compressImageIfNeeded } from "../utils/compress-image";
 const WS_HEARTBEAT_INTERVAL = 21000; // 21 seconds — matches web app
 const WS_RECONNECT_BASE_DELAY = 1000;
 const WS_RECONNECT_MAX_DELAY = 30000;
-// Stop reconnecting after this many consecutive handshake-time failures
-// (onclose before onopen) even with a freshly-refreshed session token, so a
-// permanently-broken tab doesn't hammer the server forever.
-const WS_MAX_AUTH_REFRESH_ATTEMPTS = 3;
+// A browser reports a rejected websocket handshake and an unreachable server
+// identically (close before open, code 1006). After this many consecutive
+// handshake failures the token endpoint is asked instead: it answers over
+// plain HTTP, so it can tell the network, a bad session, and a healthy
+// session whose socket still won't open apart. An expiring token skips the
+// wait and is refreshed on the first failure.
+const WS_FAILURES_BEFORE_SESSION_CHECK = 3;
+// Stop after this many session checks that came back healthy while the
+// socket still would not open, so a permanently-broken tab doesn't hammer the
+// server forever. A check that could not reach the server does not count.
+const WS_MAX_SESSION_CHECKS = 3;
 const WS_MIIFLOW_PROTOCOL = "miiflow.v1";
+
+/** Backoff for retrying a session init that failed transiently. */
+const INIT_RETRY_BASE_DELAY = 1000;
+const INIT_RETRY_MAX_DELAY = 30000;
+
+/** Exponential backoff: `base`, doubling per attempt, capped at `max`. */
+function backoffDelay(base: number, max: number, attempt: number): number {
+  return Math.min(base * Math.pow(2, attempt), max);
+}
+
+function assistantDisplayName(session: EmbedSession | null): string | undefined {
+  return session?.config.branding?.custom_name || session?.config.assistant_name;
+}
+
+function assistantParticipant(session: EmbedSession | null): InternalMessage["participant"] {
+  return {
+    id: "assistant",
+    name: assistantDisplayName(session) || "Assistant",
+    role: "assistant",
+    avatarUrl: session?.config.branding?.assistant_avatar,
+  };
+}
+
+function assistantErrorMessage(
+  session: EmbedSession | null,
+  text: string
+): InternalMessage {
+  return {
+    id: `error-${Date.now()}`,
+    textContent: text,
+    participant: assistantParticipant(session),
+    createdAt: new Date().toISOString(),
+  };
+}
 
 function buildWebSocketUrl(config: MiiflowChatConfig, session: EmbedSession): string {
   if (config.webSocketUrl) {
@@ -402,7 +453,11 @@ export async function parseSSEStream(
 
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      // A body that dies mid-stream rejects here with the same bare TypeError
+      // as a failed fetch; name it before it is mistaken for a parser bug.
+      const { done, value } = await reader.read().catch((err) => {
+        throw toNetworkError(err);
+      });
       if (done) break;
 
       const rawChunk = decoder.decode(value, { stream: true });
@@ -1037,16 +1092,29 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   const [cachedBranding, setCachedBranding] =
     useState<EmbedSessionBranding | null>(null);
 
-  // The in-flight init() promise, so sendMessage() (and others) can await a
-  // session instead of dropping calls made before init resolves.
-  const initPromiseRef = useRef<Promise<EmbedSession | null> | null>(null);
+  // Resolves the session: the in-flight init when there is one, otherwise a
+  // fresh attempt (a failed init is retried now instead of waiting out its
+  // backoff). sendMessage() awaits it so a message typed before, or after a
+  // failed, init is not dropped.
+  const ensureSessionRef = useRef<(() => Promise<EmbedSession | null>) | null>(
+    null
+  );
+  // Why the last init failed, so a send that finds no session can say so.
+  const initFailureRef = useRef<unknown>(null);
+  // The ids of a turn still waiting for its session: shown, but not yet sent.
+  const unsentTurnRef = useRef<string[] | null>(null);
 
   // Initialize session on mount
   useEffect(() => {
     let cancelled = false;
+    let resolved: EmbedSession | null = null;
+    let inFlight: Promise<EmbedSession | null> | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let transientFailures = 0;
 
     // Surface cached branding immediately (post-mount, no network).
     const cached = loadCachedSession(configRef.current);
+    let cachedToken = cached?.token;
     if (cached?.config.branding) {
       setCachedBranding(cached.config.branding);
     }
@@ -1064,7 +1132,6 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
 
     async function init(): Promise<EmbedSession | null> {
       try {
-        const cachedToken = cached?.token;
         let sess: EmbedSession;
         try {
           sess = await initSession(configRef.current, {
@@ -1074,8 +1141,11 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         } catch (err) {
           // A cached token the backend rejects (rotated key, revoked tenant)
           // shouldn't strand the chat — drop it and retry the full handshake.
-          if (cachedToken) {
+          // An unreachable or restarting backend rejected nothing, so the
+          // token stays.
+          if (cachedToken && !isTransientFailure(err)) {
             clearCachedSession(configRef.current);
+            cachedToken = undefined;
             sess = await initSession(configRef.current, {
               tools: serializedConfigTools,
             });
@@ -1083,11 +1153,14 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
             throw err;
           }
         }
-        if (!cancelled) {
-          saveCachedSession(configRef.current, sess);
-          setSession(sess);
-          setLoading(false);
-        }
+        if (cancelled) return successorSession();
+        resolved = sess;
+        transientFailures = 0;
+        initFailureRef.current = null;
+        saveCachedSession(configRef.current, sess);
+        setSession(sess);
+        setError(null);
+        setLoading(false);
 
         // Self-heal across deploy ordering: if the backend didn't acknowledge
         // the folded tools (older backend that ignores `tools` in init), register
@@ -1110,19 +1183,61 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         }
         return sess;
       } catch (err) {
-        if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : "Failed to initialize"
+        if (cancelled) return successorSession();
+        initFailureRef.current = err;
+        setLoading(false);
+        setError(describeInitFailure(err));
+        if (isTransientFailure(err)) {
+          // Init is safe to repeat (the backend reuses this visitor's session
+          // and its still-empty thread), so an unreachable or restarting
+          // backend is waited out rather than left as a dead panel.
+          retryTimer = setTimeout(
+            ensureSession,
+            backoffDelay(INIT_RETRY_BASE_DELAY, INIT_RETRY_MAX_DELAY, transientFailures++)
           );
-          setLoading(false);
         }
         return null;
       }
     }
 
-    initPromiseRef.current = init();
+    // A send awaiting this init must not be told "no session" because the
+    // effect re-ran (StrictMode, a key change): hand it to the init that
+    // replaced this one. After an unmount there is none.
+    function successorSession(): Promise<EmbedSession | null> {
+      const successor = ensureSessionRef.current;
+      return successor && successor !== ensureSession
+        ? successor()
+        : Promise.resolve(null);
+    }
+
+    function ensureSession(): Promise<EmbedSession | null> {
+      if (cancelled) return successorSession();
+      if (resolved) return Promise.resolve(resolved);
+      if (inFlight) return inFlight;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+      const run: Promise<EmbedSession | null> = init().finally(() => {
+        if (inFlight === run) inFlight = null;
+      });
+      inFlight = run;
+      return run;
+    }
+
+    // The OS knows before any backoff timer does.
+    const onOnline = () => {
+      void ensureSession();
+    };
+
+    ensureSessionRef.current = ensureSession;
+    window.addEventListener("online", onOnline);
+    void ensureSession();
     return () => {
       cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      window.removeEventListener("online", onOnline);
+      if (ensureSessionRef.current === ensureSession) ensureSessionRef.current = null;
     };
   }, [config.publicKey, config.assistantId]);
 
@@ -1224,18 +1339,31 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     [] // stable — reads sessionRef
   );
 
-  // WebSocket connection for client tool invocations
+  // WebSocket connection for client tool invocations. Keyed on the THREAD, not
+  // the session object: a token refresh (this effect's own, or a media-token
+  // update) must not tear down a healthy socket or reset the failure counters.
+  const wsThreadId = session?.config.thread_id;
   useEffect(() => {
-    if (!session) return;
+    if (!wsThreadId) return;
 
     let ws: WebSocket | null = null;
     let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let reconnectAttempt = 0;
-    let authRefreshAttempts = 0;
+    let handshakeFailures = 0;
+    let sessionChecks = 0;
     let disposed = false;
 
+    function scheduleReconnect() {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(
+        connect,
+        backoffDelay(WS_RECONNECT_BASE_DELAY, WS_RECONNECT_MAX_DELAY, reconnectAttempt++)
+      );
+    }
+
     function connect() {
+      reconnectTimer = null;
       if (disposed) return;
 
       // Always read the latest session — sessionRef may have been refreshed
@@ -1245,24 +1373,26 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
 
       const url = buildWebSocketUrl(configRef.current, sess);
       const protocols = buildWebSocketProtocols(sess);
-      ws = new WebSocket(url, protocols);
+      const socket = new WebSocket(url, protocols);
+      ws = socket;
       let opened = false;
 
-      ws.onopen = () => {
+      socket.onopen = () => {
         console.log("[Miiflow] WebSocket connected");
         opened = true;
         reconnectAttempt = 0;
-        authRefreshAttempts = 0;
+        handshakeFailures = 0;
+        sessionChecks = 0;
 
         // Start heartbeat
         heartbeatTimer = setInterval(() => {
-          if (ws?.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "heartbeat" }));
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: "heartbeat" }));
           }
         }, WS_HEARTBEAT_INTERVAL);
       };
 
-      ws.onmessage = (event) => {
+      socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === "client_tool_invocation" && data.invocation) {
@@ -1288,63 +1418,102 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         }
       };
 
-      ws.onclose = () => {
+      socket.onclose = () => {
         if (heartbeatTimer) {
           clearInterval(heartbeatTimer);
           heartbeatTimer = null;
         }
         if (disposed) return;
 
-        // Handshake-time failure (onclose before onopen) is almost always an
-        // auth rejection — most commonly an expired embed token. Refresh the
-        // session, then retry. Cap so a permanently-broken session eventually
-        // stops hammering the server.
-        if (!opened) {
-          if (authRefreshAttempts >= WS_MAX_AUTH_REFRESH_ATTEMPTS) {
-            console.error(
-              "[Miiflow] WebSocket giving up after repeated handshake failures",
-            );
-            return;
-          }
-          authRefreshAttempts++;
-          initSession(configRef.current)
-            .then((refreshed) => {
-              if (disposed) return;
-              sessionRef.current = refreshed;
-              setSession(refreshed);
-              reconnectTimer = setTimeout(connect, WS_RECONNECT_BASE_DELAY);
-            })
-            .catch((err) => {
-              if (disposed) return;
-              console.error("[Miiflow] Session refresh failed", err);
-              const delay = Math.min(
-                WS_RECONNECT_BASE_DELAY * Math.pow(2, authRefreshAttempts),
-                WS_RECONNECT_MAX_DELAY,
-              );
-              reconnectTimer = setTimeout(connect, delay);
-            });
+        // A socket that was open dropped: nothing suggests the session, so
+        // just reconnect.
+        if (opened) {
+          scheduleReconnect();
           return;
         }
 
-        // Normal mid-session drop — standard exponential backoff.
-        const delay = Math.min(
-          WS_RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttempt),
-          WS_RECONNECT_MAX_DELAY,
-        );
-        reconnectAttempt++;
-        reconnectTimer = setTimeout(connect, delay);
+        handshakeFailures++;
+        const sess = sessionRef.current;
+        const checkSession =
+          sess &&
+          (isTokenExpiringSoon(sess.token, TOKEN_REFRESH_LEAD_MS) ||
+            handshakeFailures >= WS_FAILURES_BEFORE_SESSION_CHECK);
+        if (!sess || !checkSession) {
+          scheduleReconnect();
+          return;
+        }
+        if (sessionChecks >= WS_MAX_SESSION_CHECKS) {
+          console.error(
+            "[Miiflow] WebSocket giving up: the session is valid but the socket keeps failing",
+          );
+          return;
+        }
+
+        // The refresh endpoint re-issues the token for THIS thread. Init
+        // would move a conversation that has messages onto a new, empty
+        // thread and drop its client tools.
+        const embedConfig = configRef.current;
+        refreshSessionToken(getBackendBaseUrl(embedConfig), sess.token, embedConfig.publicKey)
+          .then((token) => {
+            if (disposed) return;
+            const current = sessionRef.current;
+            // The conversation moved to another thread while the refresh was
+            // on the wire: the socket effect for that thread replaces this one.
+            if (!current || current.config.thread_id !== sess.config.thread_id) return;
+            sessionChecks++;
+            const refreshed = sessionWithRefreshedToken(current, token);
+            if (!refreshed) {
+              // Still on this thread, but the backend issued the token for
+              // another one (a server that re-issues for the session's newest
+              // thread, which another tab has since moved). No token for this
+              // thread came back, so this check did not help: keep trying
+              // until the check cap gives up and says so, rather than going
+              // quiet with the socket down.
+              scheduleReconnect();
+              return;
+            }
+            handshakeFailures = 0;
+            sessionRef.current = refreshed;
+            saveCachedSession(embedConfig, refreshed);
+            setSession(refreshed);
+            scheduleReconnect();
+          })
+          .catch((err) => {
+            if (disposed) return;
+            // Unreachable, restarting or rate limited: says nothing about
+            // the session, so keep waiting it out.
+            if (isTransientFailure(err)) {
+              scheduleReconnect();
+              return;
+            }
+            // The backend refused the session itself (revoked, tenant
+            // inactive, key mismatch): no token will open this socket.
+            console.error("[Miiflow] WebSocket giving up: session rejected", err);
+          });
       };
 
-      ws.onerror = () => {
+      socket.onerror = () => {
         // Intentionally silent — onerror always precedes onclose,
         // which handles reconnection with exponential backoff.
       };
     }
 
+    // Back online: reconnect now instead of waiting out the backoff. A
+    // pending timer means the socket is closed; anything else is either open
+    // or already mid-handshake.
+    const onOnline = () => {
+      if (!reconnectTimer) return;
+      reconnectAttempt = 0;
+      clearTimeout(reconnectTimer);
+      connect();
+    };
+
+    window.addEventListener("online", onOnline);
     connect();
 
     return () => {
       disposed = true;
+      window.removeEventListener("online", onOnline);
       if (heartbeatTimer) clearInterval(heartbeatTimer);
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (ws) {
@@ -1352,7 +1521,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         ws.close();
       }
     };
-  }, [session, handleToolInvocation]);
+  }, [wsThreadId, handleToolInvocation]);
 
   // Send system event — uses sessionRef for stable reference
   const sendSystemEvent = useCallback(
@@ -1383,14 +1552,8 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
 
       if ((!hasText && !hasAttachments) || isStreamingRef.current) return;
 
-      // The composer is interactive before init resolves; if the user sends
-      // early, wait for the in-flight session rather than dropping the message.
-      let currentSession = sessionRef.current;
-      if (!currentSession && initPromiseRef.current) {
-        currentSession = await initPromiseRef.current;
-      }
-      if (!currentSession) return;
-      // Lock immediately to prevent double-send race condition
+      // Lock before anything awaits, so a second send while the session
+      // resolves is refused instead of streamed alongside this one.
       isStreamingRef.current = true;
 
       const optimisticId = `msg-${Date.now()}`;
@@ -1408,14 +1571,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
       const placeholderAssistant: InternalMessage = {
         id: placeholderAssistantId,
         textContent: "",
-        participant: {
-          id: "assistant",
-          name:
-            currentSession.config.branding?.custom_name ||
-            currentSession.config.assistant_name,
-          role: "assistant",
-          avatarUrl: currentSession.config.branding?.assistant_avatar,
-        },
+        participant: assistantParticipant(sessionRef.current),
         createdAt: new Date().toISOString(),
         isStreaming: true,
       };
@@ -1438,20 +1594,57 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         };
 
         setMessages((prev) => [...prev, userMessage, placeholderAssistant]);
-
-        // Notify consumer that a user message was created (for widget event emission)
-        configRef.current.onUserMessageCreated?.({ id: optimisticId, content });
       }
       setIsStreaming(true);
       setStreamingMessageId(placeholderAssistantId);
+      setError(null);
 
+      // This turn's handle. stopStreaming() aborts it and drops the ref, and a
+      // later send installs its own, so the ref is how this turn tells whether
+      // the streaming state is still its to clear.
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
+      // Whether the server answered at all. A transport failure after this
+      // point means it received the message; before it, nobody can tell.
+      let responseStarted = false;
       try {
+        // The composer is interactive before init resolves, and stays so
+        // after a failed one: wait for (or retry) the session, and let a
+        // failure answer in the transcript like any other failed turn.
+        let currentSession = sessionRef.current;
+        if (!currentSession) {
+          // Until the session arrives nothing has been sent, so a stop
+          // removes this turn outright (stopStreaming reads this).
+          unsentTurnRef.current = [optimisticId, placeholderAssistantId];
+          try {
+            currentSession = (await ensureSessionRef.current?.()) ?? null;
+          } finally {
+            if (unsentTurnRef.current?.[0] === optimisticId) unsentTurnRef.current = null;
+          }
+          if (abortController.signal.aborted) return;
+          if (!currentSession) {
+            throw initFailureRef.current ?? new Error("Failed to initialize");
+          }
+          const resolvedSession = currentSession;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === placeholderAssistantId
+                ? { ...msg, participant: assistantParticipant(resolvedSession) }
+                : msg
+            )
+          );
+        }
+
+        if (!isClarificationResponse) {
+          // Notify consumer that a user message was created (for widget event
+          // emission) once it is actually going out.
+          configRef.current.onUserMessageCreated?.({ id: optimisticId, content });
+        }
+
         const backendBaseUrl = getBackendBaseUrl(configRef.current);
 
-        const abortController = new AbortController();
-        abortControllerRef.current = abortController;
-
-        const response = await fetch(
+        const response = await fetchOrNetworkError(
           `${backendBaseUrl}/assistant/message/stream/`,
           {
             method: "POST",
@@ -1471,8 +1664,9 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           }
         );
 
+        responseStarted = true;
         if (!response.ok) {
-          throw new Error(`HTTP error: ${response.status}`);
+          throw new HttpError(`HTTP error: ${response.status}`, response.status);
         }
 
         const reader = response.body?.getReader();
@@ -1609,19 +1803,8 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         console.error("[Miiflow] Send error:", err);
 
         const sess = sessionRef.current;
-        const errorMsg: InternalMessage = {
-          id: `error-${Date.now()}`,
-          textContent: "Sorry, I encountered an error. Please try again.",
-          participant: {
-            id: "assistant",
-            name:
-              sess?.config.branding?.custom_name ||
-              sess?.config.assistant_name || "Assistant",
-            role: "assistant",
-            avatarUrl: sess?.config.branding?.assistant_avatar,
-          },
-          createdAt: new Date().toISOString(),
-        };
+        const failure = describeSendFailure(err, responseStarted, assistantDisplayName(sess));
+        const errorMsg = assistantErrorMessage(sess, failure.transcript);
         // The failed turn's message is the placeholder itself (one id for the
         // message's whole life). Keep it, finalized, if anything had already
         // streamed into it — partial work is still work — and drop it if it
@@ -1640,15 +1823,19 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
             : prev.filter((m) => m.id !== placeholderAssistantId);
           return [...kept, errorMsg];
         });
-        setError(err instanceof Error ? err.message : "Send failed");
+        setError(failure.error);
       } finally {
-        abortControllerRef.current = null;
-        setIsStreaming(false);
-        setStreamingMessageId(null);
-        setStatusText(null);
+        // Stopped, and possibly superseded by a newer send: the streaming
+        // state now belongs to someone else, so leave it alone.
+        if (abortControllerRef.current === abortController) {
+          abortControllerRef.current = null;
+          setIsStreaming(false);
+          setStreamingMessageId(null);
+          setStatusText(null);
+        }
       }
     },
-    [handleToolInvocation] // stable — reads sessionRef and isStreamingRef
+    [handleToolInvocation] // stable — reads only refs
   );
 
   // Stop streaming — aborts fetch, finalizes partial content
@@ -1659,11 +1846,17 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
 
-    // Finalize any streaming message with accumulated content
+    // A turn still waiting for its session was never sent: drop it now rather
+    // than leave its bubbles up until that wait ends, which on a dead network
+    // is a whole fetch timeout. Anything else is finalized with what it has.
+    const unsent = unsentTurnRef.current;
+    unsentTurnRef.current = null;
     setMessages((prev) =>
-      prev.map((msg) =>
-        msg.isStreaming ? { ...msg, isStreaming: false } : msg
-      )
+      unsent
+        ? prev.filter((msg) => !unsent.includes(msg.id))
+        : prev.map((msg) =>
+            msg.isStreaming ? { ...msg, isStreaming: false } : msg
+          )
     );
 
     // Reset streaming state
@@ -1778,7 +1971,10 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   );
 
   const updateMediaToken = useCallback((token: string) => {
-    setSession((current) => current ? { ...current, token } : current);
+    // A token refreshed for a thread the session has since left is dropped.
+    setSession((current) =>
+      current ? (sessionWithRefreshedToken(current, token) ?? current) : current
+    );
   }, []);
   const mediaResources = useMediaDelivery(
     messages.flatMap((message) => message.medias || []),

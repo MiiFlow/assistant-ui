@@ -8,23 +8,40 @@
  * Returns the expiry timestamp in milliseconds, or null if parsing fails.
  */
 export function parseTokenExpiry(token: string): number | null {
+  const claims = parseTokenClaims(token);
+  return typeof claims?.exp === "number" ? claims.exp * 1000 : null;
+}
+
+/**
+ * The thread an embed token is bound to, or null if it names none. Every
+ * request carrying the token acts on this thread, whatever thread the
+ * session object it was stored on is showing.
+ */
+export function parseTokenThreadId(token: string): string | null {
+  const claims = parseTokenClaims(token);
+  return typeof claims?.thread_id === "string" ? claims.thread_id : null;
+}
+
+/** The unverified claims of a JWT, or null if it is not one. */
+function parseTokenClaims(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-
     const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = atob(base64);
-    const decoded = JSON.parse(jsonPayload);
-
-    if (typeof decoded.exp === "number") {
-      return decoded.exp * 1000;
-    }
-
-    return null;
+    const decoded: unknown = JSON.parse(atob(base64));
+    return decoded && typeof decoded === "object"
+      ? (decoded as Record<string, unknown>)
+      : null;
   } catch {
     return null;
   }
 }
+
+/**
+ * How long before expiry a live connection treats its token as due for
+ * refresh: long enough for one refresh round-trip to land first.
+ */
+export const TOKEN_REFRESH_LEAD_MS = 60_000;
 
 /**
  * Check if a token is expiring soon (within the given threshold).

@@ -137,7 +137,9 @@ export interface MiiflowChatResult {
   session: EmbedSession | null;
   /** Whether the session is still initializing */
   loading: boolean;
-  /** Error message if initialization or sending failed */
+  /** Why the last init or send failed; null again once one succeeds. An
+   *  unreachable or restarting backend is retried in the background, so this is not
+   *  necessarily terminal. */
   error: string | null;
 
   /** Branding data from the session, mapped to BrandingData */

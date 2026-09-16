@@ -231,7 +231,7 @@ const result = useMiiflowChat(config);
 | `isStreaming` | `boolean` | Whether a response is currently streaming |
 | `streamingMessageId` | `string \| null` | ID of the message being streamed |
 | `loading` | `boolean` | Whether the session is still initializing |
-| `error` | `string \| null` | Error message if initialization or sending failed |
+| `error` | `string \| null` | Why the last init or send failed; `null` again once one succeeds. When the backend is unreachable or restarting (network failure, 5xx, 429), init keeps retrying in the background (and at once on the browser's `online` event), so treat this as a transient state, not a dead panel |
 | `session` | `EmbedSession \| null` | Current session data |
 | `branding` | `BrandingData \| null` | Branding configuration from the dashboard |
 | `brandingCSSVars` | `CSSProperties` | CSS custom properties derived from branding |

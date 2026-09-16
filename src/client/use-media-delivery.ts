@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { MediaChunkData } from "../types/streaming";
 import { CHAT_MEDIA_PATH } from "../utils/media";
-import { isTokenExpiringSoon } from "./token-utils";
+import { TOKEN_REFRESH_LEAD_MS, isTokenExpiringSoon } from "./token-utils";
+import { fetchOrNetworkError, HttpError, readBody } from "./network";
+import { refreshSessionToken } from "./session";
 
 /** Fetch private widget images with headers, then render local blob URLs.
  * Credentials never appear in an image URL or leak to an external provider.
@@ -53,22 +55,12 @@ export function useMediaDelivery(
       jobs.current.set(path, controller);
       const load = async () => {
         let accessToken = token;
-        if (isTokenExpiringSoon(accessToken, 60_000)) {
+        if (isTokenExpiringSoon(accessToken, TOKEN_REFRESH_LEAD_MS)) {
           if (!refresh.current) {
-            const refreshing = fetch(`${baseUrl}/api/embed/refresh`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "X-Embed-Public-Key": publicKey,
-              },
-            })
-              .then(async (response) => {
-                if (!response.ok) throw new Error("Session expired");
-                const data = await response.json();
-                if (!data.token) throw new Error("Session expired");
-                if (generation.current === currentGeneration)
-                  onToken(data.token);
-                return data.token as string;
+            const refreshing = refreshSessionToken(baseUrl, accessToken, publicKey)
+              .then((fresh) => {
+                if (generation.current === currentGeneration) onToken(fresh);
+                return fresh;
               })
               .finally(() => {
                 if (refresh.current === refreshing) refresh.current = null;
@@ -78,13 +70,13 @@ export function useMediaDelivery(
           accessToken = await refresh.current;
         }
         if (controller.signal.aborted) return;
-        const response = await fetch(`${baseUrl}${path}`, {
+        const response = await fetchOrNetworkError(`${baseUrl}${path}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
           signal: controller.signal,
           cache: "no-store",
         });
-        if (!response.ok) throw new Error("Image unavailable");
-        const blob = await response.blob();
+        if (!response.ok) throw new HttpError("Image unavailable", response.status);
+        const blob = await readBody(() => response.blob());
         if (controller.signal.aborted) return;
         const url = URL.createObjectURL(blob);
         blobs.current.add(url);

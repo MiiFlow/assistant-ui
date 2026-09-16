@@ -11,7 +11,8 @@ import type {
 	SystemEvent,
 	ToolExecutionResult,
 } from "./types";
-import { isTokenExpiringSoon } from "./token-utils";
+import { isTokenExpiringSoon, parseTokenThreadId } from "./token-utils";
+import { fetchOrNetworkError, readJsonOrThrow } from "./network";
 
 /**
  * Determine the backend base URL from config.
@@ -46,6 +47,66 @@ export function getOrCreateUserId(): string {
 		}
 	}
 	return userId;
+}
+
+/**
+ * `session` carrying `token`, or null when the token is for a different
+ * thread. A refresh takes a round trip, and the conversation can move to a
+ * new thread while it is on the wire (a new chat, a thread switch); applying
+ * the old thread's token to the new thread's session would send every later
+ * request, and the websocket handshake, to the wrong conversation.
+ */
+export function sessionWithRefreshedToken(
+	session: EmbedSession,
+	token: string,
+): EmbedSession | null {
+	return parseTokenThreadId(token) === session.config.thread_id
+		? { ...session, token }
+		: null;
+}
+
+/** Refreshes on the wire, keyed by the token being replaced. */
+const refreshesInFlight = new Map<string, Promise<string>>();
+
+/**
+ * Get a fresh token for the thread `token` is bound to. Unlike
+ * {@link initSession}, this never moves the conversation: init hands a thread
+ * that already has messages a brand-new thread, and re-registers only the
+ * tools it is passed. The result is for THAT thread, so a caller must not put
+ * it on a session that has since moved to another one
+ * ({@link sessionWithRefreshedToken}). Takes the bare credentials so the media loader, which
+ * holds no session object, shares it. Concurrent callers refreshing the same
+ * token share one request: every refresh counts against the session's rate
+ * limit, and the websocket and media loader both refresh near expiry.
+ */
+export function refreshSessionToken(
+	backendBaseUrl: string,
+	token: string,
+	publicKey: string,
+): Promise<string> {
+	const key = `${backendBaseUrl}|${publicKey}|${token}`;
+	const inFlight = refreshesInFlight.get(key);
+	if (inFlight) return inFlight;
+
+	const refresh = (async () => {
+		const response = await fetchOrNetworkError(`${backendBaseUrl}/api/embed/refresh`, {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${token}`,
+				"X-Embed-Public-Key": publicKey,
+			},
+		});
+
+		const data = await readJsonOrThrow(response, "Token refresh failed");
+		if (!data.token) {
+			throw new Error(data.error || "Token refresh returned no token");
+		}
+		return data.token as string;
+	})().finally(() => {
+		refreshesInFlight.delete(key);
+	});
+	refreshesInFlight.set(key, refresh);
+	return refresh;
 }
 
 /**
@@ -97,7 +158,7 @@ export async function initSession(
 		headers["X-Embed-Signature"] = config.hmac;
 	}
 
-	const response = await fetch(`${backendBaseUrl}/api/embed/init`, {
+	const response = await fetchOrNetworkError(`${backendBaseUrl}/api/embed/init`, {
 		method: "POST",
 		headers,
 		body: JSON.stringify({
@@ -113,12 +174,7 @@ export async function initSession(
 		}),
 	});
 
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Init failed: ${response.status} - ${errorText}`);
-	}
-
-	const data = await response.json();
+	const data = await readJsonOrThrow(response, "Init failed");
 	if (!data.success) {
 		throw new Error(data.error || "Failed to initialize session");
 	}
@@ -144,8 +200,8 @@ export async function initSession(
  * thread — so only the token + branding config are useful across reloads.
  */
 const SESSION_CACHE_PREFIX = "miiflow-session";
-/** Treat a cached token as unusable once it is within this window of expiry. */
-const TOKEN_REFRESH_THRESHOLD_MS = 5 * 60 * 1000;
+/** A cached token is reused only if it has at least this long left to live. */
+const CACHED_TOKEN_MIN_TTL_MS = 5 * 60 * 1000;
 
 export interface CachedSession {
 	token: string;
@@ -166,7 +222,7 @@ export function loadCachedSession(config: MiiflowChatConfig): CachedSession | nu
 		if (!raw) return null;
 		const parsed = JSON.parse(raw) as CachedSession;
 		if (!parsed?.token || !parsed?.config) return null;
-		if (isTokenExpiringSoon(parsed.token, TOKEN_REFRESH_THRESHOLD_MS)) return null;
+		if (isTokenExpiringSoon(parsed.token, CACHED_TOKEN_MIN_TTL_MS)) return null;
 		return parsed;
 	} catch {
 		return null;
@@ -201,7 +257,7 @@ export async function createThread(
 ): Promise<{ threadId: string; token?: string }> {
 	const backendBaseUrl = getBackendBaseUrl(config);
 
-	const response = await fetch(`${backendBaseUrl}/api/embed/graphql`, {
+	const response = await fetchOrNetworkError(`${backendBaseUrl}/api/embed/graphql`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -225,11 +281,7 @@ export async function createThread(
 		}),
 	});
 
-	if (!response.ok) {
-		throw new Error(`Failed to create thread: ${response.status}`);
-	}
-
-	const result = await response.json();
+	const result = await readJsonOrThrow(response, "Failed to create thread");
 	const newThreadId = result.data?.createThread?.thread?.id;
 
 	if (!newThreadId) {
@@ -249,7 +301,7 @@ export async function updateUser(
 ): Promise<void> {
 	const backendBaseUrl = getBackendBaseUrl(config);
 
-	await fetch(`${backendBaseUrl}/api/embed/update`, {
+	await fetchOrNetworkError(`${backendBaseUrl}/api/embed/update`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -270,7 +322,7 @@ export async function uploadFile(config: MiiflowChatConfig, session: EmbedSessio
 	const formData = new FormData();
 	formData.append("file", file);
 
-	const response = await fetch(uploadUrl, {
+	const response = await fetchOrNetworkError(uploadUrl, {
 		method: "POST",
 		headers: {
 			Authorization: `Bearer ${session.token}`,
@@ -279,12 +331,7 @@ export async function uploadFile(config: MiiflowChatConfig, session: EmbedSessio
 		body: formData,
 	});
 
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-	}
-
-	const json = await response.json();
+	const json = await readJsonOrThrow(response, "Upload failed");
 	const attachmentId = json.attachment?.id;
 
 	if (!attachmentId) {
@@ -304,7 +351,7 @@ export async function sendSystemEvent(
 ): Promise<void> {
 	const backendBaseUrl = getBackendBaseUrl(config);
 
-	const response = await fetch(`${backendBaseUrl}/api/embed/system-event`, {
+	const response = await fetchOrNetworkError(`${backendBaseUrl}/api/embed/system-event`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -322,12 +369,7 @@ export async function sendSystemEvent(
 		}),
 	});
 
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Failed to send system event: ${response.status} - ${errorText}`);
-	}
-
-	const result = await response.json();
+	const result = await readJsonOrThrow(response, "Failed to send system event");
 	if (!result.success) {
 		throw new Error(result.error || "Failed to send system event");
 	}
@@ -346,7 +388,7 @@ export async function sendPageContext(
 ): Promise<void> {
 	const backendBaseUrl = getBackendBaseUrl(config);
 
-	const response = await fetch(`${backendBaseUrl}/api/embed/page-context`, {
+	const response = await fetchOrNetworkError(`${backendBaseUrl}/api/embed/page-context`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -363,12 +405,7 @@ export async function sendPageContext(
 		}),
 	});
 
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Failed to send page context: ${response.status} - ${errorText}`);
-	}
-
-	const result = await response.json();
+	const result = await readJsonOrThrow(response, "Failed to send page context");
 	if (!result.success) {
 		throw new Error(result.error || "Failed to send page context");
 	}
@@ -384,7 +421,7 @@ export async function sendToolResult(
 ): Promise<void> {
 	const backendBaseUrl = getBackendBaseUrl(config);
 
-	const response = await fetch(`${backendBaseUrl}/api/embed/tool-result`, {
+	const response = await fetchOrNetworkError(`${backendBaseUrl}/api/embed/tool-result`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -393,12 +430,7 @@ export async function sendToolResult(
 		body: JSON.stringify(result),
 	});
 
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Failed to send tool result: ${response.status} - ${errorText}`);
-	}
-
-	const responseData = await response.json();
+	const responseData = await readJsonOrThrow(response, "Failed to send tool result");
 	if (!responseData.success) {
 		throw new Error(`Failed to send tool result: ${responseData.error}`);
 	}
@@ -415,7 +447,7 @@ export async function registerToolsOnBackend(
 	const backendBaseUrl = getBackendBaseUrl(config);
 
 	if (toolDefinitions.length === 1) {
-		const response = await fetch(`${backendBaseUrl}/api/embed/register-tool`, {
+		const response = await fetchOrNetworkError(`${backendBaseUrl}/api/embed/register-tool`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
@@ -424,16 +456,12 @@ export async function registerToolsOnBackend(
 			body: JSON.stringify(toolDefinitions[0]),
 		});
 
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(`Failed to register tool: ${response.status} - ${errorText}`);
-		}
-		const data = await response.json();
+		const data = await readJsonOrThrow(response, "Failed to register tool");
 		if (!data.success) {
 			throw new Error(`Failed to register tool: ${data.error || "Unknown error"}`);
 		}
 	} else if (toolDefinitions.length > 1) {
-		const response = await fetch(`${backendBaseUrl}/api/embed/register-tools`, {
+		const response = await fetchOrNetworkError(`${backendBaseUrl}/api/embed/register-tools`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
@@ -442,11 +470,7 @@ export async function registerToolsOnBackend(
 			body: JSON.stringify(toolDefinitions),
 		});
 
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(`Failed to register tools: ${response.status} - ${errorText}`);
-		}
-		const data = await response.json();
+		const data = await readJsonOrThrow(response, "Failed to register tools");
 		if (!data.success) {
 			throw new Error(`Failed to register tools: ${data.error || "Unknown error"}`);
 		}

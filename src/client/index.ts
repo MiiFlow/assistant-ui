@@ -17,6 +17,9 @@ export {
   sendToolResult,
 } from "./session";
 
+// Transport failures: tell "couldn't reach the backend" from its answer
+export { NetworkError, isNetworkError } from "./network";
+
 // Token utilities
 export {
   parseTokenExpiry,
