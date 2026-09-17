@@ -1,3 +1,5 @@
+import type { MediaChunkData } from "../types";
+import { MarkdownMediaContext } from "./markdown/media-references";
 import { useContext, useMemo, useRef } from "react";
 import { ChatRenderContext } from "../context/ChatProvider";
 import { usePrefersReducedMotion } from "../hooks/use-reduced-motion";
@@ -9,6 +11,7 @@ import { repairTail } from "./markdown/repair";
 import { splitBlocks } from "./markdown/split-blocks";
 
 export interface MarkdownContentProps {
+	medias?: readonly MediaChunkData[];
 	/** Markdown content to render */
 	children: string;
 	/** Additional CSS classes */
@@ -66,6 +69,7 @@ export interface MarkdownContentProps {
  */
 export function MarkdownContent({
 	children,
+	medias,
 	className,
 	baselineFontSize,
 	darkCodeTheme,
@@ -112,6 +116,7 @@ export function MarkdownContent({
 	};
 
 	return (
+		<MarkdownMediaContext.Provider value={medias || []}>
 		<MarkdownRenderContext.Provider value={renderContext}>
 			<div className={cn("chat-prose", className)} style={rootStyle}>
 				{blocks.map((block, i) => {
@@ -149,5 +154,6 @@ export function MarkdownContent({
 				})}
 			</div>
 		</MarkdownRenderContext.Provider>
+		</MarkdownMediaContext.Provider>
 	);
 }

@@ -168,9 +168,9 @@ function MediaCell({
   if (item.mediaType === "video") {
     const ytMatch = item.url.match(YOUTUBE_ID_RE);
     const ytId = ytMatch ? ytMatch[1] : null;
-    const posterSrc = ytId
+    const posterSrc = item.posterUrl || (ytId
       ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`
-      : undefined;
+      : undefined);
     return (
       <button
         type="button"
@@ -248,8 +248,21 @@ function formatCellValue(value: unknown, column: TableColumn): React.ReactNode {
       const colorClass = badgeColors[strValue] || "bg-gray-100 text-gray-700";
       return <span className={cn("inline-block px-2 py-0.5 rounded-full text-xs font-medium", colorClass)}>{String(value)}</span>;
     }
-    case "link":
-      return <a href={String(value)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{String(value)}</a>;
+    case "link": {
+      const link = typeof value === "object" ? value as Record<string, unknown> : null;
+      const url = typeof value === "string" ? value : link?.url;
+      const label = typeof link?.label === "string" ? link.label : typeof url === "string" ? url : "Link unavailable";
+      try {
+        // Preserve relative and email links while rejecting executable schemes.
+        if (typeof url !== "string" || !url.trim() ||
+            !["https:", "http:", "mailto:", "tel:"].includes(new URL(url, "https://local.invalid").protocol)) {
+          return <span>{label}</span>;
+        }
+      } catch {
+        return <span>{label}</span>;
+      }
+      return <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{label}</a>;
+    }
     case "boolean":
       return value ? <Check size={18} className="text-green-500" /> : <X size={18} className="text-gray-400" />;
     case "progress": {
@@ -279,6 +292,7 @@ function descendingComparator(a: Record<string, unknown>, b: Record<string, unkn
 
 export function TableVisualization({ data, config, medias }: TableVisualizationProps) {
   const { columns, rows } = data;
+  const hasMedia = columns.some(col => col.type === "media");
   const sortable = config?.sortable !== false;
   const paginated = config?.paginated || false;
   const pageSize = config?.pageSize || 10;
@@ -404,15 +418,16 @@ export function TableVisualization({ data, config, medias }: TableVisualizationP
       : "";
 
   return (
-    <div className="w-full overflow-x-auto">
-      <table className="min-w-full text-sm">
+    <div className="w-full min-w-0 max-w-full overflow-x-auto" tabIndex={0} role="region" aria-label="Data table">
+      <table className={cn("min-w-full text-sm", hasMedia && "w-full table-fixed")} style={{ minWidth: hasMedia ? 640 : undefined }}>
+        <colgroup>{columns.map(col => <col key={col.key} style={{ width: col.width || (col.type === "media" ? 120 : undefined) }} />)}</colgroup>
         <thead>
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
                 className={cn(
-                  "px-3 py-2 font-semibold bg-gray-50 dark:bg-gray-800 whitespace-nowrap text-left",
+                  "px-3 py-2 font-semibold bg-gray-50 dark:bg-gray-800 whitespace-normal break-words text-left",
                   // Media columns aren't sortable in a meaningful way.
                   sortable && col.type !== "media" &&
                     "cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700",
@@ -452,6 +467,7 @@ export function TableVisualization({ data, config, medias }: TableVisualizationP
                       style={{ textAlign: col.align || "left" }}
                     >
                       {parsed ? (
+                        <div className="flex flex-col items-start gap-1">
                         <MediaCell
                           item={parsed}
                           onOpen={() => {
@@ -459,8 +475,12 @@ export function TableVisualization({ data, config, medias }: TableVisualizationP
                             if (typeof idx === "number") openLightbox(idx);
                           }}
                         />
+                        {parsed.previewUrl && /^https?:\/\//.test(parsed.previewUrl) && (
+                          <a className="text-xs text-blue-600 hover:underline" href={parsed.previewUrl} target="_blank" rel="noopener noreferrer">Open in Meta</a>
+                        )}
+                        </div>
                       ) : (
-                        <span className="text-gray-400">-</span>
+                        <span className="text-xs text-gray-500">Preview unavailable</span>
                       )}
                     </td>
                   );
@@ -497,7 +517,7 @@ export function TableVisualization({ data, config, medias }: TableVisualizationP
                         {formatCellValue(row[col.key], col)}
                       </div>
                     ) : (
-                      <div className="whitespace-normal break-words [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden">
+                      <div className="whitespace-normal break-words [overflow-wrap:anywhere]">
                         {formatCellValue(row[col.key], col)}
                       </div>
                     )}

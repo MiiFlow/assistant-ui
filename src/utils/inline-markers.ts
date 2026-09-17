@@ -49,7 +49,7 @@ export type ContentPart =
 /**
  * Parse content and split it by inline markers ([VIZ:id], [MEDIA:id], and [SA:id]).
  */
-export function parseContentWithInlineMarkers(content: string): ContentPart[] {
+export function parseContentWithInlineMarkers(content: string, preserveMedia = false): ContentPart[] {
   const parts: ContentPart[] = [];
   let lastIndex = 0;
   let match;
@@ -57,6 +57,7 @@ export function parseContentWithInlineMarkers(content: string): ContentPart[] {
   INLINE_MARKER_REGEX.lastIndex = 0;
 
   while ((match = INLINE_MARKER_REGEX.exec(content)) !== null) {
+    if (preserveMedia && match[1].toUpperCase() === "MEDIA") continue;
     if (match.index > lastIndex) {
       const text = content.slice(lastIndex, match.index);
       if (text.trim()) {

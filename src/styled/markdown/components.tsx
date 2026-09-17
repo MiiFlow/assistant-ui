@@ -1,3 +1,4 @@
+import { ReferencedMedia, remarkMediaReferences } from "./media-references";
 import {
 	Children,
 	Fragment,
@@ -39,7 +40,7 @@ import { MarkdownRenderContext, type CommandTokenResolver } from "./render-conte
 // itself does not: `~text~` becomes <del>. Assistants write `~` for
 // "approximately" constantly, so any answer with two of them struck out
 // everything between them. Only `~~text~~` should strike.
-export const REMARK_PLUGINS = [[remarkGfm, { singleTilde: false }], remarkBreaks] as const;
+export const REMARK_PLUGINS = [[remarkGfm, { singleTilde: false }], remarkBreaks, remarkMediaReferences] as const;
 
 // Chip kinds that are routing/behavior signals — not content. We strip them
 // from the rendered message so the bubble shows the user's words, not the
@@ -355,6 +356,7 @@ function Em({ children }: WithChildren) {
 	return <em>{children}</em>;
 }
 function Img({ src, alt }: { src?: string | Blob; alt?: string }) {
+	if (typeof src === "string" && src.startsWith("media_ref:")) return <ReferencedMedia id={src.slice(10)} alt={alt} />;
 	// React 19 types `src` as `string | Blob`; markdown only ever yields a string.
 	return <img src={typeof src === "string" ? src : undefined} alt={alt ?? ""} loading="lazy" />;
 }

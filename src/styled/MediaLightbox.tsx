@@ -1,10 +1,30 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../utils/cn";
+import type { MediaChunkData, VisualizationChunkData, TableVisualizationData } from "../types";
+
+/** Exact refs/URLs only: repeated ad names cannot identify a creative. */
+export function tableMediaIds(visualizations: VisualizationChunkData[] = [], medias: MediaChunkData[] = []): Set<string> {
+	const ids = new Set<string>();
+	for (const viz of visualizations) {
+		if (viz.type !== "table") continue;
+		const data = viz.data as TableVisualizationData;
+		for (const column of data.columns || []) {
+			if (column.type !== "media") continue;
+			for (const row of data.rows || []) {
+				const item = parseMediaValue(row[column.key], "table-cell", medias);
+				if (item?.url && medias.some(media => media.id === item.id)) ids.add(item.id);
+			}
+		}
+	}
+	return ids;
+}
 
 // ── Shared media types + helpers ─────────────────────────────────────
 
 export interface MediaItem {
+	posterUrl?: string;
+	previewUrl?: string;
 	id: string;
 	url: string;
 	mediaType: string;
@@ -35,14 +55,16 @@ export function parseMediaValue(
 		mediaType?: string;
 		altText?: string;
 		sourceUrl?: string;
+		posterUrl?: string;
+		previewUrl?: string;
 	}>,
 ): MediaItem | null {
 	if (typeof value === "string") {
 		const raw = value.trim();
 		if (!raw) return null;
-		if (raw.startsWith("media_ref:") && medias && medias.length > 0) {
+		if (raw.startsWith("media_ref:")) {
 			const refId = raw.slice("media_ref:".length);
-			const hit = medias.find((m) => m.id === refId);
+			const hit = medias?.find((m) => m.id === refId);
 			if (!hit) return null;
 			return {
 				id: hit.id,
@@ -54,9 +76,14 @@ export function parseMediaValue(
 						? "video"
 						: "image"),
 				altText: hit.altText,
+				posterUrl: hit.posterUrl,
+				previewUrl: hit.previewUrl,
 			};
 		}
-		const url = medias?.find((m) => m.sourceUrl === raw)?.url || raw;
+		const matched = medias?.find((m) => m.sourceUrl === raw || m.url === raw);
+		if (matched) return { ...matched, mediaType: matched.mediaType || "image" };
+		if (!/^(https?:\/\/|\/|blob:|data:image\/)/i.test(raw)) return null;
+		const url = raw;
 		const isVideo =
 			YOUTUBE_ID_RE.test(url) || /\.(mp4|mov|webm|m4v|mkv)(\?|$)/i.test(url);
 		return {
@@ -68,13 +95,14 @@ export function parseMediaValue(
 	if (value && typeof value === "object") {
 		const v = value as Record<string, unknown>;
 		const rawUrl = (v.url || v.image_url || v.video_url) as string | undefined;
-		const url = medias?.find((m) => (!!v.id && m.id === v.id) || (!!rawUrl && m.sourceUrl === rawUrl))?.url || rawUrl;
+		const matched = medias?.find((m) => (!!v.id && m.id === v.id) || (!!rawUrl && (m.sourceUrl === rawUrl || m.url === rawUrl)));
+		const url = matched?.url || rawUrl;
 		if (!url || typeof url !== "string") return null;
-		const type = (v.media_type || v.mediaType || v.type) as
+		const type = (v.media_type || v.mediaType || v.type || matched?.mediaType) as
 			| string
 			| undefined;
 		const alt = (v.alt || v.alt_text || v.altText) as string | undefined;
-		const id = ((v.id as string) || fallbackId) as string;
+		const id = (matched?.id || (v.id as string) || fallbackId) as string;
 		return {
 			id,
 			url,
@@ -84,6 +112,8 @@ export function parseMediaValue(
 					? "video"
 					: "image"),
 			altText: alt,
+			posterUrl: matched?.posterUrl || (v.poster_url || v.posterUrl) as string | undefined,
+			previewUrl: matched?.previewUrl || (v.preview_url || v.previewUrl) as string | undefined,
 		};
 	}
 	return null;
@@ -132,6 +162,7 @@ export function MediaLightbox({
 	onNavigate,
 }: MediaLightboxProps) {
 	const active = items[index];
+	const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
 	useEffect(() => {
 		const handleKey = (e: KeyboardEvent) => {
@@ -240,7 +271,9 @@ export function MediaLightbox({
 				className="flex max-h-[90vh] max-w-[90vw] flex-col items-center"
 				onClick={(e) => e.stopPropagation()}
 			>
-				{active.mediaType === "video" && ytId ? (
+				{failedUrl === active.url ? (
+					<p className="text-white" role="status">This media is unavailable. Open the ad preview or refresh the analysis.</p>
+				) : active.mediaType === "video" && ytId ? (
 					<div
 						className="relative overflow-hidden rounded-lg bg-black"
 						style={{ width: "min(90vw, 1024px)", aspectRatio: "16 / 9" }}
@@ -260,15 +293,19 @@ export function MediaLightbox({
 						preload="metadata"
 						className="block max-h-[85vh] max-w-[90vw] rounded-lg"
 					>
-						<source src={active.url} />
+						<source src={active.url} onError={() => setFailedUrl(active.url)} />
 						Your browser does not support the video tag.
 					</video>
 				) : (
 					<img
 						src={active.url}
+						onError={() => setFailedUrl(active.url)}
 						alt={active.altText || "Image"}
 						className="block max-h-[85vh] max-w-[90vw] rounded-lg object-contain"
 					/>
+				)}
+				{active.previewUrl && /^https?:\/\//.test(active.previewUrl) && (
+					<a className="mt-2 block text-center text-white underline" href={active.previewUrl} target="_blank" rel="noopener noreferrer">Open in Meta</a>
 				)}
 				{active.altText && (
 					<div className="mt-2 max-w-[90vw] text-center text-sm text-white/80">

@@ -389,3 +389,13 @@
 		animation: none;
 	}
 }
+
+/* Referenced creatives stay compact in comparison rows; prose embeds remain larger. */
+.chat-prose td [data-inline-media] {
+  width: 120px;
+  max-width: 100%;
+}
+.chat-prose td [data-inline-media] img {
+  width: 100%;
+  object-fit: contain;
+}

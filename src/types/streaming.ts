@@ -404,6 +404,8 @@ export interface VisualizationChunkData extends VisualizationData {
 }
 
 export interface MediaChunkData {
+  posterUrl?: string;
+  previewUrl?: string;
   id: string;
   url: string;
   mediaType: string; // "image", "video", "audio"

@@ -16,7 +16,7 @@ import type {
 } from "../types";
 import type { BrandingData } from "../types/branding";
 import { deliveredMedia, useMediaDelivery } from "./use-media-delivery";
-import { normalizeMedia, upsertMedia } from "../utils/media";
+import { withReferencedMedia, normalizeMedia, upsertMedia } from "../utils/media";
 import { findToolChunkIndex } from "./tool-chunk-matching";
 import { createCommitScheduler, type ScheduleFn } from "./frame-scheduler";
 import { stripCitationMarkers } from "../utils/citations";
@@ -1987,7 +1987,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   // only in history for the LLM's benefit.
   const chatMessages: ChatMessage[] = useMemo(
     () =>
-      messages
+      withReferencedMedia(messages
         .filter((msg) => msg.participant.role !== "system")
         .map((msg) => ({
           id: msg.id,
@@ -2010,7 +2010,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           medias: msg.medias?.map((media) => deliveredMedia(media, mediaResources)),
           artifacts: msg.artifacts,
           executionTime: msg.executionTime,
-        })),
+        }))),
     [messages, mediaResources]
   );
 

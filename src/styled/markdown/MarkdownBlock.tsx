@@ -1,5 +1,5 @@
 import { memo } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import { COMPONENTS, REMARK_PLUGINS } from "./components";
 import { rehypeAnimateWords } from "./rehype-animate-words";
 
@@ -29,6 +29,7 @@ export function MarkdownBlockInner({ source, animate }: MarkdownBlockProps) {
 			remarkPlugins={REMARK_PLUGINS as unknown as never[]}
 			rehypePlugins={animate ? ANIMATE_PLUGINS : NO_PLUGINS}
 			components={COMPONENTS}
+			urlTransform={(url, key) => key === "src" && url.startsWith("media_ref:") ? url : defaultUrlTransform(url)}
 		>
 			{source}
 		</ReactMarkdown>

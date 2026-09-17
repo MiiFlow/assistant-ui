@@ -1,12 +1,12 @@
-export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-CZCTXL_Y.js';
-import { M as MediaChunkData } from './streaming-BHoElBGX.js';
-export { a as ClarificationAnswer, C as ClarificationData, b as ClarificationQuestion, c as StreamChunk, d as StreamingOptions, e as StreamingState } from './streaming-BHoElBGX.js';
+export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-CXZygWSc.js';
+import { M as MediaChunkData, V as VisualizationChunkData } from './streaming-B35rbraB.js';
+export { a as ClarificationAnswer, C as ClarificationData, b as ClarificationQuestion, c as StreamChunk, d as StreamingOptions, e as StreamingState } from './streaming-B35rbraB.js';
 export { B as BrandingData } from './branding-NieTEGQf.js';
 export { ChatContext, ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from './context/index.js';
-export { u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from './use-branding-css-vars-DQG3Zyyq.js';
-export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-BvYUQ6M2.js';
+export { u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from './use-branding-css-vars-CzVj0Hrq.js';
+export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-XBx2D1RN.js';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.js';
-export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-xGg1sA0Q.js';
+export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-DLPSN8RG.js';
 import { ClassValue } from 'clsx';
 import 'react/jsx-runtime';
 import 'react';
@@ -26,6 +26,14 @@ declare function normalizeMedia(value: Record<string, any>): MediaChunkData;
 declare function upsertMedia(items: MediaChunkData[], item: MediaChunkData): MediaChunkData[];
 declare function toChatMediaProxyUrl(url: string, anonymousId?: string | null): string;
 declare function replaceMediaUrls(text: string, medias?: ReadonlyArray<MediaChunkData>): string;
+/** Resolve only explicitly referenced media from earlier messages in this transcript.
+ * No global cache: another thread/organization can never donate a matching ID.
+ */
+declare function withReferencedMedia<T extends {
+    textContent?: string;
+    medias?: MediaChunkData[];
+    visualizations?: VisualizationChunkData[];
+}>(messages: T[]): T[];
 
 /**
  * Format a date for display in chat messages.
@@ -75,7 +83,7 @@ type ContentPart = {
 /**
  * Parse content and split it by inline markers ([VIZ:id], [MEDIA:id], and [SA:id]).
  */
-declare function parseContentWithInlineMarkers(content: string): ContentPart[];
+declare function parseContentWithInlineMarkers(content: string, preserveMedia?: boolean): ContentPart[];
 
 /**
  * Design tokens for the chat UI.
@@ -197,4 +205,4 @@ declare const chatTokens: {
 };
 type ChatTokens = typeof chatTokens;
 
-export { type ChatTokens, type ContentPart, chatTokens, cn, formatMessageTime, formatRelativeTime, getContrastTextColor, normalizeMedia, parseContentWithInlineMarkers, replaceMediaUrls, stripInlineMarkers, toChatMediaProxyUrl, upsertMedia };
+export { type ChatTokens, type ContentPart, chatTokens, cn, formatMessageTime, formatRelativeTime, getContrastTextColor, normalizeMedia, parseContentWithInlineMarkers, replaceMediaUrls, stripInlineMarkers, toChatMediaProxyUrl, upsertMedia, withReferencedMedia };

@@ -12,6 +12,7 @@ import {
 	PlayOverlay,
 	YOUTUBE_ID_RE,
 	useMediaLightbox,
+	tableMediaIds,
 	type MediaItem,
 } from "./MediaLightbox";
 import { MessageContent as MessageContentPrimitive, Message as MessagePrimitive } from "../primitives";
@@ -26,7 +27,7 @@ import type {
 	VisualizationChunkData,
 } from "../types";
 import { cn } from "../utils/cn";
-import { replaceMediaUrls } from "../utils/media";
+import { isCreativeReviewMedia, placeUnreferencedCreatives, inlineMediaIds, replaceMediaUrls } from "../utils/media";
 import { ChatRenderContext } from "../context/ChatProvider";
 import { Avatar } from "./Avatar";
 import { CitationSources } from "./CitationSources";
@@ -57,6 +58,7 @@ interface LazyVideoProps {
 	url: string;
 	posterUrl?: string;
 	altText?: string;
+	previewUrl?: string;
 }
 
 const LazyYouTubeEmbed = ({ ytId, altText }: { ytId: string; altText?: string }) => {
@@ -98,7 +100,8 @@ const LazyYouTubeEmbed = ({ ytId, altText }: { ytId: string; altText?: string })
 	);
 };
 
-const LazyHtmlVideo = ({ url, posterUrl, altText }: LazyVideoProps) => {
+const LazyHtmlVideo = ({ url, posterUrl, altText, previewUrl }: LazyVideoProps) => {
+	const [failed, setFailed] = useState(false);
 	const [loaded, setLoaded] = useState(false);
 	return (
 		<div className="my-3">
@@ -106,7 +109,7 @@ const LazyHtmlVideo = ({ url, posterUrl, altText }: LazyVideoProps) => {
 				className="relative overflow-hidden rounded-lg"
 				style={{ maxWidth: 640, maxHeight: 512 }}
 			>
-				{loaded ? (
+				{failed ? <p role="status">Video unavailable. Open the ad preview or refresh the analysis.</p> : loaded ? (
 					<video
 						controls
 						autoPlay
@@ -114,7 +117,7 @@ const LazyHtmlVideo = ({ url, posterUrl, altText }: LazyVideoProps) => {
 						className="block max-h-[512px] w-full rounded-lg"
 						poster={posterUrl}
 					>
-						<source src={url} />
+						<source src={url} onError={() => setFailed(true)} />
 						Your browser does not support the video tag.
 					</video>
 				) : (
@@ -143,6 +146,7 @@ const LazyHtmlVideo = ({ url, posterUrl, altText }: LazyVideoProps) => {
 					</button>
 				)}
 			</div>
+			{previewUrl && /^https?:\/\//.test(previewUrl) && <a href={previewUrl} target="_blank" rel="noopener noreferrer">Open in Meta</a>}
 			{altText && <div className="mt-1 text-xs text-gray-500">{altText}</div>}
 		</div>
 	);
@@ -166,7 +170,7 @@ const MediaGridTile = ({
 	if (media.mediaType === "video") {
 		const ytMatch = media.url.match(YOUTUBE_ID_RE);
 		const ytId = ytMatch ? ytMatch[1] : null;
-		const posterSrc = ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : undefined;
+		const posterSrc = media.posterUrl || (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : undefined);
 		return (
 			<button
 				type="button"
@@ -452,14 +456,15 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 		// remounting the whole body: the text a reader was following vanished
 		// and reappeared the moment a tool returned its chart. A marker still
 		// being typed is held back so its raw prefix never shows.
+        const placedText = useMemo(() => isStreaming || !renderMarkdown ? message.textContent : placeUnreferencedCreatives(message.textContent || "", medias, visualizations), [message.textContent, medias, visualizations, isStreaming, renderMarkdown]);
 		const contentParts = useMemo(() => {
 			if (!message.textContent) return null;
-			const text = isStreaming ? trimPartialTrailingMarker(message.textContent) : message.textContent;
-			return parseContentWithInlineMarkers(replaceMediaUrls(text, medias));
-		}, [isStreaming, message.textContent, medias]);
+			const text = isStreaming ? trimPartialTrailingMarker(placedText || "") : placedText || "";
+			return parseContentWithInlineMarkers(replaceMediaUrls(text, medias), true);
+		}, [isStreaming, placedText, medias]);
 
-		// Strip inline markers from the plain-text branches. Media is always
-		// rendered separately, and this is also the render floor: reaching here
+		// Strip inline markers from the plain-text branches. The rich branch
+		// resolves media inside Markdown; reaching this plain-text branch
 		// with a `[VIZ:…]` or `[SA:…]` still in the text means we could not
 		// resolve it, and a bare `[VIZ:9fc0ad9c…]` is never something a reader
 		// should see. The inline branch below handles the resolvable ones and
@@ -484,6 +489,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 							if (part.type === "text") {
 								return (
 									<MarkdownContent
+                                        medias={medias}
 										key={`text-${idx}`}
 										isStreaming={!!isStreaming}
 										baselineFontSize={baselineFontSize}
@@ -518,11 +524,16 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 			return null;
 		};
 
+        const referencedInlineIds = useMemo(() => renderMarkdown ? inlineMediaIds(placedText || "") : new Set<string>(), [placedText, renderMarkdown]);
+        const referencedTableIds = useMemo(() => tableMediaIds(visualizations, medias), [visualizations, medias]);
+        const deferCreativeGallery = renderMarkdown && isStreaming && medias?.some(isCreativeReviewMedia);
 		const filteredMedias: MediaItem[] = useMemo(() => {
 			if (!medias || medias.length === 0) return [];
 			const textContent = cleanTextContent || "";
+
 			return medias
 				.filter((media) => {
+					if (referencedTableIds.has(media.id) || referencedInlineIds.has(media.id)) return false;
 					if (!media.url || media.status === "pending" || media.status === "failed") return false;
 					if (media.mediaType !== "image") return true;
 					// Skip media items already rendered inline as markdown images
@@ -533,8 +544,10 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 					url: m.url,
 					mediaType: m.mediaType,
 					altText: m.altText,
+					posterUrl: m.posterUrl,
+					previewUrl: m.previewUrl,
 				}));
-		}, [medias, cleanTextContent]);
+		}, [medias, cleanTextContent, referencedTableIds, referencedInlineIds]);
 
 		const {
 			index: lightboxIndex,
@@ -545,7 +558,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 
 		const renderMediaStatuses = () => (
 			<>{(medias || [])
-				.filter((media) => media.status === "pending" || media.status === "failed")
+				.filter((media) => !referencedInlineIds.has(media.id) && (media.status === "pending" || media.status === "failed"))
 				.map((media) => (
 					<p key={media.id} role="status" className="my-3 text-sm text-muted-foreground">
 						{media.status === "pending" ? "Loading image…" : media.errorMessage || "Image unavailable."}
@@ -615,7 +628,8 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 					<LazyHtmlVideo
 						key={`media-${media.id}`}
 						url={media.url}
-						posterUrl={(media as { posterUrl?: string }).posterUrl}
+						posterUrl={media.posterUrl}
+						previewUrl={media.previewUrl}
 						altText={media.altText}
 					/>
 				);
@@ -731,7 +745,9 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 									}}>
 									<MessageContentPrimitive>{renderContent()}</MessageContentPrimitive>
 									{renderMediaStatuses()}
-									{renderMediaItems()}
+									{!isStreaming && filteredMedias.length > 0 && (referencedInlineIds.size > 0 || referencedTableIds.size > 0) ? (
+                                        <details className="my-3"><summary className="cursor-pointer text-sm text-muted-foreground">Additional media ({filteredMedias.length})</summary>{renderMediaItems()}</details>
+                                    ) : (!deferCreativeGallery && renderMediaItems())}
 									{lightboxIndex !== null && (
 										<MediaLightbox
 											items={filteredMedias}
