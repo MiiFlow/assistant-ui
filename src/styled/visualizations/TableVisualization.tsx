@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, X, ChevronUp, ChevronDown, Copy as CopyIcon } from "lucide-react";
 import { cn } from "../../utils/cn";
+import { EntityText } from "../markdown/entity-references";
 import type { MediaChunkData, TableVisualizationData, TableColumn, TableColumnType, VisualizationConfig } from "../../types";
 import {
   MediaLightbox,
@@ -277,7 +278,9 @@ function formatCellValue(value: unknown, column: TableColumn): React.ReactNode {
       );
     }
     default:
-      return String(value);
+      // A string cell may name host objects by id (a table of schedules
+      // carries `sched_…` in its rows); those render as entity chips.
+      return typeof value === "string" ? <EntityText>{value}</EntityText> : String(value);
   }
 }
 

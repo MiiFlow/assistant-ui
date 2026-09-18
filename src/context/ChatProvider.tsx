@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import type { ChatMessage, ParticipantRole, VisualizationActionEvent } from "../types";
+import type { EntityResolver } from "../styled/markdown/entity-references";
 
 export interface ChatContextValue {
   /** List of messages in the conversation */
@@ -35,6 +36,17 @@ export interface ChatContextValue {
     id: string,
     kind: string,
   ) => { label?: string; tag?: ReactNode } | undefined;
+  /** Resolve an `entity:<kind>/<id>` reference in an assistant answer (a
+   * schedule, a workflow run, a report…) to its display: label, icon, route,
+   * in-app navigation and an optional hover card. The wire form carries only
+   * kind + id + the label the host's server baked in; everything else is the
+   * host's. Returning undefined renders a plain, non-navigating chip. */
+  resolveEntity?: EntityResolver;
+  /** prefix → kind for ids the host recognises (e.g. `{ sched_: "schedule" }`).
+   * Lets the renderer promote a bare id — streaming text, or a message
+   * persisted before the host linked it — to the same chip. Hand a stable
+   * object: it keys a regex cache. */
+  entityPrefixes?: Record<string, string>;
   /** Whether the surface hosting the chat is dark. Drives choices that CSS
    * variables can't express, such as which syntax-highlighting theme a code
    * block uses. The host app must supply this: chat-ui is themed through
@@ -62,6 +74,8 @@ export interface ChatRenderContextValue {
     id: string,
     kind: string,
   ) => { label?: string; tag?: ReactNode } | undefined;
+  resolveEntity?: EntityResolver;
+  entityPrefixes?: Record<string, string>;
   isDarkSurface: boolean;
 }
 
@@ -82,6 +96,8 @@ export interface ChatProviderProps {
     id: string,
     kind: string,
   ) => { label?: string; tag?: ReactNode } | undefined;
+  resolveEntity?: EntityResolver;
+  entityPrefixes?: Record<string, string>;
   isDarkSurface?: boolean;
 }
 
@@ -97,6 +113,8 @@ export function ChatProvider({
   customData,
   onVisualizationAction,
   resolveCommandToken,
+  resolveEntity,
+  entityPrefixes,
   isDarkSurface = false,
 }: ChatProviderProps) {
   const sendMessage = useCallback(
@@ -118,6 +136,8 @@ export function ChatProvider({
       customData,
       onVisualizationAction,
       resolveCommandToken,
+      resolveEntity,
+      entityPrefixes,
       isDarkSurface,
     }),
     [
@@ -131,13 +151,22 @@ export function ChatProvider({
       customData,
       onVisualizationAction,
       resolveCommandToken,
+      resolveEntity,
+      entityPrefixes,
       isDarkSurface,
     ]
   );
 
   const renderValue = useMemo<ChatRenderContextValue>(
-    () => ({ viewerRole, onVisualizationAction, resolveCommandToken, isDarkSurface }),
-    [viewerRole, onVisualizationAction, resolveCommandToken, isDarkSurface]
+    () => ({
+      viewerRole,
+      onVisualizationAction,
+      resolveCommandToken,
+      resolveEntity,
+      entityPrefixes,
+      isDarkSurface,
+    }),
+    [viewerRole, onVisualizationAction, resolveCommandToken, resolveEntity, entityPrefixes, isDarkSurface]
   );
 
   return (

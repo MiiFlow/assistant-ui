@@ -2,7 +2,7 @@ export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError,
 import { M as MediaChunkData, V as VisualizationChunkData } from './streaming-B35rbraB.js';
 export { a as ClarificationAnswer, C as ClarificationData, b as ClarificationQuestion, c as StreamChunk, d as StreamingOptions, e as StreamingState } from './streaming-B35rbraB.js';
 export { B as BrandingData } from './branding-NieTEGQf.js';
-export { ChatContext, ChatContextValue, ChatProvider, ChatProviderProps, useChatContext } from './context/index.js';
+export { C as ChatContext, a as ChatContextValue, b as ChatProvider, c as ChatProviderProps, E as ENTITY_HREF_SCHEME, d as EntityReference, e as EntityReferenceInfo, f as EntityResolution, g as EntityResolver, h as EntityText, i as entityHref, p as parseEntityHref, u as useChatContext } from './index-CtzwxHm0.js';
 export { u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from './use-branding-css-vars-CzVj0Hrq.js';
 export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-XBx2D1RN.js';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.js';

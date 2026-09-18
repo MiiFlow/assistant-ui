@@ -1,5 +1,16 @@
 # @miiflow/assistant-ui
 
+## 0.19.0
+
+Entity references: an assistant's mention of a host-side object (a schedule, a workflow run, a report…) renders as a named chip that navigates in-app and can carry a hover card.
+
+### Features
+
+- `EntityText`: plain-text values (a table visualization's string cells) render their entity ids as the same chips the Markdown link form gets; `EntityReference` reads the host resolver from `ChatRenderContext` when rendered outside a Markdown body. `TableVisualization` string cells use it.
+- **`entity:` links (`styled/markdown/entity-references.tsx`)**: a Markdown link whose destination is `entity:<kind>/<id>` renders as a chip instead of an anchor. The wire form carries only kind, id and the label the host's server baked in; the host supplies the rest through `ChatProvider`'s new `resolveEntity({ kind, id, label })` — `label`, `icon`, `href`, `onNavigate` (in-app navigation; modified clicks still follow `href`) and `renderHoverCard(trigger)`. With no resolver, or an unknown kind, the chip still shows the label: an unresolved reference never renders as a dead link or a raw id.
+- **Bare ids while streaming**: `ChatProvider`'s `entityPrefixes` (prefix → kind, e.g. `{ sched_: "schedule" }`) lets the renderer promote a bare id — the model's own text before the host links it, or a message persisted before linking existed — to the same chip. Ids inside code blocks, existing links and URLs are left alone; an inline code span that is exactly one id is promoted. Hand a stable object: the regex is cached per map identity.
+- `ENTITY_HREF_SCHEME`, `entityHref`, `parseEntityHref` and the `EntityResolver` / `EntityResolution` / `EntityReferenceInfo` types are exported from the package root.
+
 ## 0.18.0
 
 Streaming without layout shift, and an embedded widget that recovers from a lost connection instead of going dead. Plus mobile composer and keyboard/screen-reader fixes.

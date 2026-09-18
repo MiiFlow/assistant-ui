@@ -95,6 +95,16 @@ export { withReferencedMedia, normalizeMedia, upsertMedia, toChatMediaProxyUrl, 
 export { formatMessageTime, formatRelativeTime } from "./utils/format-date";
 export { getContrastTextColor } from "./utils/color-contrast";
 export { parseContentWithInlineMarkers, stripInlineMarkers, type ContentPart } from "./utils/inline-markers";
+export {
+  ENTITY_HREF_SCHEME,
+  EntityReference,
+  EntityText,
+  entityHref,
+  parseEntityHref,
+  type EntityReferenceInfo,
+  type EntityResolution,
+  type EntityResolver,
+} from "./styled/markdown/entity-references";
 
 // Design tokens
 export { chatTokens, type ChatTokens } from "./styles/tokens";

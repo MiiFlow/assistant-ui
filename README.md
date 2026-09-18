@@ -271,6 +271,8 @@ Wraps children and provides chat context via React context.
 | `customData` | `Record<string, unknown>` | — | Arbitrary data passed through context |
 | `onVisualizationAction` | `(event: VisualizationActionEvent) => void` | — | Callback for form/card/auth interactions |
 | `resolveCommandToken` | `(id: string, kind: string) => { label?: string; tag?: ReactNode } \| undefined` | — | Customize inline command-token chip rendering |
+| `resolveEntity` | `(ref: { kind, id, label }) => { label?, icon?, href?, onNavigate?, renderHoverCard? } \| undefined` | — | Render an `entity:<kind>/<id>` link in an answer as a named chip: route, in-app navigation, hover card. Without it the chip shows the label and does not navigate |
+| `entityPrefixes` | `Record<string, string>` | — | prefix → kind (e.g. `{ sched_: "schedule" }`) so a bare id in streaming text renders as the same chip. Pass a stable object |
 | `isDarkSurface` | `boolean` | `false` | Tells the package the host surface is dark — drives choices CSS variables can't express, currently the code-block syntax theme |
 
 ### `ChatLayout`

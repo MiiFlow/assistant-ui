@@ -1,4 +1,5 @@
 import { ReferencedMedia, remarkMediaReferences } from "./media-references";
+import { EntityReference, parseEntityHref } from "./entity-references";
 import {
 	Children,
 	Fragment,
@@ -102,6 +103,8 @@ export function processInlineCommandTokens(
 			const type = child.type as { name?: string; displayName?: string } | string | undefined;
 			const tagName = typeof type === "string" ? type : undefined;
 			if (tagName === "code" || tagName === "pre") return child;
+			// An entity reference's label is a host-side name, not chip syntax.
+			if (parseEntityHref((child.props as { href?: string }).href)) return child;
 			const childChildren = (child.props as { children?: ReactNode }).children;
 			if (childChildren == null) return child;
 			return cloneElement(child, undefined, processInlineCommandTokens(childChildren, resolve));
@@ -273,6 +276,8 @@ function Td({ children }: WithChildren) {
 }
 
 function Anchor({ href, children }: WithChildren & { href?: string }) {
+	const entity = parseEntityHref(href);
+	if (entity) return <EntityReference kind={entity.kind} id={entity.id} label={textOf(children)} />;
 	const isImageUrl = href && /\.(png|jpe?g|gif|webp|svg)([?#]|$)/i.test(href);
 	if (isImageUrl) {
 		return <img src={href} alt={textOf(children)} loading="lazy" />;

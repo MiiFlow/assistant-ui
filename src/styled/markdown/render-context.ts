@@ -1,4 +1,5 @@
 import { createContext, type ReactNode } from "react";
+import type { EntityResolver } from "./entity-references";
 
 export type CommandTokenResolver = (
 	id: string,
@@ -17,6 +18,12 @@ export type CommandTokenResolver = (
  */
 export interface MarkdownRenderContextValue {
 	resolveCommandToken?: CommandTokenResolver;
+	/** Host resolver for `entity:<kind>/<id>` links (label, route, hover
+	 * card). See `./entity-references`. */
+	resolveEntity?: EntityResolver;
+	/** prefix → kind, for promoting bare ids to entity links while an answer
+	 * streams or in messages persisted before the host linked them. */
+	entityPrefixes?: Record<string, string>;
 	useDarkCode: boolean;
 }
 

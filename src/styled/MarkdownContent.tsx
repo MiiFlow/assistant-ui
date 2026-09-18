@@ -94,10 +94,13 @@ export function MarkdownContent({
 	// outside a chat context (e.g. MarkdownContent inside a card
 	// visualization).
 	const resolveCommandToken = render?.resolveCommandToken;
+	// Same seam for `entity:` references (see ./markdown/entity-references).
+	const resolveEntity = render?.resolveEntity;
+	const entityPrefixes = render?.entityPrefixes;
 
 	const renderContext = useMemo<MarkdownRenderContextValue>(
-		() => ({ resolveCommandToken, useDarkCode }),
-		[resolveCommandToken, useDarkCode],
+		() => ({ resolveCommandToken, resolveEntity, entityPrefixes, useDarkCode }),
+		[resolveCommandToken, resolveEntity, entityPrefixes, useDarkCode],
 	);
 
 	// One font-size declaration on the wrapper; everything inside is sized in
