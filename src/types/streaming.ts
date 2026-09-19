@@ -354,6 +354,19 @@ export interface AuthPromptVisualizationData {
   mcpServerId?: string;
   mcpServerName?: string;
   authMethods?: Array<{ id: string; name: string; authType: string }>;
+  /** Routing hints a host may use to pick a connect flow for an MCP server. */
+  mcpAuthType?: string;
+  mcpProviderKey?: string;
+  /**
+   * Why the prompt was shown. `"add"`: the user asked to connect, so the prompt
+   * stands even if the provider already works. Absent or `"ensure"`: the
+   * assistant needed the provider and it is not connected.
+   */
+  intent?: string;
+  /** Whether the current user is able to complete the connect. */
+  canConnect?: boolean;
+  /** `"add"` only: ids of the connections that already worked when it was shown. */
+  existingAccountIds?: string[];
 }
 
 export interface VisualizationConfig {
