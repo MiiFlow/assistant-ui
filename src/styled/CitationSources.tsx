@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ExternalLink, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "../utils/cn";
+import { citationTextToMarkdown, parseCitationContent } from "../utils/citation-content";
+import { MarkdownContent } from "./MarkdownContent";
 import type { SourceReference, SourceTypeConfig } from "../types";
 
 function getSourceTypeDisplay(sourceType: string): SourceTypeConfig {
@@ -96,6 +98,10 @@ export function SourceDetailModal({
   source,
   onClose,
 }: SourceDetailModalProps) {
+  const [showRaw, setShowRaw] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+
   // Close on Escape
   useEffect(() => {
     if (!source) return;
@@ -106,9 +112,26 @@ export function SourceDetailModal({
     return () => document.removeEventListener("keydown", handleKey);
   }, [source, onClose]);
 
+  // Focus the panel on open, return focus to the chip that opened it on close,
+  // and reset the raw/formatted view for each new source.
+  useEffect(() => {
+    if (!source) return;
+    restoreFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setShowRaw(false);
+    const frame = requestAnimationFrame(() => panelRef.current?.focus());
+    return () => {
+      cancelAnimationFrame(frame);
+      restoreFocusRef.current?.focus();
+    };
+  }, [source]);
+
   if (!source || typeof document === "undefined") return null;
 
   const typeDisplay = getSourceTypeDisplay(source.source_type);
+  const rawText = source.full_content ?? source.snippet ?? null;
+  const parsed = source.full_content ? parseCitationContent(source.full_content) : null;
+  const markdownText = parsed ? parsed.text : rawText;
 
   return createPortal(
     <AnimatePresence>
@@ -128,6 +151,7 @@ export function SourceDetailModal({
           />
           {/* Panel */}
           <motion.div
+            ref={panelRef}
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -135,7 +159,8 @@ export function SourceDetailModal({
             role="dialog"
             aria-modal="true"
             aria-label={source.title}
-            className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
+            tabIndex={-1}
+            className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden outline-none"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -193,15 +218,47 @@ export function SourceDetailModal({
                 <p className="text-sm text-gray-500 mb-4">{source.description}</p>
               )}
 
-              {/* Full content or snippet */}
-              {source.full_content ? (
-                <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 max-h-[400px] overflow-auto">
-                  {source.full_content}
-                </div>
-              ) : source.snippet ? (
-                <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                  {source.snippet}
-                </div>
+              {/* Full content or snippet. The payload renders as markdown —
+                  paragraphs, bold and lists are real, and [ref:…] markers read
+                  as inline-code chips. A Raw toggle keeps the untouched store
+                  value one click away for debugging. */}
+              {rawText ? (
+                <>
+                  <div className="flex justify-end mb-1.5">
+                    <button
+                      onClick={() => setShowRaw((v) => !v)}
+                      className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    >
+                      {showRaw ? "Formatted" : "Raw"}
+                    </button>
+                  </div>
+                  {showRaw ? (
+                    <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 max-h-[400px] overflow-auto">
+                      {rawText}
+                    </div>
+                  ) : (
+                    <div className="text-sm max-h-[400px] overflow-y-auto pr-1">
+                      <MarkdownContent>{citationTextToMarkdown(markdownText ?? "")}</MarkdownContent>
+                    </div>
+                  )}
+                  {parsed && parsed.meta.length > 0 && !showRaw && (
+                    <dl className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                      {parsed.meta.map(([key, value]) => (
+                        <div key={key} className="contents">
+                          <dt className="text-xs font-mono text-gray-400 dark:text-gray-500">
+                            {key}
+                          </dt>
+                          <dd
+                            className="text-xs text-gray-600 dark:text-gray-300 truncate"
+                            title={value}
+                          >
+                            {value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </>
               ) : (
                 <p className="text-sm text-gray-400 italic">No content available for this source.</p>
               )}

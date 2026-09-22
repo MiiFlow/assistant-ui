@@ -121,7 +121,7 @@ export function MarkdownContent({
 	return (
 		<MarkdownMediaContext.Provider value={medias || []}>
 		<MarkdownRenderContext.Provider value={renderContext}>
-			<div className={cn("chat-prose", className)} style={rootStyle}>
+			<div className={cn("chat-prose", className)} style={rootStyle} data-streaming={isStreaming || undefined}>
 				{blocks.map((block, i) => {
 					const isLastBlock = i === last;
 					if (block.kind === "list") {

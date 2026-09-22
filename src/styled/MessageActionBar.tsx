@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../utils/cn";
 
@@ -45,12 +45,21 @@ export function MessageActionBar({
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [details, setDetails] = useState("");
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const reportButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Move focus into the dialog on open; return it to the trigger on dismiss,
+  // so keyboard users are not stranded on an unmounted button.
+  useEffect(() => {
+    if (feedbackOpen) dialogRef.current?.focus();
+  }, [feedbackOpen]);
 
   const handleDismissFeedback = useCallback(() => {
     // Dismissing closes the modal without recording anything.
     setFeedbackOpen(false);
     setSelectedCategory(null);
     setDetails("");
+    reportButtonRef.current?.focus();
   }, []);
 
   const handleSubmitFeedback = useCallback(() => {
@@ -102,7 +111,7 @@ export function MessageActionBar({
         "relative flex items-center gap-1",
         feedbackOpen
           ? "opacity-100"
-          : "opacity-0 group-hover:opacity-100 transition-opacity duration-150",
+          : "opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150",
         className,
       )}
     >
@@ -117,6 +126,7 @@ export function MessageActionBar({
           "text-[var(--chat-text-subtle)] hover:text-[var(--chat-text)]",
           "hover:bg-[var(--chat-panel-bg)]",
           "transition-colors duration-150",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chat-text-subtle)]",
         )}
       >
         {copied ? (
@@ -163,6 +173,7 @@ export function MessageActionBar({
             "text-[var(--chat-text-subtle)] hover:text-[var(--chat-text)]",
             "hover:bg-[var(--chat-panel-bg)]",
             "transition-colors duration-150",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chat-text-subtle)]",
           )}
         >
           {/* RefreshCw icon */}
@@ -196,6 +207,7 @@ export function MessageActionBar({
             "text-[var(--chat-text-subtle)] hover:text-[var(--chat-text)]",
             "hover:bg-[var(--chat-panel-bg)]",
             "transition-colors duration-150",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chat-text-subtle)]",
           )}
         >
           {/* Pencil icon */}
@@ -235,6 +247,7 @@ export function MessageActionBar({
             "text-[var(--chat-text-subtle)] hover:text-[var(--chat-text)]",
             "hover:bg-[var(--chat-panel-bg)]",
             "transition-colors duration-150",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chat-text-subtle)]",
           )}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -246,6 +259,7 @@ export function MessageActionBar({
       {/* Thumbs down — report incorrect (opens feedback modal) */}
       {onReportIncorrect && feedbackState === "none" && (
         <button
+          ref={reportButtonRef}
           type="button"
           onClick={() => setFeedbackOpen(true)}
           aria-label="This response was incorrect"
@@ -258,6 +272,7 @@ export function MessageActionBar({
             "hover:bg-[var(--chat-panel-bg)]",
             feedbackOpen && "bg-[var(--chat-panel-bg)] text-[var(--chat-text)]",
             "transition-colors duration-150",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chat-text-subtle)]",
           )}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -295,9 +310,11 @@ export function MessageActionBar({
           >
             <style>{FEEDBACK_MODAL_CSS}</style>
             <div
+              ref={dialogRef}
               role="dialog"
               aria-modal="true"
               aria-label="Share feedback"
+              tabIndex={-1}
               onClick={(e) => e.stopPropagation()}
               className="mf-fbm-card"
             >
@@ -367,6 +384,7 @@ const FEEDBACK_MODAL_CSS = `
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
   padding: 20px;
   box-sizing: border-box;
+  outline: none;
 }
 .mf-fbm-header {
   display: flex;

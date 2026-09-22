@@ -12,7 +12,7 @@ export interface TimeMarkerProps {
 export function TimeMarker({ label, className }: TimeMarkerProps) {
   return (
     <div
-      className={`flex items-center gap-3 py-6 select-none ${className ?? ""}`}
+      className={`flex items-center gap-3 py-2 select-none ${className ?? ""}`}
       role="separator"
     >
       <div className="flex-1 h-px bg-[var(--chat-border)]" />

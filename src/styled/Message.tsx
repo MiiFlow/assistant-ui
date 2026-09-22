@@ -29,6 +29,7 @@ import type {
 import { cn } from "../utils/cn";
 import { isCreativeReviewMedia, placeUnreferencedCreatives, inlineMediaIds, replaceMediaUrls } from "../utils/media";
 import { ChatRenderContext } from "../context/ChatProvider";
+import { usePrefersReducedMotion } from "../hooks/use-reduced-motion";
 import { Avatar } from "./Avatar";
 import { CitationSources } from "./CitationSources";
 import { ClarificationPanel } from "./ClarificationPanel";
@@ -642,6 +643,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 		const wasStreamingRef = useRef(isStreaming);
 		if (isStreaming) wasStreamingRef.current = true;
 		const showFadeIn = !isStreaming && !wasStreamingRef.current;
+		const reducedMotion = usePrefersReducedMotion();
 
 		return (
 			<MessagePrimitive
@@ -652,6 +654,11 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 				<div
 					className={cn("flex flex-col gap-1 w-full")}
 					data-is-viewer={isViewer}>
+					{/* Speaker label for screen readers: bubble alignment and color
+					    say who is talking only visually. */}
+					<span className="sr-only">
+						{isViewer ? "You" : (message.participant?.name ?? "Assistant")}
+					</span>
 					{/* Loading indicator: avatar + dots in same row */}
 					{isWaitingForContent && (
 						<div className={cn("flex items-start gap-2 w-full")}>
@@ -813,12 +820,20 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 
 								{/* Timestamp + action bar row. For an assistant message the row is
 								    in the layout from the first token, invisible, at its real
-								    height, so nothing below the answer moves when it completes;
-								    it only becomes visible. A viewer message is never streaming. */}
+								    height, so nothing below the answer moves when it completes.
+								    The reveal is an opacity fade rather than a visibility snap:
+								    the space was always reserved, so completion should read as a
+								    landing, not a pop-in. A viewer message is never streaming. */}
 								{!isEditing && (!isStreaming || isAssistant) && (showTimestamp && message.createdAt || message.textContent) && (
 									<div
 										className={cn("flex items-center gap-2 mt-1", isViewer && "flex-row-reverse")}
-										style={isStreaming ? { visibility: "hidden" } : undefined}
+										style={{
+											opacity: isStreaming ? 0 : 1,
+											visibility: isStreaming ? "hidden" : "visible",
+											transition: reducedMotion
+												? undefined
+												: "opacity 240ms cubic-bezier(.16,1,.3,1), visibility 0s",
+										}}
 										aria-hidden={isStreaming ? true : undefined}>
 										{showTimestamp && message.createdAt && (
 											<MessageTimestamp
@@ -1033,19 +1048,25 @@ function UserMessageEditor({
 }
 
 function MessageTimestamp({ createdAt }: { createdAt: string; isViewer?: boolean }) {
-	const formatTime = (dateString: string) => {
-		try {
-			const date = new Date(dateString);
-			return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-		} catch {
-			return "";
-		}
-	};
+	const date = new Date(createdAt);
+	if (Number.isNaN(date.getTime())) return null;
+
+	// Visible text stays clock-only (day dividers carry the date), but the
+	// element exposes the full timestamp: `dateTime` for machines, and a full
+	// date + time label so screen readers and hover tooltips get the day the
+	// clock-only text omits.
+	const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+	const full = `${date.toLocaleDateString([], { dateStyle: "long" })}, ${time}`;
 
 	return (
-		<span className="text-xs text-[var(--chat-text-subtle)]">
-			{formatTime(createdAt)}
-		</span>
+		<time
+			dateTime={date.toISOString()}
+			title={full}
+			aria-label={full}
+			className="text-xs text-[var(--chat-text-subtle)]"
+		>
+			{time}
+		</time>
 	);
 }
 

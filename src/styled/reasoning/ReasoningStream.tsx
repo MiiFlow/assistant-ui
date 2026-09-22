@@ -214,12 +214,18 @@ export function ReasoningStream({
 	const [foldPhase, setFoldPhase] = useState<"idle" | "open" | "closing">(
 		foldOnMount ? "open" : "idle",
 	);
+	// True when this instance observed the run finishing (or remounted right at
+	// completion via justCompleted). Drives the summary line's one-shot
+	// entrance — a trace replayed from history mounts already done and must
+	// not perform it.
+	const [enteredDone, setEnteredDone] = useState(justCompleted);
 	const [prevPhase, setPrevPhase] = useState(phase);
 	const [prevJustCompleted, setPrevJustCompleted] = useState(justCompleted);
 	if (prevPhase !== phase || prevJustCompleted !== justCompleted) {
 		const closingEdge =
 			prevPhase === "live-open" && (phase === "live-collapsed" || phase === "done");
 		const remountEdge = !prevJustCompleted && justCompleted;
+		if (phase === "done" && prevPhase !== "done") setEnteredDone(true);
 		setPrevPhase(phase);
 		setPrevJustCompleted(justCompleted);
 		if ((closingEdge || remountEdge) && !reducedMotion && !isExpanded) {
@@ -321,7 +327,7 @@ export function ReasoningStream({
 	return (
 		<div ref={containerRef} className={cn("max-w-full", className)}>
 			{phase === "waiting" ? (
-				<WaitingLine label={waitingLabel} mark={waitingMark} reducedMotion={reducedMotion} />
+				<WaitingLine label={waitingLabel} mark={waitingMark} elapsed={elapsed} reducedMotion={reducedMotion} />
 			) : phase === "done" ? (
 				<SummaryLine
 					seconds={totalSeconds}
@@ -332,6 +338,7 @@ export function ReasoningStream({
 					interruptedCount={interruptedCount}
 					open={isExpanded}
 					reducedMotion={reducedMotion}
+					entering={enteredDone && !reducedMotion}
 					onToggle={() => setExpanded(!isExpanded)}
 				/>
 			) : (
@@ -422,15 +429,20 @@ const HEADER_STYLE = {
 /**
  * The pre-step line: the run has started and there is genuinely nothing to
  * report yet. The label resolves out of noise so the row reads as something
- * being computed rather than as dead air.
+ * being computed rather than as dead air. The mark carries the same breathing
+ * halo `ThinkingIndicator` gives this moment elsewhere — one brand beat, not
+ * two treatments — and once a second has passed the live counter joins in,
+ * turning the wait into measured time.
  */
 function WaitingLine({
 	label,
 	mark,
+	elapsed,
 	reducedMotion,
 }: {
 	label?: string | null;
 	mark?: ReactNode;
+	elapsed?: number;
 	reducedMotion: boolean;
 }) {
 	return (
@@ -438,21 +450,62 @@ function WaitingLine({
 			<span
 				aria-hidden
 				style={{
+					position: "relative",
 					display: "inline-flex",
 					alignItems: "center",
 					justifyContent: "center",
 					width: 14,
 					height: 14,
 					flexShrink: 0,
-					animation: reducedMotion || !mark ? undefined : `mf-mark-breathe 2.6s ${EASE} infinite`,
 				}}
 			>
-				{mark ?? <ActivityMeter reducedMotion={reducedMotion} />}
+				<span
+					style={{
+						position: "absolute",
+						inset: -6,
+						borderRadius: "50%",
+						background:
+							"radial-gradient(closest-side, color-mix(in srgb, var(--chat-primary) 26%, transparent), transparent 72%)",
+						animation:
+							reducedMotion || !mark
+								? undefined
+								: `mf-halo-breathe 2.6s ${EASE} infinite`,
+						opacity: reducedMotion ? 0.5 : undefined,
+						pointerEvents: "none",
+					}}
+				/>
+				<span
+					style={{
+						display: "inline-flex",
+						alignItems: "center",
+						justifyContent: "center",
+						width: 14,
+						height: 14,
+						animation: reducedMotion || !mark ? undefined : `mf-mark-breathe 2.6s ${EASE} infinite`,
+					}}
+				>
+					{mark ?? <ActivityMeter reducedMotion={reducedMotion} />}
+				</span>
 			</span>
 			{label ? (
 				<DecodingText text={label} className="text-[var(--chat-text-subtle)]" />
 			) : (
 				<span style={{ color: ink(52), fontWeight: 500 }}>Working</span>
+			)}
+			{elapsed !== undefined && elapsed >= 1 && (
+				<span
+					style={{
+						fontFamily: MONO_STACK,
+						fontVariantNumeric: "tabular-nums",
+						fontVariantLigatures: "none",
+						fontSize: 11,
+						fontWeight: 600,
+						letterSpacing: "0.02em",
+						color: ink(72),
+					}}
+				>
+					{formatElapsed(elapsed)}
+				</span>
 			)}
 		</div>
 	);
@@ -479,6 +532,7 @@ function SummaryLine({
 	interruptedCount,
 	open,
 	reducedMotion,
+	entering = false,
 	onToggle,
 }: {
 	seconds?: number;
@@ -489,6 +543,9 @@ function SummaryLine({
 	interruptedCount: number;
 	open: boolean;
 	reducedMotion: boolean;
+	/** The run just finished in this instance: rise-and-fade the line in once.
+	 *  History mounts stay still. */
+	entering?: boolean;
 	onToggle: () => void;
 }) {
 	const [hover, setHover] = useState(false);
@@ -509,6 +566,7 @@ function SummaryLine({
 				font: "inherit",
 				fontSize: HEADER_STYLE.fontSize,
 				transition: reducedMotion ? undefined : `background 180ms ${EASE}`,
+				animation: entering ? `mf-row-enter 280ms ${EASE} both` : undefined,
 			}}
 		>
 			<span style={{ color: ink(hover ? 76 : 62), fontWeight: 500 }}>

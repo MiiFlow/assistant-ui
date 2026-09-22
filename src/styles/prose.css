@@ -390,6 +390,44 @@
 	}
 }
 
+/* Live-edge caret. While the answer streams, a slim caret blinks at the end
+   of the last block's text — the "still writing" signal the word fade alone
+   does not give. A `::after` on the last paragraph-like block lands inline at
+   the text end; a growing list carries it at the end of its last item. Code
+   blocks and tables are excluded: a caret inside a fence reads as part of the
+   code. It only exists while `data-streaming` is set, so completion removes
+   it with the attribute — no JS teardown, no leftover node. */
+.chat-prose[data-streaming="true"] > :where(p, h1, h2, h3, h4, h5, h6):last-child::after,
+.chat-prose[data-streaming="true"] > :where(ul, ol):last-child > li:last-child::after {
+	content: "";
+	display: inline-block;
+	width: 2px;
+	height: 0.95em;
+	margin-left: 3px;
+	vertical-align: -0.12em;
+	border-radius: 1px;
+	background: var(--chat-text-subtle, currentColor);
+	animation: mf-stream-caret 1.05s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes mf-stream-caret {
+	0%,
+	100% {
+		opacity: 0.95;
+	}
+	50% {
+		opacity: 0.15;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.chat-prose[data-streaming="true"] > :where(p, h1, h2, h3, h4, h5, h6):last-child::after,
+	.chat-prose[data-streaming="true"] > :where(ul, ol):last-child > li:last-child::after {
+		animation: none;
+		opacity: 0.8;
+	}
+}
+
 /* Referenced creatives stay compact in comparison rows; prose embeds remain larger. */
 .chat-prose td [data-inline-media] {
   width: 120px;
