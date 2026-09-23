@@ -1,3 +1,5 @@
+import { readTranscript } from "../types/transcript";
+import { TranscriptFlow } from "./TranscriptFlow";
 import {
 	forwardRef,
 	memo,
@@ -424,6 +426,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 		// different components in sequence — typing dots, then a thinking row,
 		// then the panel — changed the row's height twice before the first
 		// token arrived.
+		const transcript = readTranscript(message.metadata?.transcript);
 		const answerStarted = !!message.textContent;
 
 		// Not for an answer that is streaming with no step and no waiting line
@@ -432,7 +435,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 
 		// now would put a header above the text that vanishes at completion.
 
-		const showPanel = isAssistant && (hasReasoning || (!!isStreaming && !answerStarted));
+		const showPanel = !transcript && isAssistant && (hasReasoning || (!!isStreaming && !answerStarted));
 
 		// Waiting state for non-assistant rows only; the panel covers the
 		// assistant's.
@@ -475,24 +478,26 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 			return replaceMediaUrls(stripInlineMarkers(message.textContent).trim(), medias);
 		}, [message.textContent, medias]);
 
-		const renderContent = () => {
-			if (!message.textContent) return null;
+		const renderContent = (text = message.textContent, blockStreaming = !!isStreaming) => {
+			if (!text) return null;
+			const parts = text === message.textContent ? contentParts : parseContentWithInlineMarkers(
+				replaceMediaUrls(isStreaming ? trimPartialTrailingMarker(text) : text, medias), true);
 
 			if (!renderMarkdown) {
-				return <p className="whitespace-pre-wrap">{cleanTextContent}</p>;
+				return <p className="whitespace-pre-wrap">{text === message.textContent ? cleanTextContent : stripInlineMarkers(text)}</p>;
 			}
 
-			if (contentParts && contentParts.length > 0) {
+			if (parts && parts.length > 0) {
 				const renderedVizIds = new Set<string>();
 				return (
 					<>
-						{contentParts.map((part, idx) => {
+						{parts.map((part, idx) => {
 							if (part.type === "text") {
 								return (
 									<MarkdownContent
                                         medias={medias}
 										key={`text-${idx}`}
-										isStreaming={!!isStreaming}
+										isStreaming={blockStreaming}
 										baselineFontSize={baselineFontSize}
 										className={isViewer ? "prose-invert" : ""}>
 										{part.content}
@@ -525,12 +530,13 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 			return null;
 		};
 
-        const referencedInlineIds = useMemo(() => renderMarkdown ? inlineMediaIds(placedText || "") : new Set<string>(), [placedText, renderMarkdown]);
+        const referenceText = transcript ? transcript.blocks.filter((b) => b.kind === "text").map((b) => b.text || "").join("\n") + "\n" + (placedText || "") : placedText || "";
+        const referencedInlineIds = useMemo(() => renderMarkdown ? inlineMediaIds(referenceText) : new Set<string>(), [referenceText, renderMarkdown]);
         const referencedTableIds = useMemo(() => tableMediaIds(visualizations, medias), [visualizations, medias]);
         const deferCreativeGallery = renderMarkdown && isStreaming && medias?.some(isCreativeReviewMedia);
 		const filteredMedias: MediaItem[] = useMemo(() => {
 			if (!medias || medias.length === 0) return [];
-			const textContent = cleanTextContent || "";
+			const textContent = referenceText;
 
 			return medias
 				.filter((media) => {
@@ -548,7 +554,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 					posterUrl: m.posterUrl,
 					previewUrl: m.previewUrl,
 				}));
-		}, [medias, cleanTextContent, referencedTableIds, referencedInlineIds]);
+		}, [medias, referenceText, referencedTableIds, referencedInlineIds]);
 
 		const {
 			index: lightboxIndex,
@@ -660,7 +666,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 						{isViewer ? "You" : (message.participant?.name ?? "Assistant")}
 					</span>
 					{/* Loading indicator: avatar + dots in same row */}
-					{isWaitingForContent && (
+					{isWaitingForContent && !transcript && (
 						<div className={cn("flex items-start gap-2 w-full")}>
 							{showAvatar && !isViewer && (
 								<div className="flex-shrink-0">
@@ -701,7 +707,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 					    is a valid message, and gating this row on text alone made the
 					    user's own image vanish from the transcript (the attachments
 					    block below lives inside this row). */}
-					{(message.textContent || hasAttachments) && (
+					{(message.textContent || hasAttachments || transcript) && (
 						<div className={cn(
 							"group flex items-start gap-2 w-full",
 							isViewer ? "flex-row-reverse" : "flex-row"
@@ -736,7 +742,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 											onEditSubmit(newText);
 										}}
 									/>
-								) : message.textContent ? (
+								) : (message.textContent || transcript) ? (
 								<div
 									className={cn(
 										"rounded-2xl",
@@ -750,7 +756,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 										backgroundColor: isViewer ? "var(--chat-user-message-bg)" : "transparent",
 										color: isViewer ? "var(--chat-user-message-text, #ffffff)" : "var(--chat-text)",
 									}}>
-									<MessageContentPrimitive>{renderContent()}</MessageContentPrimitive>
+									<MessageContentPrimitive>{transcript ? <TranscriptFlow transcript={transcript} chunks={reasoningChunks} isStreaming={isStreaming} executionTime={executionTime} streamStartedAt={streamStartedAt} renderText={renderContent} /> : renderContent()}</MessageContentPrimitive>
 									{renderMediaStatuses()}
 									{!isStreaming && filteredMedias.length > 0 && (referencedInlineIds.size > 0 || referencedTableIds.size > 0) ? (
                                         <details className="my-3"><summary className="cursor-pointer text-sm text-muted-foreground">Additional media ({filteredMedias.length})</summary>{renderMediaItems()}</details>
@@ -771,7 +777,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 									    prunes renders the answer never embedded, so what appears
 									    here after the stream is exactly what the message keeps. */}
 									{!isStreaming && visualizations && visualizations.length > 0 && (() => {
-										const textContent = message.textContent || "";
+										const textContent = referenceText;
 										const unreferenced = visualizations.filter(
 											(viz) => !textContent.includes(`[VIZ:${viz.id}]`)
 										);

@@ -70,3 +70,6 @@ export type {
 export type { BrandingData } from "./branding";
 
 export type { SourceReference, SourceTypeConfig } from "./citation";
+
+export { readTranscript, updateTranscript } from "./transcript";
+export type { AgentTranscript, TranscriptBlock } from "./transcript";

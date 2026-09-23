@@ -1,16 +1,39 @@
-export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-CXZygWSc.js';
-import { M as MediaChunkData, V as VisualizationChunkData } from './streaming-B35rbraB.js';
-export { a as ClarificationAnswer, C as ClarificationData, b as ClarificationQuestion, c as StreamChunk, d as StreamingOptions, e as StreamingState } from './streaming-B35rbraB.js';
+export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-BTw0HJED.js';
+import { S as StreamingChunk, M as MediaChunkData, V as VisualizationChunkData } from './streaming-B1iq46Fk.js';
+export { c as ClarificationAnswer, C as ClarificationData, d as ClarificationQuestion, b as StreamChunk, a as StreamingOptions, e as StreamingState } from './streaming-B1iq46Fk.js';
 export { B as BrandingData } from './branding-NieTEGQf.js';
-export { C as ChatContext, a as ChatContextValue, b as ChatProvider, c as ChatProviderProps, E as ENTITY_HREF_SCHEME, d as EntityReference, e as EntityReferenceInfo, f as EntityResolution, g as EntityResolver, h as EntityText, i as entityHref, p as parseEntityHref, u as useChatContext } from './index-CtzwxHm0.js';
-export { u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from './use-branding-css-vars-CzVj0Hrq.js';
-export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-XBx2D1RN.js';
+export { C as ChatContext, a as ChatContextValue, b as ChatProvider, c as ChatProviderProps, E as ENTITY_HREF_SCHEME, d as EntityReference, e as EntityReferenceInfo, f as EntityResolution, g as EntityResolver, h as EntityText, i as entityHref, p as parseEntityHref, u as useChatContext } from './index-COCzFTp-.js';
+export { u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from './use-branding-css-vars-6ULQtbF9.js';
+export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-BOdZto37.js';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.js';
-export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-DLPSN8RG.js';
+export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-C4MrNTak.js';
 import { ClassValue } from 'clsx';
 import 'react/jsx-runtime';
 import 'react';
 import './types-Du00UBst.js';
+
+/** Display contract v1. Text is speech, never a prediction of run completion. */
+interface TranscriptBlock {
+    id: string;
+    kind: "text" | "reasoning" | "tool" | "subagent";
+    text?: string;
+    /** Wire-only append; snapshots always contain full text. */
+    textDelta?: string;
+    step?: number | string;
+    interrupted?: boolean;
+    /** Set on completion; ordinary speech remains text. */
+    isFinal?: boolean;
+    chunk?: StreamingChunk;
+    subagentId?: string;
+}
+interface AgentTranscript {
+    version: 1;
+    status: "running" | "waiting" | "completed" | "stopped" | "failed";
+    blocks: TranscriptBlock[];
+}
+declare function readTranscript(value: unknown): AgentTranscript | undefined;
+/** Copy-on-write keeps block identity stable across unrelated tool updates. */
+declare function updateTranscript(current: AgentTranscript | undefined, frame: AgentTranscript): AgentTranscript;
 
 /**
  * Utility function to merge Tailwind CSS classes with proper precedence.
@@ -205,4 +228,4 @@ declare const chatTokens: {
 };
 type ChatTokens = typeof chatTokens;
 
-export { type ChatTokens, type ContentPart, chatTokens, cn, formatMessageTime, formatRelativeTime, getContrastTextColor, normalizeMedia, parseContentWithInlineMarkers, replaceMediaUrls, stripInlineMarkers, toChatMediaProxyUrl, upsertMedia, withReferencedMedia };
+export { type AgentTranscript, type ChatTokens, type ContentPart, type TranscriptBlock, chatTokens, cn, formatMessageTime, formatRelativeTime, getContrastTextColor, normalizeMedia, parseContentWithInlineMarkers, readTranscript, replaceMediaUrls, stripInlineMarkers, toChatMediaProxyUrl, updateTranscript, upsertMedia, withReferencedMedia };

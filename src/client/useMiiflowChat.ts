@@ -5,6 +5,7 @@
  * and branding. Returns a shape directly compatible with ChatProvider props.
  */
 
+import { updateTranscript, type AgentTranscript } from "../types/transcript";
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import type {
   ChatMessage,
@@ -256,6 +257,7 @@ function mapSessionBranding(
  */
 export const HANDLED_STREAM_EVENT_TYPES = [
   "assistant_chunk",
+  "transcript_block",
   "subagent_dispatch",
   "clarification_needed",
   "tool_approval_needed",
@@ -331,6 +333,7 @@ export async function parseSSEStream(
   const decoder = new TextDecoder();
   const streamStartTime = Date.now();
   let assistantContent = "";
+  let transcript: AgentTranscript | undefined;
   // Set once any frame has written into the assistant message. The hook uses
   // it to tell "this turn produced nothing" from "this turn produced an empty
   // answer": the former drops the placeholder, the latter finalizes it.
@@ -437,6 +440,7 @@ export async function parseSSEStream(
       id: assistantMsgId,
       textContent: assistantContent,
       reasoning: buildDisplayChunks(),
+      ...(transcript ? { metadata: { transcript } } : {}),
       suggestedActions,
       visualizations: vizItems.length > 0 ? vizItems : undefined,
       medias: mediaItems.length > 0 ? mediaItems : undefined,
@@ -480,6 +484,11 @@ export async function parseSSEStream(
           const parsed = JSON.parse(data);
           frameTimeMs = readFrameTime(parsed);
 
+          if (parsed.type === "transcript_block" && parsed.version === 1) {
+            transcript = updateTranscript(transcript, parsed);
+            updateStreamingMessage();
+            continue;
+          }
           if (parsed.type === "assistant_chunk") {
             // Setup status frame: carries no content — surface the text and
             // skip all accumulation (an empty chunk must not create or touch
@@ -765,6 +774,8 @@ export async function parseSSEStream(
               if (subEvent === "progress") {
                 const chunk = (parsed.chunk as string) || "";
                 data.result = (data.result || "") + chunk;
+              } else if (subEvent === "retracted") {
+                data.result = "";
               } else if (subEvent === "complete") {
                 data.status = "completed";
                 if (parsed.result) data.result = parsed.result as string;
@@ -949,7 +960,9 @@ export async function parseSSEStream(
             const finalContent =
               parsed.message?.text_content || assistantContent;
             const finalId = parsed.message?.id;
-            const metadata = parsed.message?.metadata;
+            const metadata = transcript || parsed.message?.metadata
+              ? { ...(transcript ? { transcript } : {}), ...parsed.message?.metadata }
+              : undefined;
             const sources = metadata?.sources;
 
             // Finalize prunes renders the model left unembedded
@@ -991,8 +1004,13 @@ export async function parseSSEStream(
             scheduler.flushNow();
             callbacks.onToolInvocation(parsed.invocation);
           } else if (parsed.type === "error") {
-            throw new Error(parsed.error || "Stream error");
+            if (transcript) {
+              transcript = { ...transcript, status: "failed" };
+              updateStreamingMessage();
+            }
+            throw new Error(`Stream error: ${parsed.error || "Generation failed"}`);
           } else if (parsed.type === "done") {
+            if (transcript?.status === "running") transcript = { ...transcript, status: parsed.transcript_status || "completed" };
             // Fallback: if stream ended without assistant_complete (e.g. clarification early return),
             // finalize the message so the frontend still shows it properly
             if (messageTouched && !receivedComplete) {
@@ -1003,6 +1021,7 @@ export async function parseSSEStream(
                 assistantMsgId,
                 finalContent: assistantContent || "",
                 finalId: parsed.message_id,
+                metadata: transcript ? { transcript } : undefined,
                 chunks: chunks as unknown as StreamingChunk[],
                 suggestedActions,
                 // No `assistant_complete`, so no persisted metadata to prefer —
@@ -1039,7 +1058,17 @@ export async function parseSSEStream(
       }
     }
 
+  } catch (error) {
+    if (transcript?.status === "running") {
+      transcript = { ...transcript, status: error instanceof Error && error.name === "AbortError" ? "stopped" : "failed" };
+      updateStreamingMessage();
+    }
+    throw error;
   } finally {
+    if (transcript?.status === "running" && !receivedComplete) {
+      transcript = { ...transcript, status: "failed" };
+      updateStreamingMessage();
+    }
     // Whatever the last frames staged is committed before the caller sees
     // the result; a thrown error still leaves the message consistent.
     scheduler.flushNow();
@@ -1813,11 +1842,12 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
           const failed = prev.find((m) => m.id === placeholderAssistantId);
           const hasContent =
             !!failed &&
-            (!!failed.textContent || (failed.reasoning?.length ?? 0) > 0);
+            (!!failed.textContent || (failed.reasoning?.length ?? 0) > 0 || !!failed.metadata?.transcript);
           const kept = hasContent
             ? prev.map((m) =>
                 m.id === placeholderAssistantId
-                  ? { ...m, isStreaming: false, statusText: undefined }
+                  ? { ...m, isStreaming: false, statusText: undefined,
+                      metadata: m.metadata?.transcript ? { ...m.metadata, transcript: { ...(m.metadata.transcript as AgentTranscript), status: "failed" } } : m.metadata }
                   : m
               )
             : prev.filter((m) => m.id !== placeholderAssistantId);

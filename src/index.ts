@@ -108,3 +108,6 @@ export {
 
 // Design tokens
 export { chatTokens, type ChatTokens } from "./styles/tokens";
+
+export { readTranscript, updateTranscript } from "./types/transcript";
+export type { AgentTranscript, TranscriptBlock } from "./types/transcript";
