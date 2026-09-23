@@ -445,6 +445,19 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 		const attachments = message.attachments;
 		const hasAttachments = attachments && attachments.length > 0;
 
+		// Artifacts by the id their `[ARTIFACT:…]` marker carries (`markerId`),
+		// and by row id for a marker written with it, so the answer can place
+		// its card where the model put the marker.
+		const artifactMap = useMemo(() => {
+			if (!artifacts || artifacts.length === 0) return null;
+			const map = new Map<string, NonNullable<typeof artifacts>[number]>();
+			artifacts.forEach((artifact) => {
+				map.set(artifact.id, artifact);
+				if (artifact.markerId) map.set(artifact.markerId, artifact);
+			});
+			return map;
+		}, [artifacts]);
+
 		// Visualization map for inline rendering
 		const vizMap = useMemo(() => {
 			if (!visualizations || visualizations.length === 0) return null;
@@ -489,6 +502,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 
 			if (parts && parts.length > 0) {
 				const renderedVizIds = new Set<string>();
+				const renderedArtifactIds = new Set<string>();
 				return (
 					<>
 						{parts.map((part, idx) => {
@@ -513,6 +527,20 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 								}
 								return null;
 							}
+							if (part.type === "artifact") {
+								const artifact = artifactMap?.get(part.id);
+								if (!artifact || renderedArtifactIds.has(artifact.id)) return null;
+								renderedArtifactIds.add(artifact.id);
+								return (
+									<div key={`artifact-${artifact.id}`} className="my-2">
+										<ArtifactList
+											artifacts={[artifact]}
+											isStreaming={isStreaming}
+											onOpen={onArtifactOpen}
+										/>
+									</div>
+								);
+							}
 							if (part.type === "sa") {
 								if (renderInlineSuggestedAction) {
 									return <div key={`sa-${part.id}`}>{renderInlineSuggestedAction(part.id)}</div>;
@@ -531,6 +559,21 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 		};
 
         const referenceText = transcript ? transcript.blocks.filter((b) => b.kind === "text").map((b) => b.text || "").join("\n") + "\n" + (placedText || "") : placedText || "";
+		// An artifact whose marker the text resolves renders inline (above);
+		// only the rest keep the card list under the answer, so a placed card
+		// is never drawn twice. The transcript's text blocks render through the
+		// same renderContent, so a marker placed there counts as placed too.
+		const unplacedArtifacts = useMemo(() => {
+			if (!artifacts || artifacts.length === 0) return [];
+			const placed = new Set<string>();
+			for (const part of parseContentWithInlineMarkers(referenceText)) {
+				if (part.type !== "artifact") continue;
+				const artifact = artifactMap?.get(part.id);
+				if (artifact) placed.add(artifact.id);
+			}
+			return artifacts.filter((artifact) => !placed.has(artifact.id));
+		}, [artifacts, artifactMap, referenceText]);
+
         const referencedInlineIds = useMemo(() => renderMarkdown ? inlineMediaIds(referenceText) : new Set<string>(), [referenceText, renderMarkdown]);
         const referencedTableIds = useMemo(() => tableMediaIds(visualizations, medias), [visualizations, medias]);
         const deferCreativeGallery = renderMarkdown && isStreaming && medias?.some(isCreativeReviewMedia);
@@ -794,11 +837,12 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 										));
 									})()}
 
-									{/* Downloadable artifacts (PDFs, HTMLs) */}
-									{artifacts && artifacts.length > 0 && (
+									{/* Downloadable artifacts (PDFs, HTMLs) the answer did not place
+									    inline with an [ARTIFACT:id] marker. */}
+									{unplacedArtifacts.length > 0 && (
 										<div className="mt-2">
 											<ArtifactList
-												artifacts={artifacts}
+												artifacts={unplacedArtifacts}
 												isStreaming={isStreaming}
 												onOpen={onArtifactOpen}
 											/>

@@ -1,12 +1,18 @@
-// Regex to match inline markers: [VIZ:id], [MEDIA:id], and [SA:id].
-//
+// Inline markers: [VIZ:id], [MEDIA:id], [SA:id] and [ARTIFACT:id]. The kinds
+// are declared once; every pattern below is built from this list, so adding a
+// kind cannot leave one of them behind (the partial-marker list was once
+// hand-spelled letter by letter).
+const MARKER_KINDS = ["VIZ", "MEDIA", "SA", "ARTIFACT"] as const;
+const KIND_ALTERNATION = MARKER_KINDS.join("|");
+
 // The id is "anything up to the closing bracket" on purpose. Real ids are
 // hex (VIZ/MEDIA) or TokenField ids (SA), but the grammar has to catch every
 // marker-SHAPED token, because a marker that reaches the renderer unmatched
 // is shown to the reader as text. Production had `[VIZ:…]` — a literal
 // ellipsis, quoted from a prompt — rendered raw for exactly this reason. An
 // id that resolves to nothing renders nothing; that is the floor.
-const INLINE_MARKER_REGEX = /\[(VIZ|MEDIA|SA):([^\]]+)\]/gi;
+const INLINE_MARKER_SOURCE = `\\[(${KIND_ALTERNATION}):([^\\]]+)\\]`;
+const INLINE_MARKER_REGEX = new RegExp(INLINE_MARKER_SOURCE, "gi");
 
 /**
  * Remove every inline marker from `content`.
@@ -19,17 +25,22 @@ const INLINE_MARKER_REGEX = /\[(VIZ|MEDIA|SA):([^\]]+)\]/gi;
  */
 export function stripInlineMarkers(content: string): string {
   // Fresh regex per call: the shared literal is /g and carries `lastIndex`.
-  return content.replace(/\[(VIZ|MEDIA|SA):([^\]]+)\]/gi, "");
+  return content.replace(new RegExp(INLINE_MARKER_SOURCE, "gi"), "");
 }
 
 /**
  * The tail of a streaming text that could still become an inline marker:
- * `[`, `[VI`, `[VIZ:`, `[VIZ:9fc0…` and the same for MEDIA and SA. The
+ * `[`, `[VI`, `[VIZ:`, `[VIZ:9fc0…` and the same for every marker kind. The
  * marker only splits the content once its closing bracket arrives, so for a
  * few tokens the raw prefix would otherwise render as text and then vanish.
  */
-const PARTIAL_TRAILING_MARKER_REGEX =
-	/\[(?:(?:VIZ|MEDIA|SA):[^\]]*|V|VI|VIZ|M|ME|MED|MEDI|MEDIA|S|SA)?$/i;
+const KIND_PREFIXES = MARKER_KINDS.flatMap((kind) =>
+	Array.from({ length: kind.length }, (_, i) => kind.slice(0, i + 1)),
+);
+const PARTIAL_TRAILING_MARKER_REGEX = new RegExp(
+	`\\[(?:(?:${KIND_ALTERNATION}):[^\\]]*|${KIND_PREFIXES.join("|")})?$`,
+	"i",
+);
 
 /**
  * Drop a trailing fragment of an inline marker from text that is still
@@ -44,10 +55,12 @@ export type ContentPart =
   | { type: "text"; content: string }
   | { type: "viz"; id: string }
   | { type: "media"; id: string }
-  | { type: "sa"; id: string };
+  | { type: "sa"; id: string }
+  | { type: "artifact"; id: string };
 
 /**
- * Parse content and split it by inline markers ([VIZ:id], [MEDIA:id], and [SA:id]).
+ * Parse content and split it by inline markers ([VIZ:id], [MEDIA:id], [SA:id] and
+ * [ARTIFACT:id]). An artifact marker carries the artifact's `markerId`.
  */
 export function parseContentWithInlineMarkers(content: string, preserveMedia = false): ContentPart[] {
   const parts: ContentPart[] = [];
@@ -70,6 +83,8 @@ export function parseContentWithInlineMarkers(content: string, preserveMedia = f
       parts.push({ type: "viz", id: match[2] });
     } else if (markerType === "SA") {
       parts.push({ type: "sa", id: match[2] });
+    } else if (markerType === "ARTIFACT") {
+      parts.push({ type: "artifact", id: match[2] });
     } else {
       parts.push({ type: "media", id: match[2] });
     }

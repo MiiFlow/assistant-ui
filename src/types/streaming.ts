@@ -450,6 +450,9 @@ export type ArtifactStatus = "pending" | "ready" | "failed";
 
 export interface ArtifactChunkData {
   id: string;
+  /** The id in the `[ARTIFACT:…]` marker the answer places this card with.
+   *  Not `id`: the marker is minted before the artifact row exists. */
+  markerId?: string;
   kind: "pdf" | "html" | string;
   title: string;
   description?: string;

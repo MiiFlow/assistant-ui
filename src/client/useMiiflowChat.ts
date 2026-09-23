@@ -18,6 +18,7 @@ import type {
 import type { BrandingData } from "../types/branding";
 import { deliveredMedia, useMediaDelivery } from "./use-media-delivery";
 import { withReferencedMedia, normalizeMedia, upsertMedia } from "../utils/media";
+import { normalizeArtifact } from "../utils/artifacts";
 import { findToolChunkIndex } from "./tool-chunk-matching";
 import { createCommitScheduler, type ScheduleFn } from "./frame-scheduler";
 import { stripCitationMarkers } from "../utils/citations";
@@ -949,7 +950,7 @@ export async function parseSSEStream(
             // inline card beneath the answer.
             const artifactData = parsed.artifact_data;
             if (artifactData?.id) {
-              artifactItems = upsertById(artifactItems, artifactData);
+              artifactItems = upsertById(artifactItems, normalizeArtifact(artifactData));
               updateStreamingMessage();
             }
           } else if (parsed.type === "assistant_complete") {
@@ -974,7 +975,7 @@ export async function parseSSEStream(
               ? metadata.visualizations ?? []
               : vizItems;
             const finalArtifacts = metadata
-              ? metadata.artifacts ?? []
+              ? (metadata.artifacts ?? []).map(normalizeArtifact)
               : artifactItems;
 
             const elapsedSeconds = (Date.now() - streamStartTime) / 1000;
