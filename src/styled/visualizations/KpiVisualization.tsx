@@ -61,12 +61,12 @@ function Delta({ metric }: { metric: KpiMetric }) {
       {showChange && (
         <span
           className={cn(
-            "inline-flex items-center gap-[3px] rounded-full py-px pl-[5px] pr-[7px] font-semibold leading-normal",
+            "inline-flex min-w-0 max-w-full items-center gap-[3px] rounded-full py-px pl-[5px] pr-[7px] font-semibold leading-normal",
             CHIP_TONE[resolveKpiTone(metric)],
           )}
         >
-          <Arrow size={11} strokeWidth={2.75} aria-hidden />
-          {formatChange(metric.change!)}
+          <Arrow size={11} strokeWidth={2.75} className="shrink-0" aria-hidden />
+          <span className="min-w-0">{formatChange(metric.change!)}</span>
         </span>
       )}
       {metric.changeLabel && <span>{metric.changeLabel}</span>}
@@ -132,7 +132,7 @@ function Breakdown({ metric, hero }: { metric: KpiMetric; hero: boolean }) {
   return (
     <div className="flex flex-col gap-2.5">
       <BreakdownBar metric={metric} />
-      <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-2.5 gap-y-1 text-[0.8125rem] tabular-nums">
+      <dl className="m-0 grid grid-cols-[8px_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-1 text-[0.8125rem] tabular-nums">
         {items.map((b, i) => (
           <div key={i} className="contents">
             <span className={cn("h-2 w-2 rounded-sm", BREAKDOWN_COLORS[i % BREAKDOWN_COLORS.length])} />
@@ -188,8 +188,8 @@ function MetricBody({ metric, hero }: { metric: KpiMetric; hero: boolean }) {
         )}
         {metric.label}
       </div>
-      <div className="flex min-w-0 items-end justify-between gap-2.5">
-        <div className="flex min-w-0 items-baseline gap-1">
+      <div className="flex min-w-0 flex-wrap items-end justify-between gap-2.5">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-1">
           <span
             className={cn(
               "tabular-nums text-gray-900 dark:text-gray-100 [overflow-wrap:anywhere]",
@@ -216,7 +216,7 @@ function MetricBody({ metric, hero }: { metric: KpiMetric; hero: boolean }) {
       {metric.note && (
         <div className={cn("flex gap-1.5 text-[0.8125rem] leading-snug", NOTE_TONE[status ?? "neutral"])}>
           <Info size={13} className="mt-0.5 flex-none" aria-hidden />
-          <span>{metric.note}</span>
+          <span className="min-w-0">{metric.note}</span>
         </div>
       )}
     </div>
@@ -259,7 +259,7 @@ export function KpiVisualization({ data }: KpiVisualizationProps) {
   const cols = balancedColumns(cells.length, layout === "grid" ? 2 : 4);
 
   return (
-    <div className="w-full overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+    <div className="min-w-0 w-full [overflow-wrap:anywhere] overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
       {heroIdx >= 0 && <HeroBand metric={metrics[heroIdx]} />}
       {cells.length > 0 && (
         // Hairline grid: every cell draws its top and left rule and overlaps its
