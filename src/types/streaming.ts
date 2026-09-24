@@ -278,17 +278,53 @@ export interface CardVisualizationData {
   actions?: CardAction[];
 }
 
+/** Which direction of change is favorable. Colors the change chip. */
+export type KpiPolarity = "higher_is_better" | "lower_is_better" | "neutral";
+
+/** A judgment that isn't a delta — below benchmark, zero conversions, fatigue. */
+export type KpiStatus = "good" | "warning" | "bad";
+
+export interface KpiBreakdownItem {
+  label: string;
+  value: string | number;
+  /** Fraction of the whole, 0–1. Without it the item is listed but not drawn. */
+  share?: number;
+}
+
+export interface KpiMeter {
+  /** Fraction, 0–1: share of a total or progress to a target. */
+  value: number;
+  /** What the fraction is of, e.g. "of spend", "of $60k budget". */
+  label?: string;
+}
+
 export interface KpiMetric {
   label: string;
   value: string | number;
+  /** Suffix only ("%", "A", "users") — never a subtitle. */
   unit?: string;
-  trend?: "up" | "down" | "neutral";
+  /** Signed delta ("+12%", "-5.94pp"). Its sign alone decides arrow direction. */
   change?: string | number;
+  polarity?: KpiPolarity;
+  /** Prior-period value, preformatted ("$319.92"). */
+  previous?: string;
+  /** Comparison window only ("vs prior week"). */
   changeLabel?: string;
+  status?: KpiStatus;
+  /** One line of context or caveat. */
+  note?: string;
+  breakdown?: KpiBreakdownItem[];
+  meter?: KpiMeter;
   sparkline?: number[];
-  color?: string;
   // Bento layout only: marks the hero card. If unset, the first metric is hero.
   prominence?: "primary" | "secondary";
+  /**
+   * @deprecated Read only for payloads written before `polarity` existed:
+   * models used it as good/bad, the renderer as direction. See resolveKpiTone.
+   */
+  trend?: "up" | "down" | "neutral";
+  /** @deprecated Hex colors aren't theme-safe; ignored. Use `status`/`polarity`. */
+  color?: string;
 }
 
 export interface KpiVisualizationData {

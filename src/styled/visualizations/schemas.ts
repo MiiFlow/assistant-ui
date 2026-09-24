@@ -81,7 +81,27 @@ const kpiMetricSchema = z.object({
 	trend: z.enum(["up", "down", "neutral"]).nullish(),
 	change: z.union([z.string(), z.number()]).nullish(),
 	changeLabel: z.string().nullish(),
+	// Plain strings, not enums: an off-enum value from a non-strict tool call
+	// must degrade (kpi.metricPolarity / metricStatus ignore it), not fail the
+	// whole block. `trend` stays an enum because it always was.
+	polarity: z.string().nullish(),
+	previous: z.string().nullish(),
+	status: z.string().nullish(),
+	note: z.string().nullish(),
+	breakdown: z
+		.array(
+			z.object({
+				label: z.string(),
+				value: z.union([z.string(), z.number()]),
+				// Lenient on purpose: one malformed nested field would otherwise
+				// fail the whole block. The renderer normalizes (kpi.toFraction).
+				share: z.coerce.number().nullish(),
+			}),
+		)
+		.nullish(),
+	meter: z.object({ value: z.coerce.number(), label: z.string().nullish() }).nullish(),
 	sparkline: z.array(z.number()).nullish(),
+	prominence: z.string().nullish(),
 	color: z.string().nullish(),
 });
 

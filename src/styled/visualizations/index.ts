@@ -3,6 +3,7 @@ export { ChartVisualization, type ChartVisualizationProps } from "./ChartVisuali
 export { TableVisualization, type TableVisualizationProps } from "./TableVisualization";
 export { CardVisualization, type CardVisualizationProps } from "./CardVisualization";
 export { KpiVisualization, type KpiVisualizationProps } from "./KpiVisualization";
+export * as kpi from "./kpi";
 export { CodePreviewVisualization, type CodePreviewVisualizationProps } from "./CodePreviewVisualization";
 export { FormVisualization, type FormVisualizationProps } from "./FormVisualization";
 export { AuthPromptVisualization, type AuthPromptVisualizationProps } from "./AuthPromptVisualization";

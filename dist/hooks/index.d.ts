@@ -1,6 +1,6 @@
-export { U as UseAutoScrollOptions, a as UseAutoScrollReturn, u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from '../use-branding-css-vars-C2z4_6yw.js';
+export { U as UseAutoScrollOptions, a as UseAutoScrollReturn, u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from '../use-branding-css-vars-D7gcGdJy.js';
 import 'react';
-import '../streaming-oWxRHnyE.js';
+import '../streaming-B3u74IEq.js';
 import '../branding-BQBGqRIV.js';
 
 /**

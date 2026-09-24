@@ -1,15 +1,15 @@
-export { c as AttachmentPreview, m as AttachmentPreviewProps, d as Avatar, n as AvatarProps, C as ChatContainer, o as ChatContainerProps, e as ChatLayout, p as ChatLayoutProps, M as MarkdownContent, q as MarkdownContentProps, f as Message, g as MessageActionBar, r as MessageActionBarProps, h as MessageComposer, s as MessageComposerProps, i as MessageList, t as MessageListProps, u as MessageProps, S as ScrollToBottomButton, v as ScrollToBottomButtonProps, j as StreamingText, w as StreamingTextProps, k as SuggestedActions, x as SuggestedActionsProps, y as ToolStatus, T as ToolStatusIndicator, z as ToolStatusIndicatorProps, l as TypingIndicator, B as TypingIndicatorProps, W as WelcomeScreen, E as WelcomeScreenProps } from '../WelcomeScreen-BT03e5jI.js';
+export { c as AttachmentPreview, m as AttachmentPreviewProps, d as Avatar, n as AvatarProps, C as ChatContainer, o as ChatContainerProps, e as ChatLayout, p as ChatLayoutProps, M as MarkdownContent, q as MarkdownContentProps, f as Message, g as MessageActionBar, r as MessageActionBarProps, h as MessageComposer, s as MessageComposerProps, i as MessageList, t as MessageListProps, u as MessageProps, S as ScrollToBottomButton, v as ScrollToBottomButtonProps, j as StreamingText, w as StreamingTextProps, k as SuggestedActions, x as SuggestedActionsProps, y as ToolStatus, T as ToolStatusIndicator, z as ToolStatusIndicatorProps, l as TypingIndicator, B as TypingIndicatorProps, W as WelcomeScreen, E as WelcomeScreenProps } from '../WelcomeScreen-CqQelZhm.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import * as react from 'react';
 import react__default, { ReactNode, ComponentType } from 'react';
-import { A as Attachment, S as SourceReference } from '../message-qDjvuGiv.js';
-export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-qDjvuGiv.js';
-import { S as StreamingChunk, P as PlanData, f as SubagentChunkData, C as ClarificationData, c as ClarificationAnswer, T as ToolApprovalData, V as VisualizationChunkData, g as VisualizationActionEvent, M as MediaChunkData, h as ChartVisualizationData, i as VisualizationConfig, j as TableVisualizationData, k as CardVisualizationData, K as KpiVisualizationData, l as CodePreviewVisualizationData, F as FormVisualizationData, m as AuthPromptVisualizationData, A as ArtifactChunkData, E as Event, n as EventStatus } from '../streaming-oWxRHnyE.js';
-export { o as ArtifactStatus, p as ChunkType, q as EventType, r as FollowupAction, O as ObservationEvent, s as PlanningEvent, t as ProgressData, u as StreamingMessage, v as SubTaskData, w as SubtaskEvent, x as ThinkingEvent, y as ToolEvent, z as VisualizationType } from '../streaming-oWxRHnyE.js';
+import { A as Attachment, S as SourceReference } from '../message-zGQ6aUMr.js';
+export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-zGQ6aUMr.js';
+import { S as StreamingChunk, P as PlanData, f as SubagentChunkData, C as ClarificationData, c as ClarificationAnswer, T as ToolApprovalData, V as VisualizationChunkData, g as VisualizationActionEvent, M as MediaChunkData, h as ChartVisualizationData, i as VisualizationConfig, j as TableVisualizationData, k as CardVisualizationData, K as KpiVisualizationData, l as KpiMetric, m as CodePreviewVisualizationData, F as FormVisualizationData, n as AuthPromptVisualizationData, A as ArtifactChunkData, E as Event, o as EventStatus } from '../streaming-B3u74IEq.js';
+export { p as ArtifactStatus, q as ChunkType, r as EventType, s as FollowupAction, t as KpiBreakdownItem, u as KpiMeter, v as KpiPolarity, w as KpiStatus, O as ObservationEvent, x as PlanningEvent, y as ProgressData, z as StreamingMessage, B as SubTaskData, D as SubtaskEvent, G as ThinkingEvent, H as ToolEvent, I as VisualizationType } from '../streaming-B3u74IEq.js';
 import { z, ZodSchema } from 'zod';
-export { a as ChatContextValue, b as ChatProvider, c as ChatProviderProps, u as useChatContext } from '../index-3MV7UyxF.js';
+export { a as ChatContextValue, b as ChatProvider, c as ChatProviderProps, u as useChatContext } from '../index-CwUrbTyP.js';
 export { B as BrandingData } from '../branding-BQBGqRIV.js';
-export { u as useComposer, g as useMessage } from '../avatar-DdikeZZL.js';
+export { u as useComposer, g as useMessage } from '../avatar-48GBXIZe.js';
 import '../types-Du00UBst.js';
 
 /**
@@ -741,13 +741,27 @@ declare const kpiVisualizationSchema: z.ZodObject<{
         value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>;
         unit: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         trend: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
+            neutral: "neutral";
             up: "up";
             down: "down";
-            neutral: "neutral";
         }>>>;
         change: z.ZodOptional<z.ZodNullable<z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>>>;
         changeLabel: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        polarity: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        previous: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        status: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        note: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        breakdown: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
+            label: z.ZodString;
+            value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>;
+            share: z.ZodOptional<z.ZodNullable<z.ZodCoercedNumber<unknown>>>;
+        }, z.core.$strip>>>>;
+        meter: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+            value: z.ZodCoercedNumber<unknown>;
+            label: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        }, z.core.$strip>>>;
         sparkline: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodNumber>>>;
+        prominence: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         color: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     }, z.core.$strip>>;
     layout: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
@@ -848,7 +862,123 @@ interface KpiVisualizationProps {
     config?: VisualizationConfig;
     isStreaming?: boolean;
 }
-declare function KpiVisualization({ data, config, isStreaming, }: KpiVisualizationProps): react_jsx_runtime.JSX.Element;
+/**
+ * One bordered panel. "bento" opens with a full-width hero band for its
+ * primary metric; "row" and "grid" are the same cells without one. Cells wrap
+ * in balanced rows (up to 4, or 2 for "grid") and a short last row stretches,
+ * so no cell is ever left empty. Payload semantics live in `./kpi`, shared
+ * with every other KPI renderer.
+ */
+declare function KpiVisualization({ data }: KpiVisualizationProps): react_jsx_runtime.JSX.Element | null;
+
+/**
+ * Rendering semantics for KPI visualizations, shared by every renderer (this
+ * package's Tailwind one and the web app's MUI one) so they can't disagree
+ * about what a payload means.
+ *
+ * The model states facts about a metric — the signed `change`, whether higher
+ * is better — and this module does the arithmetic. Before `polarity` existed
+ * the model had to compute good/bad itself and encode it in `trend`, which the
+ * renderers read as direction: a rising CPA sent as trend "down" showed a red
+ * down-arrow beside "+5.0%".
+ */
+
+type KpiDirection = -1 | 0 | 1;
+type KpiTone = "good" | "bad" | "warning" | "neutral";
+type KpiHeroVisual = "breakdown" | "sparkline" | "meter" | null;
+/**
+ * The metric's polarity, or null for a value this renderer doesn't know. The
+ * schema accepts any string here so an off-enum value from a non-strict tool
+ * call degrades to "no polarity" instead of failing the whole block.
+ */
+declare function metricPolarity(metric: KpiMetric): KpiMetric["polarity"] | null;
+/** The metric's status, or null for a value this renderer doesn't know. */
+declare function metricStatus(metric: KpiMetric): NonNullable<KpiMetric["status"]> | null;
+/** Direction of a change, read from its sign only. Unsigned ("20.7%") is 0. */
+declare function changeDirection(change: KpiMetric["change"]): KpiDirection;
+/**
+ * Arrow direction for the chip: the sign of `change`. A legacy payload whose
+ * change is unsigned falls back to its `trend`, which is what it showed before.
+ */
+declare function arrowDirection(metric: KpiMetric): KpiDirection;
+declare function hasChange(metric: KpiMetric): boolean;
+/** "+12" for numeric changes; strings are shown as the model wrote them. */
+declare function formatChange(change: NonNullable<KpiMetric["change"]>): string;
+/**
+ * Color of the change chip: the change's direction combined with the metric's
+ * polarity. With no polarity the chip is neutral — a direction with no
+ * assertion about which way is good.
+ *
+ * Legacy payloads (`trend`, no `polarity`) keep trend's old colors, up = good
+ * and down = bad. That is also the right reading of the payloads where trend
+ * contradicts the sign of change ("Blended CPA", trend "down", "+5.0%"): the
+ * model was using trend as sentiment. Only the arrow changes for them — it now
+ * follows the sign.
+ */
+declare function resolveKpiTone(metric: KpiMetric): KpiTone;
+/**
+ * Whether a value reads as a spec rather than a figure ("200A Meter/Main
+ * Combo"). Text values get body-size type and no count-up.
+ */
+declare function isTextValue(value: KpiMetric["value"]): boolean;
+declare function pickHeroIndex(metrics: KpiMetric[]): number;
+/**
+ * The richest thing a hero can show beside its value. A hero with none of
+ * these is one short row — it never reserves space for a visual it lacks.
+ */
+declare function heroVisual(metric: KpiMetric): KpiHeroVisual;
+/**
+ * Column count for `count` cells that fills rows evenly: the fewest rows that
+ * fit within `maxCols`, then the fewest columns that fit in those rows. 5 → 3+2,
+ * 7 → 4+3, never 4+1. Renderers let a short last row stretch, so no cell is
+ * ever left empty; a narrow container sheds columns via the cell min-width.
+ */
+declare function balancedColumns(count: number, maxCols?: number): number;
+/**
+ * A 0–1 fraction from what the model sent. Models sometimes send percent scale
+ * (20.7 for 20.7%), so a value above 1 and at most 100 is read as a percent.
+ */
+declare function toFraction(n: number | null | undefined): number;
+/** "20.7%" from 0.207 (or 20.7). */
+declare function formatFraction(n: number | null | undefined): string;
+/** Breakdown items that can be drawn as bar segments. */
+declare function drawableBreakdown(metric: KpiMetric): {
+    label: string;
+    share: number;
+}[];
+interface SparklineGeometry {
+    line: string;
+    area: string;
+    end: {
+        x: number;
+        y: number;
+    };
+}
+/** SVG paths for a sparkline in a `width`×`height` box, `pad` inset for the end dot. */
+declare function sparklineGeometry(values: number[], width: number, height: number, pad?: number): SparklineGeometry | null;
+
+type kpi_KpiDirection = KpiDirection;
+type kpi_KpiHeroVisual = KpiHeroVisual;
+type kpi_KpiTone = KpiTone;
+type kpi_SparklineGeometry = SparklineGeometry;
+declare const kpi_arrowDirection: typeof arrowDirection;
+declare const kpi_balancedColumns: typeof balancedColumns;
+declare const kpi_changeDirection: typeof changeDirection;
+declare const kpi_drawableBreakdown: typeof drawableBreakdown;
+declare const kpi_formatChange: typeof formatChange;
+declare const kpi_formatFraction: typeof formatFraction;
+declare const kpi_hasChange: typeof hasChange;
+declare const kpi_heroVisual: typeof heroVisual;
+declare const kpi_isTextValue: typeof isTextValue;
+declare const kpi_metricPolarity: typeof metricPolarity;
+declare const kpi_metricStatus: typeof metricStatus;
+declare const kpi_pickHeroIndex: typeof pickHeroIndex;
+declare const kpi_resolveKpiTone: typeof resolveKpiTone;
+declare const kpi_sparklineGeometry: typeof sparklineGeometry;
+declare const kpi_toFraction: typeof toFraction;
+declare namespace kpi {
+  export { type kpi_KpiDirection as KpiDirection, type kpi_KpiHeroVisual as KpiHeroVisual, type kpi_KpiTone as KpiTone, type kpi_SparklineGeometry as SparklineGeometry, kpi_arrowDirection as arrowDirection, kpi_balancedColumns as balancedColumns, kpi_changeDirection as changeDirection, kpi_drawableBreakdown as drawableBreakdown, kpi_formatChange as formatChange, kpi_formatFraction as formatFraction, kpi_hasChange as hasChange, kpi_heroVisual as heroVisual, kpi_isTextValue as isTextValue, kpi_metricPolarity as metricPolarity, kpi_metricStatus as metricStatus, kpi_pickHeroIndex as pickHeroIndex, kpi_resolveKpiTone as resolveKpiTone, kpi_sparklineGeometry as sparklineGeometry, kpi_toFraction as toFraction };
+}
 
 interface CodePreviewVisualizationProps {
     data: CodePreviewVisualizationData;
@@ -1136,4 +1266,4 @@ interface TimelineRowProps {
  */
 declare function TimelineRow({ label, description, durationSeconds, isFailed, defaultExpanded, nestedEvents, hideChevron, }: TimelineRowProps): react_jsx_runtime.JSX.Element;
 
-export { ActivityMeter, AgentMark, type ApprovalButtonSlotProps, type ApprovalChatInputSlotProps, ArtifactChunkData, type ArtifactEntry, ArtifactInlineCard, type ArtifactInlineCardProps, ArtifactList, type ArtifactListProps, Attachment, AuthPromptVisualization, type AuthPromptVisualizationProps, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, Chevron, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, CodePreviewVisualization, type CodePreviewVisualizationProps, ComposerToolbar, DispatchMark, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FormVisualization, type FormVisualizationProps, INTERNAL_TOOLS, InlineCitation, type InlineCitationProps, KpiVisualization, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, ReasoningStream, type ReasoningStreamProps, type RunOutcome, type RunStep, type RunStepStatus, type RunStepTool, type RunStepToolKind, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StepBlock, type StepBlockProps, StepMark, StreamingChunk, SubagentBody, SubagentChunkData, SubagentGroup, type SubagentGroupProps, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, ThinkingIndicator, type ThinkingIndicatorProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, TimelineRow, type TimelineRowProps, ToolApprovalPanel, type ToolApprovalPanelProps, type ToolApprovalSlots, ToolChip, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, WriteMark, authPromptVisualizationSchema, buildRunSteps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, decodeFrame, durationSeconds, formVisualizationSchema, getArtifact, getRegisteredArtifactTypes, getRegisteredTypes, getVisualization, humanizeHandle, humanizeToolName, initials, isInternalTool, kpiVisualizationSchema, registerArtifact, registerVisualization, stepsWallClockSeconds, tableVisualizationSchema };
+export { ActivityMeter, AgentMark, type ApprovalButtonSlotProps, type ApprovalChatInputSlotProps, ArtifactChunkData, type ArtifactEntry, ArtifactInlineCard, type ArtifactInlineCardProps, ArtifactList, type ArtifactListProps, Attachment, AuthPromptVisualization, type AuthPromptVisualizationProps, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, Chevron, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, CodePreviewVisualization, type CodePreviewVisualizationProps, ComposerToolbar, DispatchMark, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FormVisualization, type FormVisualizationProps, INTERNAL_TOOLS, InlineCitation, type InlineCitationProps, KpiMetric, KpiVisualization, KpiVisualizationData, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, ReasoningStream, type ReasoningStreamProps, type RunOutcome, type RunStep, type RunStepStatus, type RunStepTool, type RunStepToolKind, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StepBlock, type StepBlockProps, StepMark, StreamingChunk, SubagentBody, SubagentChunkData, SubagentGroup, type SubagentGroupProps, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, ThinkingIndicator, type ThinkingIndicatorProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, TimelineRow, type TimelineRowProps, ToolApprovalPanel, type ToolApprovalPanelProps, type ToolApprovalSlots, ToolChip, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, WriteMark, authPromptVisualizationSchema, buildRunSteps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, decodeFrame, durationSeconds, formVisualizationSchema, getArtifact, getRegisteredArtifactTypes, getRegisteredTypes, getVisualization, humanizeHandle, humanizeToolName, initials, isInternalTool, kpi, kpiVisualizationSchema, registerArtifact, registerVisualization, stepsWallClockSeconds, tableVisualizationSchema };
