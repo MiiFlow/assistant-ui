@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { TRANSCRIPT_CSS } from "../styled/transcript/styles";
 
 const KEYFRAME_STYLE_ID = "miiflow-reasoning-keyframes";
 
@@ -32,7 +33,7 @@ const KEYFRAME_CONTENT = `
 .mf-focus{outline:none}
 .mf-focus:focus-visible{outline:2px solid color-mix(in srgb,var(--chat-text) 45%,transparent);outline-offset:2px;border-radius:6px}
 @media (prefers-reduced-motion:reduce){.mf-row-enter{animation:none}.mf-chip{animation:none!important}.mf-step{animation:none!important}.mf-pip-ring{animation:none!important}.mf-tool-mark{transition:none}.mf-tool-row:hover .mf-tool-mark{transform:none}}
-`;
+${TRANSCRIPT_CSS}`;
 
 /**
  * Injects keyframes used by the reasoning panel into the appropriate root.

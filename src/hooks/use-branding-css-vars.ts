@@ -34,6 +34,9 @@ export function useBrandingCSSVars(
     if (branding?.fontFamily) {
       vars["--chat-font-family"] = branding.fontFamily;
     }
+    if (branding?.fontFamilyMono) {
+      vars["--chat-font-mono"] = branding.fontFamilyMono;
+    }
 
     if (branding?.approvalAccentColor) {
       vars["--chat-approval-accent"] = branding.approvalAccentColor;

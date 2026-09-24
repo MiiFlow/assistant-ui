@@ -6,6 +6,9 @@ export interface BrandingData {
   customName?: string;
   messageFontSize?: number;
   fontFamily?: string;
+  /** Monospace face for figures in the activity header and lanes
+   *  (timers, counts, handles). Maps to `--chat-font-mono`. */
+  fontFamilyMono?: string;
   welcomeMessage?: string;
   chatboxPlaceholder?: string;
   backgroundBubbleColor?: string;

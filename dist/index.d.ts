@@ -1,12 +1,12 @@
-export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-BTw0HJED.js';
-import { S as StreamingChunk, M as MediaChunkData, V as VisualizationChunkData } from './streaming-B1iq46Fk.js';
-export { c as ClarificationAnswer, C as ClarificationData, d as ClarificationQuestion, b as StreamChunk, a as StreamingOptions, e as StreamingState } from './streaming-B1iq46Fk.js';
-export { B as BrandingData } from './branding-NieTEGQf.js';
-export { C as ChatContext, a as ChatContextValue, b as ChatProvider, c as ChatProviderProps, E as ENTITY_HREF_SCHEME, d as EntityReference, e as EntityReferenceInfo, f as EntityResolution, g as EntityResolver, h as EntityText, i as entityHref, p as parseEntityHref, u as useChatContext } from './index-COCzFTp-.js';
-export { u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from './use-branding-css-vars-6ULQtbF9.js';
-export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-BOdZto37.js';
+export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-qDjvuGiv.js';
+import { S as StreamingChunk, A as ArtifactChunkData, M as MediaChunkData, V as VisualizationChunkData } from './streaming-oWxRHnyE.js';
+export { c as ClarificationAnswer, C as ClarificationData, d as ClarificationQuestion, b as StreamChunk, a as StreamingOptions, e as StreamingState } from './streaming-oWxRHnyE.js';
+export { B as BrandingData } from './branding-BQBGqRIV.js';
+export { C as ChatContext, a as ChatContextValue, b as ChatProvider, c as ChatProviderProps, E as ENTITY_HREF_SCHEME, d as EntityReference, e as EntityReferenceInfo, f as EntityResolution, g as EntityResolver, h as EntityText, i as entityHref, p as parseEntityHref, u as useChatContext } from './index-3MV7UyxF.js';
+export { u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from './use-branding-css-vars-C2z4_6yw.js';
+export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-DdikeZZL.js';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.js';
-export { A as AttachmentPreview, a as Avatar, C as ChatContainer, b as ChatLayout, M as MarkdownContent, c as Message, d as MessageActionBar, e as MessageComposer, f as MessageList, S as ScrollToBottomButton, g as StreamingText, h as SuggestedActions, T as ToolStatusIndicator, i as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-C4MrNTak.js';
+export { A as ActivityLabels, a as ActivityMarkRenderer, b as ActivityState, c as AttachmentPreview, d as Avatar, C as ChatContainer, e as ChatLayout, D as DEFAULT_ACTIVITY_LABELS, M as MarkdownContent, f as Message, g as MessageActionBar, h as MessageComposer, i as MessageList, S as ScrollToBottomButton, j as StreamingText, k as SuggestedActions, T as ToolStatusIndicator, l as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-BT03e5jI.js';
 import { ClassValue } from 'clsx';
 import 'react/jsx-runtime';
 import 'react';
@@ -44,6 +44,18 @@ declare function updateTranscript(current: AgentTranscript | undefined, frame: A
  * cn("text-red-500", isActive && "text-blue-500") // => "text-blue-500" when isActive
  */
 declare function cn(...inputs: ClassValue[]): string;
+
+/**
+ * One artifact as the chat renders it, from the server's wire shape.
+ *
+ * The SSE `artifact` event and a message's `metadata.artifacts` both carry the
+ * server's snake_case dict (`size_bytes`, `page_count`, `marker_id`, ...);
+ * `ArtifactChunkData` is camelCase. Storing the wire dict as-is left every
+ * camelCase field undefined, so a card never learned its size or page count
+ * and an `[ARTIFACT:…]` marker never resolved (`markerId`). Already-normalized
+ * input passes through unchanged.
+ */
+declare function normalizeArtifact(raw: Record<string, any>): ArtifactChunkData;
 
 declare function normalizeMedia(value: Record<string, any>): MediaChunkData;
 declare function upsertMedia(items: MediaChunkData[], item: MediaChunkData): MediaChunkData[];
@@ -102,9 +114,13 @@ type ContentPart = {
 } | {
     type: "sa";
     id: string;
+} | {
+    type: "artifact";
+    id: string;
 };
 /**
- * Parse content and split it by inline markers ([VIZ:id], [MEDIA:id], and [SA:id]).
+ * Parse content and split it by inline markers ([VIZ:id], [MEDIA:id], [SA:id] and
+ * [ARTIFACT:id]). An artifact marker carries the artifact's `markerId`.
  */
 declare function parseContentWithInlineMarkers(content: string, preserveMedia?: boolean): ContentPart[];
 
@@ -228,4 +244,4 @@ declare const chatTokens: {
 };
 type ChatTokens = typeof chatTokens;
 
-export { type AgentTranscript, type ChatTokens, type ContentPart, type TranscriptBlock, chatTokens, cn, formatMessageTime, formatRelativeTime, getContrastTextColor, normalizeMedia, parseContentWithInlineMarkers, readTranscript, replaceMediaUrls, stripInlineMarkers, toChatMediaProxyUrl, updateTranscript, upsertMedia, withReferencedMedia };
+export { type AgentTranscript, type ChatTokens, type ContentPart, type TranscriptBlock, chatTokens, cn, formatMessageTime, formatRelativeTime, getContrastTextColor, normalizeArtifact, normalizeMedia, parseContentWithInlineMarkers, readTranscript, replaceMediaUrls, stripInlineMarkers, toChatMediaProxyUrl, updateTranscript, upsertMedia, withReferencedMedia };

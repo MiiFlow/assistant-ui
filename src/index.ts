@@ -112,3 +112,9 @@ export { chatTokens, type ChatTokens } from "./styles/tokens";
 
 export { readTranscript, updateTranscript } from "./types/transcript";
 export type { AgentTranscript, TranscriptBlock } from "./types/transcript";
+export { DEFAULT_ACTIVITY_LABELS } from "./styled/transcript/labels";
+export type {
+  ActivityLabels,
+  ActivityMarkRenderer,
+  ActivityState,
+} from "./styled/transcript/labels";

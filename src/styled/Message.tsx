@@ -1,5 +1,6 @@
 import { readTranscript } from "../types/transcript";
 import { TranscriptFlow } from "./TranscriptFlow";
+import type { ActivityLabels, ActivityMarkRenderer } from "./transcript/labels";
 import {
 	forwardRef,
 	memo,
@@ -250,6 +251,14 @@ export interface MessageProps {
 	 *  published standalone and does not know what the host's logo looks like. */
 	waitingMark?: React.ReactNode;
 	/**
+	 * Mark for the activity header of an ordered transcript, drawn per run
+	 * state. Supplied by the host, like `waitingMark`; the package draws an
+	 * unbranded mark in the activity colour when this is absent.
+	 */
+	activityMark?: ActivityMarkRenderer;
+	/** Overrides for any string in the activity header and lanes. */
+	activityLabels?: Partial<ActivityLabels>;
+	/**
 	 * @deprecated No longer read. Host adapters already reconstruct these into
 	 * `reasoning` chunks, so passing them separately made the same run
 	 * describable two ways. Kept on the interface so existing callers compile;
@@ -335,6 +344,8 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 			reasoning,
 			waitingLabel,
 			waitingMark,
+			activityMark,
+			activityLabels,
 			suggestedActions,
 			onSuggestedAction,
 			reasoningExpanded,
@@ -799,7 +810,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 										backgroundColor: isViewer ? "var(--chat-user-message-bg)" : "transparent",
 										color: isViewer ? "var(--chat-user-message-text, #ffffff)" : "var(--chat-text)",
 									}}>
-									<MessageContentPrimitive>{transcript ? <TranscriptFlow transcript={transcript} chunks={reasoningChunks} isStreaming={isStreaming} executionTime={executionTime} streamStartedAt={streamStartedAt} renderText={renderContent} /> : renderContent()}</MessageContentPrimitive>
+									<MessageContentPrimitive>{transcript ? <TranscriptFlow transcript={transcript} chunks={reasoningChunks} isStreaming={isStreaming} executionTime={executionTime} streamStartedAt={streamStartedAt} renderText={renderContent} activityMark={activityMark} activityLabels={activityLabels} waitingMark={waitingMark} /> : renderContent()}</MessageContentPrimitive>
 									{renderMediaStatuses()}
 									{!isStreaming && filteredMedias.length > 0 && (referencedInlineIds.size > 0 || referencedTableIds.size > 0) ? (
                                         <details className="my-3"><summary className="cursor-pointer text-sm text-muted-foreground">Additional media ({filteredMedias.length})</summary>{renderMediaItems()}</details>
@@ -945,8 +956,10 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 						</div>
 					)}
 
-					{/* Standalone avatar: only for reasoning, NOT loading (loading has its own avatar row above) */}
-					{!message.textContent && showAvatar && !isViewer && hasReasoning && !isWaitingForContent && (
+					{/* Standalone avatar for the legacy reasoning panel only (loading has its own
+					    avatar row above). A transcript renders inside the message row, so an
+					    avatar here would be a second, empty one. */}
+					{!message.textContent && showAvatar && !isViewer && showPanel && hasReasoning && !isWaitingForContent && (
 						<div className="flex items-start gap-2 w-full">
 							<div className="flex-shrink-0">
 								<Avatar

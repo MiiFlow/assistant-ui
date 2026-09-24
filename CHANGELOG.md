@@ -1,5 +1,20 @@
 # @miiflow/assistant-ui
 
+## 0.20.0
+
+The ordered agent transcript is redrawn as an activity rail: where execution is now, and what ran at the same time.
+
+### Features
+
+- **Activity header (`styled/transcript/RunHeader.tsx`)**: the full-width grey toggle is replaced by a content-width strip — mark, state, a ticking clock, and live agent/call counts — with a travelling line under it while the run works. On completion it reads "Worked for …" and folds the activity above the answer, as before.
+- **Rail and parallel lanes (`styled/TranscriptFlow.tsx`, `styled/transcript/WorkLanes.tsx`)**: speech, reasoning and work sit on one rail; only the live slot carries the activity accent. Work that ran concurrently forks into lanes — specialists dispatched from one step, or tool calls whose measured run intervals overlap — each with a status light, current action and timer, and merges into one line with wall time, total work and the speed-up. Any lane expands inline: a specialist's steps, or a tool's call and output.
+- **Customisation**: `Message` takes `activityMark(state, { live })` for a host mark (the package draws an unbranded one in `--chat-activity`), and `activityLabels` to override any string (`DEFAULT_ACTIVITY_LABELS`, `ActivityLabels`, `ActivityMarkRenderer`, `ActivityState` are exported). A host that only sets `waitingMark` keeps it while the run works. New optional CSS variables: `--chat-surface` (tokens.css), `--chat-activity`, `--chat-rule`; `BrandingData.fontFamilyMono` maps to `--chat-font-mono`. Every connector is drawn opaque (text mixed into `--chat-surface`), so crossing lines never darken.
+- **Motion only where it carries information**: entrances play only for slots that arrive while the reader watches; a transcript loaded finished mounts still; `prefers-reduced-motion` stops all of it.
+
+### Bug Fixes
+
+- **A second, empty avatar under every running transcript with specialists (`styled/Message.tsx`)**: the legacy reasoning panel's standalone avatar was gated on reasoning steps but not on the panel itself, so it rendered beside the transcript that replaced the panel.
+
 ## 0.19.0
 
 Entity references: an assistant's mention of a host-side object (a schedule, a workflow run, a report…) renders as a named chip that navigates in-app and can carry a hover card.

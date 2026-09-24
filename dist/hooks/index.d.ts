@@ -1,7 +1,7 @@
-export { U as UseAutoScrollOptions, a as UseAutoScrollReturn, u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from '../use-branding-css-vars-6ULQtbF9.js';
+export { U as UseAutoScrollOptions, a as UseAutoScrollReturn, u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from '../use-branding-css-vars-C2z4_6yw.js';
 import 'react';
-import '../streaming-B1iq46Fk.js';
-import '../branding-NieTEGQf.js';
+import '../streaming-oWxRHnyE.js';
+import '../branding-BQBGqRIV.js';
 
 /**
  * Whether the viewer has asked for reduced motion.

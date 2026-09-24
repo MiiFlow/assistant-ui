@@ -36,6 +36,22 @@
 	   through a card that is meant to sit above it. */
 	--chat-surface-raised: #ffffff;
 
+	/* The surface messages sit on. Opaque colours that must blend with it
+	   (the activity rail's lines and nodes) are mixed INTO this rather than
+	   into transparent, so crossing lines never darken. Hosts whose chat
+	   background differs should set it. */
+	--chat-surface: #ffffff;
+
+	/* Optional overrides, deliberately NOT declared here:
+	   --chat-activity  live-activity accent (header line, live node, running
+	                    lanes); falls back to --chat-primary.
+	   --chat-rule      activity rail connector colour; falls back to
+	                    --chat-text mixed into --chat-surface.
+	   A var() in a custom property resolves where it is DECLARED, so a
+	   `--chat-activity: var(--chat-primary)` here would freeze the :root
+	   primary and ignore a host that themes a container. The fallbacks are
+	   computed at the transcript element instead. */
+
 	/* Panel backgrounds */
 	--chat-panel-bg: rgba(0, 0, 0, 0.02);
 	--chat-panel-border: rgba(0, 0, 0, 0.06);
@@ -81,6 +97,7 @@
 
 .dark {
 	--chat-surface-raised: #232327;
+	--chat-surface: #18181b;
 	--chat-message-bg: rgba(255, 255, 255, 0.05);
 	--chat-panel-bg: rgba(255, 255, 255, 0.03);
 	--chat-panel-border: rgba(255, 255, 255, 0.08);
