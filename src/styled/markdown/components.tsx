@@ -43,12 +43,10 @@ import { MarkdownRenderContext, type CommandTokenResolver } from "./render-conte
 // everything between them. Only `~~text~~` should strike.
 export const REMARK_PLUGINS = [[remarkGfm, { singleTilde: false }], remarkBreaks, remarkMediaReferences] as const;
 
-// Chip kinds that are routing/behavior signals — not content. We strip them
-// from the rendered message so the bubble shows the user's words, not the
-// scaffolding. Visible kinds (ad-account, guideline) describe the scope or
-// reference material attached to the question — meaningful context the user
-// wants to see in their own bubble after sending.
-const HIDDEN_CHIP_KINDS = new Set<string>(["mode", "skill"]);
+// Mode chips only control routing. Skills remain visible alongside accounts
+// and guidelines so the selected skill is preserved in the message body,
+// including when the user sends a skill without any accompanying text.
+const HIDDEN_CHIP_KINDS = new Set<string>(["mode"]);
 
 function splitTextWithCommandTokens(text: string, resolve?: CommandTokenResolver): ReactNode[] {
 	const matches = findInlineCommandTokens(text);
