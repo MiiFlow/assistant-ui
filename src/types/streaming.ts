@@ -533,6 +533,8 @@ export interface StreamingChunk {
    * mislabel a mutation as harmless in the one place a human is watching.
    */
   toolWrites?: boolean;
+  /** A resolved approval decision; does not claim the tool executed. */
+  approvalOutcome?: "approved" | "denied";
 
   /**
    * When this chunk's work began / ended, as epoch ms.

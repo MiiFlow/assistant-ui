@@ -50,7 +50,10 @@ function describe(unit: WorkUnit, status: LaneStatus, labels: ActivityLabels) {
 		return { title: humanizeHandle(data.subagentType), handle: data.subagentType, action };
 	}
 	const chunk = unit.chunk;
-	const action =
+	const approvalLabel = chunk.approvalOutcome === "approved"
+		? labels.approved
+		: chunk.approvalOutcome === "denied" ? labels.declined : null;
+	const action = approvalLabel ?? (
 		status === "failed"
 			? firstLine(chunk.content) || labels.failed
 			: status === "interrupted"
@@ -59,7 +62,8 @@ function describe(unit: WorkUnit, status: LaneStatus, labels: ActivityLabels) {
 					? labels.awaitingApproval
 					: status === "queued"
 						? labels.queued
-						: "";
+						: ""
+	);
 	return {
 		title: chunk.toolDescription || humanizeToolName(chunk.toolName),
 		handle: chunk.toolName ?? "",

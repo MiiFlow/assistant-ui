@@ -810,7 +810,9 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 										backgroundColor: isViewer ? "var(--chat-user-message-bg)" : "transparent",
 										color: isViewer ? "var(--chat-user-message-text, #ffffff)" : "var(--chat-text)",
 									}}>
-									<MessageContentPrimitive>{transcript ? <TranscriptFlow transcript={transcript} chunks={reasoningChunks} isStreaming={isStreaming} executionTime={executionTime} streamStartedAt={streamStartedAt} renderText={renderContent} activityMark={activityMark} activityLabels={activityLabels} waitingMark={waitingMark} /> : renderContent()}</MessageContentPrimitive>
+									<MessageContentPrimitive>{transcript ? <TranscriptFlow transcript={transcript} chunks={reasoningChunks} isStreaming={isStreaming} executionTime={executionTime} streamStartedAt={streamStartedAt} renderText={renderContent} activityMark={activityMark} activityLabels={message.metadata?.background_wait && transcript.status === "waiting"
+                      ? { ...activityLabels, waiting: "Waiting for background task" }
+                      : activityLabels} waitingMark={waitingMark} /> : renderContent()}</MessageContentPrimitive>
 									{renderMediaStatuses()}
 									{!isStreaming && filteredMedias.length > 0 && (referencedInlineIds.size > 0 || referencedTableIds.size > 0) ? (
                                         <details className="my-3"><summary className="cursor-pointer text-sm text-muted-foreground">Additional media ({filteredMedias.length})</summary>{renderMediaItems()}</details>

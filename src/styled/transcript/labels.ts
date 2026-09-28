@@ -33,6 +33,8 @@ export interface ActivityLabels {
 	faster: (factor: string) => string;
 	queued: string;
 	awaitingApproval: string;
+	approved: string;
+	declined: string;
 	interrupted: string;
 	done: string;
 	reasoning: string;
@@ -67,6 +69,8 @@ export const DEFAULT_ACTIVITY_LABELS: ActivityLabels = {
 	faster: (factor) => `${factor}× faster in parallel`,
 	queued: "Queued",
 	awaitingApproval: "Waiting for approval",
+	approved: "Approved",
+	declined: "Declined",
 	interrupted: "Interrupted",
 	done: "Done",
 	reasoning: "Reasoning",

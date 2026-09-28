@@ -35,7 +35,7 @@ function toolUnit(block: TranscriptBlock): WorkUnit | null {
 		step: block.step,
 		startedAt: chunk.startedAt,
 		endedAt: chunk.endedAt,
-		finished: chunk.status === "completed" || chunk.success === false,
+		finished: !!chunk.approvalOutcome || chunk.status === "completed" || chunk.success === false,
 	};
 }
 
