@@ -1,6 +1,7 @@
 import { memo, useContext } from "react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import { COMPONENTS, REMARK_PLUGINS } from "./components";
+import { parseMarkerHref } from "../../utils/inline-markers";
 import { ENTITY_HREF_SCHEME, remarkEntityReferences } from "./entity-references";
 import { rehypeAnimateWords } from "./rehype-animate-words";
 import { MarkdownRenderContext } from "./render-context";
@@ -23,11 +24,13 @@ function remarkPluginsFor(prefixes: Record<string, string> | undefined): unknown
 }
 
 // Custom schemes the renderer dispatches on. `media_ref:` is an image
-// source, `entity:` a link destination; everything else goes through
+// source; `entity:` and the inline-marker kinds (`ARTIFACT:id`) are link
+// destinations the Anchor resolves; everything else goes through
 // react-markdown's own allowlist.
 function urlTransform(url: string, key: string): string {
 	if (key === "src" && url.startsWith("media_ref:")) return url;
 	if (key === "href" && url.startsWith(ENTITY_HREF_SCHEME)) return url;
+	if (key === "href" && parseMarkerHref(url)) return url;
 	return defaultUrlTransform(url);
 }
 

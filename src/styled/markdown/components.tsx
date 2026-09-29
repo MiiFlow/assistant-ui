@@ -1,4 +1,6 @@
 import { ReferencedMedia, remarkMediaReferences } from "./media-references";
+import { parseMarkerHref } from "../../utils/inline-markers";
+import { ArtifactReference } from "./artifact-references";
 import { EntityReference, parseEntityHref } from "./entity-references";
 import {
 	Children,
@@ -276,6 +278,11 @@ function Td({ children }: WithChildren) {
 function Anchor({ href, children }: WithChildren & { href?: string }) {
 	const entity = parseEntityHref(href);
 	if (entity) return <EntityReference kind={entity.kind} id={entity.id} label={textOf(children)} />;
+	const marker = parseMarkerHref(href);
+	if (marker?.kind === "ARTIFACT") return <ArtifactReference id={marker.id}>{children}</ArtifactReference>;
+	// Another marker kind as a link, or a destination the URL allowlist
+	// blanked: `<a href="">` would open the page the reader is on.
+	if (marker || !href) return <>{children}</>;
 	const isImageUrl = href && /\.(png|jpe?g|gif|webp|svg)([?#]|$)/i.test(href);
 	if (isImageUrl) {
 		return <img src={href} alt={textOf(children)} loading="lazy" />;

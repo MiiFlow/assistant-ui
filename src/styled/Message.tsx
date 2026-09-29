@@ -521,6 +521,8 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 								return (
 									<MarkdownContent
                                         medias={medias}
+										artifacts={artifacts}
+										onArtifactOpen={onArtifactOpen}
 										key={`text-${idx}`}
 										isStreaming={blockStreaming}
 										baselineFontSize={baselineFontSize}

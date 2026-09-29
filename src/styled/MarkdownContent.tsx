@@ -1,4 +1,5 @@
-import type { MediaChunkData } from "../types";
+import type { ArtifactChunkData, MediaChunkData } from "../types";
+import { MarkdownArtifactContext, type MarkdownArtifactContextValue } from "./markdown/artifact-references";
 import { MarkdownMediaContext } from "./markdown/media-references";
 import { useContext, useMemo, useRef } from "react";
 import { ChatRenderContext } from "../context/ChatProvider";
@@ -10,8 +11,14 @@ import { MarkdownRenderContext, type MarkdownRenderContextValue } from "./markdo
 import { repairTail } from "./markdown/repair";
 import { splitBlocks } from "./markdown/split-blocks";
 
+const NO_ARTIFACTS: readonly ArtifactChunkData[] = [];
+
 export interface MarkdownContentProps {
 	medias?: readonly MediaChunkData[];
+	/** The message's files, for `[title](ARTIFACT:id)` links in the text. */
+	artifacts?: readonly ArtifactChunkData[];
+	/** Opens a file a link resolves to; defaults to its download URL. */
+	onArtifactOpen?: (artifact: ArtifactChunkData) => void;
 	/** Markdown content to render */
 	children: string;
 	/** Additional CSS classes */
@@ -70,6 +77,8 @@ export interface MarkdownContentProps {
 export function MarkdownContent({
 	children,
 	medias,
+	artifacts,
+	onArtifactOpen,
 	className,
 	baselineFontSize,
 	darkCodeTheme,
@@ -103,6 +112,11 @@ export function MarkdownContent({
 		[resolveCommandToken, resolveEntity, entityPrefixes, useDarkCode],
 	);
 
+	const artifactContext = useMemo<MarkdownArtifactContextValue>(
+		() => ({ artifacts: artifacts || NO_ARTIFACTS, onOpen: onArtifactOpen }),
+		[artifacts, onArtifactOpen],
+	);
+
 	// One font-size declaration on the wrapper; everything inside is sized in
 	// `em` so it scales with a branding override instead of needing the value
 	// stamped onto every element.
@@ -121,6 +135,7 @@ export function MarkdownContent({
 	return (
 		<MarkdownMediaContext.Provider value={medias || []}>
 		<MarkdownRenderContext.Provider value={renderContext}>
+		<MarkdownArtifactContext.Provider value={artifactContext}>
 			<div className={cn("chat-prose", className)} style={rootStyle} data-streaming={isStreaming || undefined}>
 				{blocks.map((block, i) => {
 					const isLastBlock = i === last;
@@ -156,6 +171,7 @@ export function MarkdownContent({
 					);
 				})}
 			</div>
+		</MarkdownArtifactContext.Provider>
 		</MarkdownRenderContext.Provider>
 		</MarkdownMediaContext.Provider>
 	);

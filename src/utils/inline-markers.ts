@@ -14,8 +14,27 @@ const KIND_ALTERNATION = MARKER_KINDS.join("|");
 const INLINE_MARKER_SOURCE = `\\[(${KIND_ALTERNATION}):([^\\]]+)\\]`;
 const INLINE_MARKER_REGEX = new RegExp(INLINE_MARKER_SOURCE, "gi");
 
+// The same reference written as a markdown link: `[Report](ARTIFACT:id)`.
+// Models write it when they want the title inline in a sentence or list
+// item. It is a link, not a placement — the renderer resolves it to an
+// opener for that item (see `markdown/artifact-references`) and the card
+// itself stays in the list under the answer. Left to react-markdown, the
+// unknown `artifact:` scheme was blanked to `href=""`, which opened the
+// current chat in a new tab.
+const MARKER_LINK_SOURCE = `\\[([^\\]]*)\\]\\((?:${KIND_ALTERNATION}):[^)\\s]+\\)`;
+const MARKER_HREF_REGEX = new RegExp(`^(${KIND_ALTERNATION}):(\\S+)$`, "i");
+
+/** `{ kind, id }` for a marker-scheme link destination (`ARTIFACT:abc`), else null. */
+export function parseMarkerHref(href: string | undefined | null): { kind: MarkerKind; id: string } | null {
+  const match = href ? MARKER_HREF_REGEX.exec(href.trim()) : null;
+  if (!match) return null;
+  return { kind: match[1].toUpperCase() as MarkerKind, id: match[2] };
+}
+
+export type MarkerKind = (typeof MARKER_KINDS)[number];
+
 /**
- * Remove every inline marker from `content`.
+ * Remove every inline marker from `content`; a marker link keeps its label.
  *
  * The render floor for the plain-text branches: a marker that reached the
  * renderer without render data behind it cannot be shown to a reader as a
@@ -25,7 +44,9 @@ const INLINE_MARKER_REGEX = new RegExp(INLINE_MARKER_SOURCE, "gi");
  */
 export function stripInlineMarkers(content: string): string {
   // Fresh regex per call: the shared literal is /g and carries `lastIndex`.
-  return content.replace(new RegExp(INLINE_MARKER_SOURCE, "gi"), "");
+  return content
+    .replace(new RegExp(MARKER_LINK_SOURCE, "gi"), "$1")
+    .replace(new RegExp(INLINE_MARKER_SOURCE, "gi"), "");
 }
 
 /**

@@ -137,7 +137,8 @@
 	margin: 1.35em 0 0.4em;
 }
 
-.chat-prose a {
+.chat-prose a,
+.chat-prose__artifact-link {
 	color: var(--chat-primary);
 	text-decoration: underline;
 	text-underline-offset: 2px;
@@ -146,8 +147,20 @@
 	transition: text-decoration-color 150ms ease-out;
 }
 
-.chat-prose a:hover {
+.chat-prose a:hover,
+.chat-prose__artifact-link:hover {
 	text-decoration-color: var(--chat-primary);
+}
+
+/* A link to one of the message's files opens it in the host viewer; it is a
+   button, so reset the button chrome and read as the link it is. */
+.chat-prose__artifact-link {
+	font: inherit;
+	background: none;
+	border: 0;
+	padding: 0;
+	cursor: pointer;
+	text-align: inherit;
 }
 
 .chat-prose strong {
