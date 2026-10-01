@@ -34,26 +34,26 @@ export interface StreamingOptions {
  * and route sub-agent work through the `subagent` chunk type.
  */
 export type ChunkType =
-  | "content"         // Regular content
-  | "thinking"        // ReAct reasoning
-  | "tool"            // Tool planned/executing
-  | "observation"     // Tool result
-  | "answer"          // Final answer
-  | "planning"        // enter_plan_mode / exit_plan_mode chunk (historical: structured plan)
-  | "subtask"         // Subtask execution (historical Plan & Execute)
-  | "progress"        // Progress update
+  | "content" // Regular content
+  | "thinking" // ReAct reasoning
+  | "tool" // Tool planned/executing
+  | "observation" // Tool result
+  | "answer" // Final answer
+  | "planning" // enter_plan_mode / exit_plan_mode chunk (historical: structured plan)
+  | "subtask" // Subtask execution (historical Plan & Execute)
+  | "progress" // Progress update
   // Clarification request
-  | "clarification_needed"          // Agent needs user input to continue
+  | "clarification_needed" // Agent needs user input to continue
   // Tool approval request
-  | "tool_approval_needed"          // Tool requires user approval before execution
+  | "tool_approval_needed" // Tool requires user approval before execution
   // Visualization
-  | "visualization"   // Rich visualization (chart, table, card, etc.)
+  | "visualization" // Rich visualization (chart, table, card, etc.)
   // Media (inline image/video/audio)
-  | "media"           // Inline media from image generation tools
+  | "media" // Inline media from image generation tools
   // Artifact (downloadable PDF / HTML produced by a tool)
-  | "artifact"        // Persisted artifact with side-panel viewer
+  | "artifact" // Persisted artifact with side-panel viewer
   // Sub-assistant rendering (nested SubagentPanel)
-  | "subagent"        // Nested subagent execution (dispatch_assistant tool)
+  | "subagent" // Nested subagent execution (dispatch_assistant tool)
   // Suggested action (inline recommendation card)
   | "suggested_action_created"; // Agent recommended an action
 
@@ -213,11 +213,19 @@ export type VisualizationType =
   | "form"
   | "auth_prompt";
 
-export type ChartDataType = "line" | "bar" | "pie" | "area" | "scatter" | "composed";
+export type ChartDataType =
+  | "line"
+  | "bar"
+  | "pie"
+  | "area"
+  | "scatter"
+  | "composed";
 
 export interface ChartSeries {
   name: string;
-  data: Array<{ x: string | number; y: number } | { name: string; value: number }>;
+  data: Array<
+    { x: string | number; y: number } | { name: string; value: number }
+  >;
   color?: string;
 }
 
@@ -247,6 +255,8 @@ export type TableColumnType =
   | "media";
 
 export interface TableColumn {
+  /** ISO source denomination; absent currency renders as a plain number. */
+  currencyCode?: string;
   key: string;
   label: string;
   type?: TableColumnType;
@@ -612,7 +622,14 @@ export interface StreamingMessage {
 export interface FollowupAction {
   label: string;
   action: string;
-  type: "send_message" | "navigate" | "copy_text" | "compose_email" | "search_emails" | "open_modal" | "api_call";
+  type:
+    | "send_message"
+    | "navigate"
+    | "copy_text"
+    | "compose_email"
+    | "search_emails"
+    | "open_modal"
+    | "api_call";
   context: Record<string, unknown>;
 }
 

@@ -1,9 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, X, ChevronUp, ChevronDown, Copy as CopyIcon } from "lucide-react";
+import {
+  Check,
+  X,
+  ChevronUp,
+  ChevronDown,
+  Copy as CopyIcon,
+} from "lucide-react";
 import { cn } from "../../utils/cn";
 import { EntityText } from "../markdown/entity-references";
-import type { MediaChunkData, TableVisualizationData, TableColumn, TableColumnType, VisualizationConfig } from "../../types";
+import type {
+  MediaChunkData,
+  TableVisualizationData,
+  TableColumn,
+  TableColumnType,
+  VisualizationConfig,
+} from "../../types";
 import {
   MediaLightbox,
   PlayOverlay,
@@ -39,7 +51,8 @@ const _NOWRAP_TYPES = new Set<TableColumnType>([
 function _cellToText(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (typeof value === "number" || typeof value === "boolean")
+    return String(value);
   try {
     return JSON.stringify(value);
   } catch {
@@ -159,19 +172,13 @@ function CellHoverPopover({
 }
 
 /** Inline media cell: clickable thumbnail that opens the table-wide lightbox. */
-function MediaCell({
-  item,
-  onOpen,
-}: {
-  item: MediaItem;
-  onOpen: () => void;
-}) {
+function MediaCell({ item, onOpen }: { item: MediaItem; onOpen: () => void }) {
   if (item.mediaType === "video") {
     const ytMatch = item.url.match(YOUTUBE_ID_RE);
     const ytId = ytMatch ? ytMatch[1] : null;
-    const posterSrc = item.posterUrl || (ytId
-      ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`
-      : undefined);
+    const posterSrc =
+      item.posterUrl ||
+      (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : undefined);
     return (
       <button
         type="button"
@@ -230,7 +237,8 @@ const badgeColors: Record<string, string> = {
 };
 
 function formatCellValue(value: unknown, column: TableColumn): React.ReactNode {
-  if (value === null || value === undefined) return <span className="text-gray-400">-</span>;
+  if (value === null || value === undefined)
+    return <span className="text-gray-400">-</span>;
 
   const type = column.type || "string";
 
@@ -239,39 +247,84 @@ function formatCellValue(value: unknown, column: TableColumn): React.ReactNode {
       return typeof value === "number" ? value.toLocaleString() : String(value);
     case "currency":
       return typeof value === "number"
-        ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value)
+        ? new Intl.NumberFormat(
+            "en-US",
+            column.currencyCode
+              ? { style: "currency", currency: column.currencyCode }
+              : {},
+          ).format(value)
         : String(value);
     case "date":
-      try { return new Date(value as string | number).toLocaleDateString(); }
-      catch { return String(value); }
+      try {
+        return new Date(value as string | number).toLocaleDateString();
+      } catch {
+        return String(value);
+      }
     case "badge": {
       const strValue = String(value).toLowerCase().replace(/\s+/g, "_");
       const colorClass = badgeColors[strValue] || "bg-gray-100 text-gray-700";
-      return <span className={cn("inline-block px-2 py-0.5 rounded-full text-xs font-medium", colorClass)}>{String(value)}</span>;
+      return (
+        <span
+          className={cn(
+            "inline-block px-2 py-0.5 rounded-full text-xs font-medium",
+            colorClass,
+          )}
+        >
+          {String(value)}
+        </span>
+      );
     }
     case "link": {
-      const link = typeof value === "object" ? value as Record<string, unknown> : null;
+      const link =
+        typeof value === "object" ? (value as Record<string, unknown>) : null;
       const url = typeof value === "string" ? value : link?.url;
-      const label = typeof link?.label === "string" ? link.label : typeof url === "string" ? url : "Link unavailable";
+      const label =
+        typeof link?.label === "string"
+          ? link.label
+          : typeof url === "string"
+            ? url
+            : "Link unavailable";
       try {
         // Preserve relative and email links while rejecting executable schemes.
-        if (typeof url !== "string" || !url.trim() ||
-            !["https:", "http:", "mailto:", "tel:"].includes(new URL(url, "https://local.invalid").protocol)) {
+        if (
+          typeof url !== "string" ||
+          !url.trim() ||
+          !["https:", "http:", "mailto:", "tel:"].includes(
+            new URL(url, "https://local.invalid").protocol,
+          )
+        ) {
           return <span>{label}</span>;
         }
       } catch {
         return <span>{label}</span>;
       }
-      return <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{label}</a>;
+      return (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-500 hover:underline"
+        >
+          {label}
+        </a>
+      );
     }
     case "boolean":
-      return value ? <Check size={18} className="text-green-500" /> : <X size={18} className="text-gray-400" />;
+      return value ? (
+        <Check size={18} className="text-green-500" />
+      ) : (
+        <X size={18} className="text-gray-400" />
+      );
     case "progress": {
-      const numValue = typeof value === "number" ? value : parseFloat(String(value));
+      const numValue =
+        typeof value === "number" ? value : parseFloat(String(value));
       return (
         <div className="flex items-center gap-2">
           <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, Math.max(0, numValue))}%` }} />
+            <div
+              className="h-full bg-blue-500 rounded-full"
+              style={{ width: `${Math.min(100, Math.max(0, numValue))}%` }}
+            />
           </div>
           <span className="text-xs text-gray-500">{numValue.toFixed(0)}%</span>
         </div>
@@ -280,22 +333,35 @@ function formatCellValue(value: unknown, column: TableColumn): React.ReactNode {
     default:
       // A string cell may name host objects by id (a table of schedules
       // carries `sched_…` in its rows); those render as entity chips.
-      return typeof value === "string" ? <EntityText>{value}</EntityText> : String(value);
+      return typeof value === "string" ? (
+        <EntityText>{value}</EntityText>
+      ) : (
+        String(value)
+      );
   }
 }
 
-function descendingComparator(a: Record<string, unknown>, b: Record<string, unknown>, orderBy: string): number {
+function descendingComparator(
+  a: Record<string, unknown>,
+  b: Record<string, unknown>,
+  orderBy: string,
+): number {
   const aValue = a[orderBy];
   const bValue = b[orderBy];
   if (aValue == null) return 1;
   if (bValue == null) return -1;
-  if (typeof aValue === "number" && typeof bValue === "number") return bValue - aValue;
+  if (typeof aValue === "number" && typeof bValue === "number")
+    return bValue - aValue;
   return String(bValue).localeCompare(String(aValue));
 }
 
-export function TableVisualization({ data, config, medias }: TableVisualizationProps) {
+export function TableVisualization({
+  data,
+  config,
+  medias,
+}: TableVisualizationProps) {
   const { columns, rows } = data;
-  const hasMedia = columns.some(col => col.type === "media");
+  const hasMedia = columns.some((col) => col.type === "media");
   const sortable = config?.sortable !== false;
   const paginated = config?.paginated || false;
   const pageSize = config?.pageSize || 10;
@@ -312,9 +378,14 @@ export function TableVisualization({ data, config, medias }: TableVisualizationP
   const processedRows = useMemo(() => {
     let sorted = [...rows];
     if (sortable && orderBy) {
-      sorted.sort((a, b) => order === "desc" ? descendingComparator(a, b, orderBy) : -descendingComparator(a, b, orderBy));
+      sorted.sort((a, b) =>
+        order === "desc"
+          ? descendingComparator(a, b, orderBy)
+          : -descendingComparator(a, b, orderBy),
+      );
     }
-    if (paginated) sorted = sorted.slice(page * pageSize, (page + 1) * pageSize);
+    if (paginated)
+      sorted = sorted.slice(page * pageSize, (page + 1) * pageSize);
     return sorted;
   }, [rows, order, orderBy, page, pageSize, sortable, paginated]);
 
@@ -421,9 +492,26 @@ export function TableVisualization({ data, config, medias }: TableVisualizationP
       : "";
 
   return (
-    <div className="w-full min-w-0 max-w-full overflow-x-auto" tabIndex={0} role="region" aria-label="Data table">
-      <table className={cn("min-w-full text-sm", hasMedia && "w-full table-fixed")} style={{ minWidth: hasMedia ? 640 : undefined }}>
-        <colgroup>{columns.map(col => <col key={col.key} style={{ width: col.width || (col.type === "media" ? 120 : undefined) }} />)}</colgroup>
+    <div
+      className="w-full min-w-0 max-w-full overflow-x-auto"
+      tabIndex={0}
+      role="region"
+      aria-label="Data table"
+    >
+      <table
+        className={cn("min-w-full text-sm", hasMedia && "w-full table-fixed")}
+        style={{ minWidth: hasMedia ? 640 : undefined }}
+      >
+        <colgroup>
+          {columns.map((col) => (
+            <col
+              key={col.key}
+              style={{
+                width: col.width || (col.type === "media" ? 120 : undefined),
+              }}
+            />
+          ))}
+        </colgroup>
         <thead>
           <tr>
             {columns.map((col) => (
@@ -432,7 +520,8 @@ export function TableVisualization({ data, config, medias }: TableVisualizationP
                 className={cn(
                   "px-3 py-2 font-semibold bg-gray-50 dark:bg-gray-800 whitespace-normal break-words text-left",
                   // Media columns aren't sortable in a meaningful way.
-                  sortable && col.type !== "media" &&
+                  sortable &&
+                    col.type !== "media" &&
                     "cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700",
                 )}
                 style={{ width: col.width, textAlign: col.align || "left" }}
@@ -442,9 +531,14 @@ export function TableVisualization({ data, config, medias }: TableVisualizationP
               >
                 <span className="inline-flex items-center gap-1">
                   {col.label}
-                  {sortable && col.type !== "media" && orderBy === col.key && (
-                    order === "asc" ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-                  )}
+                  {sortable &&
+                    col.type !== "media" &&
+                    orderBy === col.key &&
+                    (order === "asc" ? (
+                      <ChevronUp size={14} />
+                    ) : (
+                      <ChevronDown size={14} />
+                    ))}
                 </span>
               </th>
             ))}
@@ -471,19 +565,30 @@ export function TableVisualization({ data, config, medias }: TableVisualizationP
                     >
                       {parsed ? (
                         <div className="flex flex-col items-start gap-1">
-                        <MediaCell
-                          item={parsed}
-                          onOpen={() => {
-                            const idx = mediaIndex.lookup[`${rowIdx}::${col.key}`];
-                            if (typeof idx === "number") openLightbox(idx);
-                          }}
-                        />
-                        {parsed.previewUrl && /^https?:\/\//.test(parsed.previewUrl) && (
-                          <a className="text-xs text-blue-600 hover:underline" href={parsed.previewUrl} target="_blank" rel="noopener noreferrer">Open in Meta</a>
-                        )}
+                          <MediaCell
+                            item={parsed}
+                            onOpen={() => {
+                              const idx =
+                                mediaIndex.lookup[`${rowIdx}::${col.key}`];
+                              if (typeof idx === "number") openLightbox(idx);
+                            }}
+                          />
+                          {parsed.previewUrl &&
+                            /^https?:\/\//.test(parsed.previewUrl) && (
+                              <a
+                                className="text-xs text-blue-600 hover:underline"
+                                href={parsed.previewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                Open in Meta
+                              </a>
+                            )}
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-500">Preview unavailable</span>
+                        <span className="text-xs text-gray-500">
+                          Preview unavailable
+                        </span>
                       )}
                     </td>
                   );
@@ -531,7 +636,10 @@ export function TableVisualization({ data, config, medias }: TableVisualizationP
           ))}
           {processedRows.length === 0 && (
             <tr>
-              <td colSpan={columns.length} className="px-3 py-8 text-center text-gray-400">
+              <td
+                colSpan={columns.length}
+                className="px-3 py-8 text-center text-gray-400"
+              >
                 No data available
               </td>
             </tr>
@@ -560,7 +668,8 @@ export function TableVisualization({ data, config, medias }: TableVisualizationP
       {paginated && rows.length > pageSize && (
         <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 dark:border-gray-700 text-sm">
           <span className="text-gray-500">
-            {page * pageSize + 1}-{Math.min((page + 1) * pageSize, rows.length)} of {rows.length}
+            {page * pageSize + 1}-{Math.min((page + 1) * pageSize, rows.length)}{" "}
+            of {rows.length}
           </span>
           <div className="flex gap-1">
             <button

@@ -6,28 +6,28 @@ import { registerBuiltinSchemas } from "./registry";
 // ---------------------------------------------------------------------------
 
 const chartSeriesSchema = z.object({
-	name: z.string(),
-	data: z.array(
-		z.union([
-			z.object({ x: z.union([z.string(), z.number()]), y: z.number() }),
-			z.object({ name: z.string(), value: z.number() }),
-		]),
-	),
-	color: z.string().nullish(),
+  name: z.string(),
+  data: z.array(
+    z.union([
+      z.object({ x: z.union([z.string(), z.number()]), y: z.number() }),
+      z.object({ name: z.string(), value: z.number() }),
+    ]),
+  ),
+  color: z.string().nullish(),
 });
 
 const chartAxisSchema = z.object({
-	label: z.string().nullish(),
-	type: z.enum(["category", "number", "time"]).nullish(),
-	min: z.number().nullish(),
-	max: z.number().nullish(),
+  label: z.string().nullish(),
+  type: z.enum(["category", "number", "time"]).nullish(),
+  min: z.number().nullish(),
+  max: z.number().nullish(),
 });
 
 export const chartVisualizationSchema = z.object({
-	chartType: z.enum(["line", "bar", "pie", "area", "scatter", "composed"]),
-	series: z.array(chartSeriesSchema),
-	xAxis: chartAxisSchema.nullish(),
-	yAxis: chartAxisSchema.nullish(),
+  chartType: z.enum(["line", "bar", "pie", "area", "scatter", "composed"]),
+  series: z.array(chartSeriesSchema),
+  xAxis: chartAxisSchema.nullish(),
+  yAxis: chartAxisSchema.nullish(),
 });
 
 // ---------------------------------------------------------------------------
@@ -35,16 +35,29 @@ export const chartVisualizationSchema = z.object({
 // ---------------------------------------------------------------------------
 
 const tableColumnSchema = z.object({
-	key: z.string(),
-	label: z.string(),
-	type: z.enum(["string", "number", "currency", "date", "badge", "link", "boolean", "progress", "media"]).nullish(),
-	align: z.enum(["left", "center", "right"]).nullish(),
-	width: z.string().nullish(),
+  currencyCode: z.string().nullish(),
+  key: z.string(),
+  label: z.string(),
+  type: z
+    .enum([
+      "string",
+      "number",
+      "currency",
+      "date",
+      "badge",
+      "link",
+      "boolean",
+      "progress",
+      "media",
+    ])
+    .nullish(),
+  align: z.enum(["left", "center", "right"]).nullish(),
+  width: z.string().nullish(),
 });
 
 export const tableVisualizationSchema = z.object({
-	columns: z.array(tableColumnSchema),
-	rows: z.array(z.record(z.string(), z.unknown())),
+  columns: z.array(tableColumnSchema),
+  rows: z.array(z.record(z.string(), z.unknown())),
 });
 
 // ---------------------------------------------------------------------------
@@ -52,22 +65,26 @@ export const tableVisualizationSchema = z.object({
 // ---------------------------------------------------------------------------
 
 const cardSectionSchema = z.object({
-	title: z.string().nullish(),
-	items: z.array(z.object({ label: z.string(), value: z.union([z.string(), z.number()]) })).nullish(),
-	content: z.string().nullish(),
+  title: z.string().nullish(),
+  items: z
+    .array(
+      z.object({ label: z.string(), value: z.union([z.string(), z.number()]) }),
+    )
+    .nullish(),
+  content: z.string().nullish(),
 });
 
 const cardActionSchema = z.object({
-	label: z.string(),
-	action: z.string(),
-	variant: z.enum(["primary", "secondary", "text"]).nullish(),
+  label: z.string(),
+  action: z.string(),
+  variant: z.enum(["primary", "secondary", "text"]).nullish(),
 });
 
 export const cardVisualizationSchema = z.object({
-	subtitle: z.string().nullish(),
-	imageUrl: z.string().nullish(),
-	sections: z.array(cardSectionSchema),
-	actions: z.array(cardActionSchema).nullish(),
+  subtitle: z.string().nullish(),
+  imageUrl: z.string().nullish(),
+  sections: z.array(cardSectionSchema),
+  actions: z.array(cardActionSchema).nullish(),
 });
 
 // ---------------------------------------------------------------------------
@@ -75,43 +92,45 @@ export const cardVisualizationSchema = z.object({
 // ---------------------------------------------------------------------------
 
 const kpiMetricSchema = z.object({
-	label: z.string(),
-	value: z.union([z.string(), z.number()]),
-	unit: z.string().nullish(),
-	trend: z.enum(["up", "down", "neutral"]).nullish(),
-	change: z.union([z.string(), z.number()]).nullish(),
-	changeLabel: z.string().nullish(),
-	// Plain strings, not enums: an off-enum value from a non-strict tool call
-	// must degrade (kpi.metricPolarity / metricStatus ignore it), not fail the
-	// whole block. `trend` stays an enum because it always was.
-	polarity: z.string().nullish(),
-	previous: z.string().nullish(),
-	status: z.string().nullish(),
-	note: z.string().nullish(),
-	breakdown: z
-		.array(
-			z.object({
-				label: z.string(),
-				value: z.union([z.string(), z.number()]),
-				// Lenient on purpose: one malformed nested field would otherwise
-				// fail the whole block. The renderer normalizes (kpi.toFraction).
-				share: z.coerce.number().nullish(),
-			}),
-		)
-		.nullish(),
-	meter: z.object({ value: z.coerce.number(), label: z.string().nullish() }).nullish(),
-	sparkline: z.array(z.number()).nullish(),
-	prominence: z.string().nullish(),
-	color: z.string().nullish(),
+  label: z.string(),
+  value: z.union([z.string(), z.number()]),
+  unit: z.string().nullish(),
+  trend: z.enum(["up", "down", "neutral"]).nullish(),
+  change: z.union([z.string(), z.number()]).nullish(),
+  changeLabel: z.string().nullish(),
+  // Plain strings, not enums: an off-enum value from a non-strict tool call
+  // must degrade (kpi.metricPolarity / metricStatus ignore it), not fail the
+  // whole block. `trend` stays an enum because it always was.
+  polarity: z.string().nullish(),
+  previous: z.string().nullish(),
+  status: z.string().nullish(),
+  note: z.string().nullish(),
+  breakdown: z
+    .array(
+      z.object({
+        label: z.string(),
+        value: z.union([z.string(), z.number()]),
+        // Lenient on purpose: one malformed nested field would otherwise
+        // fail the whole block. The renderer normalizes (kpi.toFraction).
+        share: z.coerce.number().nullish(),
+      }),
+    )
+    .nullish(),
+  meter: z
+    .object({ value: z.coerce.number(), label: z.string().nullish() })
+    .nullish(),
+  sparkline: z.array(z.number()).nullish(),
+  prominence: z.string().nullish(),
+  color: z.string().nullish(),
 });
 
 export const kpiVisualizationSchema = z.object({
-	metrics: z.array(kpiMetricSchema),
-	// Must stay in sync with the backend tool schema (server/assistant/
-	// visualization/tools.py render_kpi.layout enum) and the KpiVisualization
-	// renderer's branch for "bento". Validator-side drift here silently
-	// flags valid backend payloads as "Invalid kpi visualization data".
-	layout: z.enum(["row", "grid", "bento"]).nullish(),
+  metrics: z.array(kpiMetricSchema),
+  // Must stay in sync with the backend tool schema (server/assistant/
+  // visualization/tools.py render_kpi.layout enum) and the KpiVisualization
+  // renderer's branch for "bento". Validator-side drift here silently
+  // flags valid backend payloads as "Invalid kpi visualization data".
+  layout: z.enum(["row", "grid", "bento"]).nullish(),
 });
 
 // ---------------------------------------------------------------------------
@@ -119,11 +138,11 @@ export const kpiVisualizationSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const codePreviewVisualizationSchema = z.object({
-	code: z.string(),
-	language: z.string(),
-	lineNumbers: z.boolean().nullish(),
-	highlightLines: z.array(z.number()).nullish(),
-	startLine: z.number().nullish(),
+  code: z.string(),
+  language: z.string(),
+  lineNumbers: z.boolean().nullish(),
+  highlightLines: z.array(z.number()).nullish(),
+  startLine: z.number().nullish(),
 });
 
 // ---------------------------------------------------------------------------
@@ -131,37 +150,39 @@ export const codePreviewVisualizationSchema = z.object({
 // ---------------------------------------------------------------------------
 
 const formFieldSchema = z.object({
-	name: z.string(),
-	type: z.enum([
-		"text",
-		"number",
-		"email",
-		"select",
-		"multiselect",
-		"checkbox",
-		"radio",
-		"textarea",
-		"date",
-		"datetime",
-	]),
-	label: z.string(),
-	required: z.boolean().nullish(),
-	placeholder: z.string().nullish(),
-	options: z.array(z.object({ value: z.string(), label: z.string() })).nullish(),
-	defaultValue: z.unknown().nullish(),
-	validation: z
-		.object({
-			min: z.number().nullish(),
-			max: z.number().nullish(),
-			pattern: z.string().nullish(),
-			message: z.string().nullish(),
-		})
-		.nullish(),
+  name: z.string(),
+  type: z.enum([
+    "text",
+    "number",
+    "email",
+    "select",
+    "multiselect",
+    "checkbox",
+    "radio",
+    "textarea",
+    "date",
+    "datetime",
+  ]),
+  label: z.string(),
+  required: z.boolean().nullish(),
+  placeholder: z.string().nullish(),
+  options: z
+    .array(z.object({ value: z.string(), label: z.string() }))
+    .nullish(),
+  defaultValue: z.unknown().nullish(),
+  validation: z
+    .object({
+      min: z.number().nullish(),
+      max: z.number().nullish(),
+      pattern: z.string().nullish(),
+      message: z.string().nullish(),
+    })
+    .nullish(),
 });
 
 export const formVisualizationSchema = z.object({
-	fields: z.array(formFieldSchema),
-	submitAction: z.string().nullish(),
+  fields: z.array(formFieldSchema),
+  submitAction: z.string().nullish(),
 });
 
 // ---------------------------------------------------------------------------
@@ -173,16 +194,16 @@ export const formVisualizationSchema = z.object({
 // tool-level OAuth prompt sends serviceProviderId/authMethods, the MCP-server
 // one sends mcpServerId/mcpServerName and leaves `provider` an empty string.
 export const authPromptVisualizationSchema = z.object({
-	providerName: z.string(),
-	reason: z.string().nullish(),
-	provider: z.string().nullish(),
-	providerLogo: z.string().nullish(),
-	serviceProviderId: z.string().nullish(),
-	mcpServerId: z.string().nullish(),
-	mcpServerName: z.string().nullish(),
-	authMethods: z
-		.array(z.object({ id: z.string(), name: z.string(), authType: z.string() }))
-		.nullish(),
+  providerName: z.string(),
+  reason: z.string().nullish(),
+  provider: z.string().nullish(),
+  providerLogo: z.string().nullish(),
+  serviceProviderId: z.string().nullish(),
+  mcpServerId: z.string().nullish(),
+  mcpServerName: z.string().nullish(),
+  authMethods: z
+    .array(z.object({ id: z.string(), name: z.string(), authType: z.string() }))
+    .nullish(),
 });
 
 // ---------------------------------------------------------------------------
@@ -190,11 +211,11 @@ export const authPromptVisualizationSchema = z.object({
 // ---------------------------------------------------------------------------
 
 registerBuiltinSchemas({
-	chart: chartVisualizationSchema,
-	table: tableVisualizationSchema,
-	card: cardVisualizationSchema,
-	kpi: kpiVisualizationSchema,
-	code_preview: codePreviewVisualizationSchema,
-	form: formVisualizationSchema,
-	auth_prompt: authPromptVisualizationSchema,
+  chart: chartVisualizationSchema,
+  table: tableVisualizationSchema,
+  card: cardVisualizationSchema,
+  kpi: kpiVisualizationSchema,
+  code_preview: codePreviewVisualizationSchema,
+  form: formVisualizationSchema,
+  auth_prompt: authPromptVisualizationSchema,
 });
