@@ -606,6 +606,7 @@ export async function parseSSEStream(
               const idx = findToolChunkIndex(chunks, parsed);
               if (idx >= 0) {
                 chunks[idx].status = "completed";
+                chunks[idx].content = parsed.chunk || "";
                 // The observation IS the tool's completion — the only frame
                 // that closes a tool's clock.
                 chunks[idx].endedAt = frameTimeMs;
@@ -809,12 +810,9 @@ export async function parseSSEStream(
                   | "executing"
                   | "completed") || "planned";
                 const nested = data.nestedChunks as AccumulatedChunk[];
-                let toolIdx = -1;
-                for (let k = nested.length - 1; k >= 0; k--) {
-                  if (nested[k].type === "tool" && nested[k].toolName === toolName) {
-                    toolIdx = k;
-                    break;
-                  }
+                let toolIdx = findToolChunkIndex(nested, { tool_name: toolName, tool_call_id: parsed.tool_call_id });
+                if (!parsed.tool_call_id && toolIdx >= 0 && nested[toolIdx].status === "completed" && status !== "completed") {
+                  toolIdx = -1;
                 }
                 if (toolIdx >= 0) {
                   nested[toolIdx] = {
@@ -828,6 +826,8 @@ export async function parseSSEStream(
                     type: "tool",
                     content: "",
                     toolName,
+                    toolCallId: parsed.tool_call_id,
+                    toolArgs: parsed.tool_args,
                     toolDescription,
                     status,
                   });
@@ -837,20 +837,15 @@ export async function parseSSEStream(
                 const success = parsed.success !== false;
                 const obsText = (parsed.chunk as string) || "";
                 const nested = data.nestedChunks as AccumulatedChunk[];
-                for (let k = nested.length - 1; k >= 0; k--) {
-                  if (nested[k].type === "tool" && nested[k].toolName === toolName) {
-                    nested[k] = {
-                      ...nested[k],
-                      status: "completed",
-                      success,
-                    };
-                    break;
-                  }
+                const toolIdx = findToolChunkIndex(nested, { tool_name: toolName, tool_call_id: parsed.tool_call_id });
+                if (toolIdx >= 0) {
+                  nested[toolIdx] = { ...nested[toolIdx], status: "completed", success, content: obsText };
                 }
                 nested.push({
                   type: "observation",
                   content: obsText,
                   toolName,
+                  toolCallId: parsed.tool_call_id,
                   success,
                 });
               }

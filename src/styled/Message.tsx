@@ -1,3 +1,5 @@
+import { mediaGenerations } from "../utils/media-generation";
+import { MediaGenerationCard } from "./MediaGenerationCard";
 import { readTranscript } from "../types/transcript";
 import { TranscriptFlow } from "./TranscriptFlow";
 import type { ActivityLabels, ActivityMarkRenderer } from "./transcript/labels";
@@ -438,7 +440,14 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 		// then the panel — changed the row's height twice before the first
 		// token arrived.
 		const transcript = readTranscript(message.metadata?.transcript);
-		const answerStarted = !!message.textContent;
+		const generations = useMemo(() => {
+            const source = transcript
+                ? [...transcript.blocks.flatMap(block => block.chunk ? [block.chunk] : []),
+                    ...(reasoningChunks || []).filter(chunk => chunk.type === "subagent")]
+                : reasoningChunks || [];
+            return mediaGenerations(source, !!isStreaming);
+        }, [transcript, reasoningChunks, isStreaming]);
+        const answerStarted = !!message.textContent;
 
 		// Not for an answer that is streaming with no step and no waiting line
 
@@ -763,7 +772,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 					    is a valid message, and gating this row on text alone made the
 					    user's own image vanish from the transcript (the attachments
 					    block below lives inside this row). */}
-					{(message.textContent || hasAttachments || transcript) && (
+					{(message.textContent || hasAttachments || transcript || generations.length > 0) && (
 						<div className={cn(
 							"group flex items-start gap-2 w-full",
 							isViewer ? "flex-row-reverse" : "flex-row"
@@ -798,7 +807,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 											onEditSubmit(newText);
 										}}
 									/>
-								) : (message.textContent || transcript) ? (
+								) : (message.textContent || transcript || generations.length > 0) ? (
 								<div
 									className={cn(
 										"rounded-2xl",
@@ -815,7 +824,8 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 									<MessageContentPrimitive>{transcript ? <TranscriptFlow transcript={transcript} chunks={reasoningChunks} isStreaming={isStreaming} executionTime={executionTime} streamStartedAt={streamStartedAt} renderText={renderContent} activityMark={activityMark} activityLabels={message.metadata?.background_wait && transcript.status === "waiting"
                       ? { ...activityLabels, waiting: "Waiting for background task" }
                       : activityLabels} waitingMark={waitingMark} /> : renderContent()}</MessageContentPrimitive>
-									{renderMediaStatuses()}
+									{generations.map(generation => <MediaGenerationCard key={generation.id} generation={generation} />)}
+                                    {renderMediaStatuses()}
 									{!isStreaming && filteredMedias.length > 0 && (referencedInlineIds.size > 0 || referencedTableIds.size > 0) ? (
                                         <details className="my-3"><summary className="cursor-pointer text-sm text-muted-foreground">Additional media ({filteredMedias.length})</summary>{renderMediaItems()}</details>
                                     ) : (!deferCreativeGallery && renderMediaItems())}

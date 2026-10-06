@@ -1,3 +1,4 @@
+import type { ResolveMediaGeneration } from "../styled/MediaGenerationCard";
 import {
   createContext,
   useContext,
@@ -53,6 +54,7 @@ export interface ChatContextValue {
    * `--chat-*` variables and the `.dark` class is NOT applied by every
    * consumer, so neither is a reliable signal. Defaults to false (light). */
   isDarkSurface: boolean;
+  resolveMediaGeneration?: ResolveMediaGeneration;
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -77,6 +79,7 @@ export interface ChatRenderContextValue {
   resolveEntity?: EntityResolver;
   entityPrefixes?: Record<string, string>;
   isDarkSurface: boolean;
+  resolveMediaGeneration?: ResolveMediaGeneration;
 }
 
 const ChatRenderContext = createContext<ChatRenderContextValue | null>(null);
@@ -99,6 +102,7 @@ export interface ChatProviderProps {
   resolveEntity?: EntityResolver;
   entityPrefixes?: Record<string, string>;
   isDarkSurface?: boolean;
+  resolveMediaGeneration?: ResolveMediaGeneration;
 }
 
 export function ChatProvider({
@@ -116,6 +120,7 @@ export function ChatProvider({
   resolveEntity,
   entityPrefixes,
   isDarkSurface = false,
+  resolveMediaGeneration,
 }: ChatProviderProps) {
   const sendMessage = useCallback(
     async (content: string, attachments?: File[]) => {
@@ -139,6 +144,7 @@ export function ChatProvider({
       resolveEntity,
       entityPrefixes,
       isDarkSurface,
+      resolveMediaGeneration,
     }),
     [
       messages,
@@ -154,6 +160,7 @@ export function ChatProvider({
       resolveEntity,
       entityPrefixes,
       isDarkSurface,
+      resolveMediaGeneration,
     ]
   );
 
@@ -165,8 +172,9 @@ export function ChatProvider({
       resolveEntity,
       entityPrefixes,
       isDarkSurface,
+      resolveMediaGeneration,
     }),
-    [viewerRole, onVisualizationAction, resolveCommandToken, resolveEntity, entityPrefixes, isDarkSurface]
+    [viewerRole, onVisualizationAction, resolveCommandToken, resolveEntity, entityPrefixes, isDarkSurface, resolveMediaGeneration]
   );
 
   return (
