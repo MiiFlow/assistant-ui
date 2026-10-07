@@ -27,6 +27,8 @@ const ALLOWED_DOCUMENT_TYPES = [
   "application/pdf",
   "text/plain",
   "text/csv",
+  "text/xml",
+  "application/xml",
   "text/markdown",
   "application/json",
   "text/json",
