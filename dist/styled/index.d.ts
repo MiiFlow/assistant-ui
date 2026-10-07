@@ -1,15 +1,15 @@
-export { c as AttachmentPreview, m as AttachmentPreviewProps, d as Avatar, n as AvatarProps, C as ChatContainer, o as ChatContainerProps, e as ChatLayout, p as ChatLayoutProps, M as MarkdownContent, q as MarkdownContentProps, f as Message, g as MessageActionBar, r as MessageActionBarProps, h as MessageComposer, s as MessageComposerProps, i as MessageList, t as MessageListProps, u as MessageProps, S as ScrollToBottomButton, v as ScrollToBottomButtonProps, j as StreamingText, w as StreamingTextProps, k as SuggestedActions, x as SuggestedActionsProps, y as ToolStatus, T as ToolStatusIndicator, z as ToolStatusIndicatorProps, l as TypingIndicator, B as TypingIndicatorProps, W as WelcomeScreen, E as WelcomeScreenProps } from '../WelcomeScreen-CqQelZhm.js';
+export { c as AttachmentPreview, m as AttachmentPreviewProps, d as Avatar, n as AvatarProps, C as ChatContainer, o as ChatContainerProps, e as ChatLayout, p as ChatLayoutProps, M as MarkdownContent, q as MarkdownContentProps, f as Message, g as MessageActionBar, r as MessageActionBarProps, h as MessageComposer, s as MessageComposerProps, i as MessageList, t as MessageListProps, u as MessageProps, S as ScrollToBottomButton, v as ScrollToBottomButtonProps, j as StreamingText, w as StreamingTextProps, k as SuggestedActions, x as SuggestedActionsProps, y as ToolStatus, T as ToolStatusIndicator, z as ToolStatusIndicatorProps, l as TypingIndicator, B as TypingIndicatorProps, W as WelcomeScreen, E as WelcomeScreenProps } from '../WelcomeScreen-yLEbtqHc.js';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import * as react from 'react';
 import react__default, { ReactNode, ComponentType } from 'react';
-import { A as Attachment, S as SourceReference } from '../message-zGQ6aUMr.js';
-export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-zGQ6aUMr.js';
-import { S as StreamingChunk, P as PlanData, f as SubagentChunkData, C as ClarificationData, c as ClarificationAnswer, T as ToolApprovalData, V as VisualizationChunkData, g as VisualizationActionEvent, M as MediaChunkData, h as ChartVisualizationData, i as VisualizationConfig, j as TableVisualizationData, k as CardVisualizationData, K as KpiVisualizationData, l as KpiMetric, m as CodePreviewVisualizationData, F as FormVisualizationData, n as AuthPromptVisualizationData, A as ArtifactChunkData, E as Event, o as EventStatus } from '../streaming-B3u74IEq.js';
-export { p as ArtifactStatus, q as ChunkType, r as EventType, s as FollowupAction, t as KpiBreakdownItem, u as KpiMeter, v as KpiPolarity, w as KpiStatus, O as ObservationEvent, x as PlanningEvent, y as ProgressData, z as StreamingMessage, B as SubTaskData, D as SubtaskEvent, G as ThinkingEvent, H as ToolEvent, I as VisualizationType } from '../streaming-B3u74IEq.js';
+import { A as Attachment, S as SourceReference } from '../message-uk04zxQ1.js';
+export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-uk04zxQ1.js';
+import { S as StreamingChunk, P as PlanData, f as SubagentChunkData, C as ClarificationData, c as ClarificationAnswer, T as ToolApprovalData, V as VisualizationChunkData, g as VisualizationActionEvent, M as MediaChunkData, h as ChartVisualizationData, i as VisualizationConfig, j as TableVisualizationData, k as CardVisualizationData, K as KpiVisualizationData, l as KpiMetric, m as CodePreviewVisualizationData, F as FormVisualizationData, n as AuthPromptVisualizationData, A as ArtifactChunkData, E as Event, o as EventStatus } from '../streaming-BGKrQjSB.js';
+export { p as ArtifactStatus, q as ChunkType, r as EventType, s as FollowupAction, t as KpiBreakdownItem, u as KpiMeter, v as KpiPolarity, w as KpiStatus, O as ObservationEvent, x as PlanningEvent, y as ProgressData, z as StreamingMessage, B as SubTaskData, D as SubtaskEvent, G as ThinkingEvent, H as ToolEvent, I as VisualizationType } from '../streaming-BGKrQjSB.js';
 import { z, ZodSchema } from 'zod';
-export { a as ChatContextValue, b as ChatProvider, c as ChatProviderProps, u as useChatContext } from '../index-CwUrbTyP.js';
+export { a as ChatContextValue, b as ChatProvider, c as ChatProviderProps, u as useChatContext } from '../index-BNH7IiHQ.js';
 export { B as BrandingData } from '../branding-BQBGqRIV.js';
-export { u as useComposer, g as useMessage } from '../avatar-48GBXIZe.js';
+export { u as useComposer, g as useMessage } from '../avatar-4yOfN6F3.js';
 import '../types-Du00UBst.js';
 
 /**
@@ -692,6 +692,7 @@ declare const chartVisualizationSchema: z.ZodObject<{
 }, z.core.$strip>;
 declare const tableVisualizationSchema: z.ZodObject<{
     columns: z.ZodArray<z.ZodObject<{
+        currencyCode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         key: z.ZodString;
         label: z.ZodString;
         type: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
@@ -847,7 +848,7 @@ interface TableVisualizationProps {
     /** Message-level media bag used to resolve `media_ref:<id>` cell values. */
     medias?: MediaChunkData[];
 }
-declare function TableVisualization({ data, config, medias }: TableVisualizationProps): react_jsx_runtime.JSX.Element;
+declare function TableVisualization({ data, config, medias, }: TableVisualizationProps): react_jsx_runtime.JSX.Element;
 
 interface CardVisualizationProps {
     data: CardVisualizationData;

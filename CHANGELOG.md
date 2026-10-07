@@ -1,5 +1,24 @@
 # @miiflow/assistant-ui
 
+## 0.21.0
+
+KPI blocks whose arrows agree with their numbers, live placeholders for image and video generation, and file links in an answer that open the file. 0.19.0 and 0.20.0 were never published to npm; this is the first release to carry them.
+
+### Features
+
+- **KPI cards state facts; the renderer does the arithmetic (`styled/visualizations/KpiVisualization.tsx`, `styled/visualizations/kpi.ts`)**: the arrow follows the sign of `change`, and its colour comes from the new `polarity` (`higher_is_better` / `lower_is_better` / `neutral`; none means a grey chip). `KpiMetric` gains `previous`, `status` (good/warning/bad, for a judgment that isn't a delta), `note`, `breakdown` (`[{ label, value, share }]`) and `meter` (`{ value, label }`). The block is one panel with hairline dividers; the hero is a full-width band that shows its breakdown, sparkline or meter beside the value, and cells wrap in balanced rows. The schema coerces off-enum `polarity`/`status` and nested numbers, so one loose field no longer fails the whole block. The shared logic is exported as the `kpi` namespace from `styled`, along with the `KpiPolarity`, `KpiStatus`, `KpiBreakdownItem` and `KpiMeter` types. **Behavior change:** `metric.color`, `config.colors`, `config.animate` and `isStreaming` are now ignored (still on the type), and `trend` is read only when `polarity` is absent — a payload sending `trend: "down"` with `"+5%"` now shows an up arrow. Send `polarity` (and `status` for judgments) instead.
+- **Live media generation (`styled/MediaGenerationCard.tsx`)**: an image or video generation tool call holds a slot the size of its aspect ratio, with an animated placeholder, instead of a bare tool spinner, and resolves to the finished media or a failed / interrupted / unavailable state. Background video jobs are polled through `ChatProvider`'s new `resolveMediaGeneration(jobId, signal)` — bounded, backing off on errors, with a "Refresh preview" retry — and become a playable `<video>`. Without a resolver the card says the video is processing.
+- **Links to a message's files (`styled/markdown/artifact-references.tsx`)**: `[Report](ARTIFACT:id)` in an answer opens that file through `Message`'s `onArtifactOpen`, or its download URL. `MarkdownContent` takes new `artifacts` and `onArtifactOpen` props. An id that names no file on the message renders as plain text, and `stripInlineMarkers` keeps a marker link's label.
+- **Approval outcomes in the activity lanes (`styled/transcript/WorkLanes.tsx`)**: a tool whose approval was decided reads "Approved" or "Declined" and counts as finished, from the new `StreamingChunk.approvalOutcome`. `ActivityLabels` gains `approved` and `declined` keys — code building a complete `ActivityLabels` object (not the `Partial` the `activityLabels` prop takes) must add them. A transcript waiting on a background task reads "Waiting for background task".
+- **Currency per table column (`styled/visualizations/TableVisualization.tsx`)**: `TableColumn.currencyCode` (ISO 4217) formats a `currency` column in that currency. **Behavior change:** a `currency` column without `currencyCode` used to be formatted as USD and now renders as a plain number; set `currencyCode: "USD"` where you relied on the old default.
+
+### Bug Fixes
+
+- **A file link in an answer opened the current chat in a new tab (`styled/markdown/components.tsx`, `styled/markdown/MarkdownBlock.tsx`)**: react-markdown blanked the unknown `ARTIFACT:` scheme to `href=""`. Marker links are now resolved, and no `<a href="">` is drawn for any scheme: a link the URL allowlist rejects renders as its label.
+- **Skill-only messages showed an empty bubble (`styled/markdown/components.tsx`)**: skill chips were stripped as routing scaffolding. Only mode chips are hidden now, so a selected skill shows in the message body.
+- **KPI text spilled into adjacent cards (`styled/visualizations/KpiVisualization.tsx`)**: long notes, values, units and change chips wrap inside their cell, and breakdown value columns shrink in narrow panels.
+- **Repeated calls to one tool inside a specialist shared a result (`client/useMiiflowChat.ts`)**: nested tool calls were matched by name, so a second call overwrote the first. They are matched by `tool_call_id` now, and a completed tool chunk carries its observation in `content`.
+
 ## 0.20.0
 
 The ordered agent transcript is redrawn as an activity rail: where execution is now, and what ran at the same time.

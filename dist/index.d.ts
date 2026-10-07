@@ -1,12 +1,12 @@
-export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-zGQ6aUMr.js';
-import { S as StreamingChunk, A as ArtifactChunkData, M as MediaChunkData, V as VisualizationChunkData } from './streaming-B3u74IEq.js';
-export { c as ClarificationAnswer, C as ClarificationData, d as ClarificationQuestion, b as StreamChunk, a as StreamingOptions, e as StreamingState } from './streaming-B3u74IEq.js';
+export { A as Attachment, C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, R as ReasoningChunk, S as SourceReference, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from './message-uk04zxQ1.js';
+import { S as StreamingChunk, A as ArtifactChunkData, M as MediaChunkData, V as VisualizationChunkData } from './streaming-BGKrQjSB.js';
+export { c as ClarificationAnswer, C as ClarificationData, d as ClarificationQuestion, b as StreamChunk, a as StreamingOptions, e as StreamingState } from './streaming-BGKrQjSB.js';
 export { B as BrandingData } from './branding-BQBGqRIV.js';
-export { C as ChatContext, a as ChatContextValue, b as ChatProvider, c as ChatProviderProps, E as ENTITY_HREF_SCHEME, d as EntityReference, e as EntityReferenceInfo, f as EntityResolution, g as EntityResolver, h as EntityText, i as entityHref, p as parseEntityHref, u as useChatContext } from './index-CwUrbTyP.js';
-export { u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from './use-branding-css-vars-D7gcGdJy.js';
-export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-48GBXIZe.js';
+export { C as ChatContext, a as ChatContextValue, b as ChatProvider, c as ChatProviderProps, E as ENTITY_HREF_SCHEME, d as EntityReference, e as EntityReferenceInfo, f as EntityResolution, g as EntityResolver, h as EntityText, i as entityHref, p as parseEntityHref, u as useChatContext } from './index-BNH7IiHQ.js';
+export { u as useAttachments, b as useAutoScroll, c as useBrandingCSSVars, d as useMessageComposer, e as useScrollLock, f as useStreaming } from './use-branding-css-vars-COlT_4Rw.js';
+export { A as AvatarPrimitive, C as ComposerContext, a as ComposerInput, b as ComposerSubmit, M as MessageComposerPrimitive, c as MessageContentPrimitive, d as MessageContext, e as MessagePrimitive, f as MessageTimestampPrimitive, u as useComposer, g as useMessage } from './avatar-4yOfN6F3.js';
 export { ActionButton, MessageList as MessageListPrimitive, StreamingText as StreamingTextPrimitive, SuggestedActionsContext, SuggestedActions as SuggestedActionsPrimitive, TypingIndicator as TypingIndicatorPrimitive, useSuggestedActions } from './primitives/index.js';
-export { A as ActivityLabels, a as ActivityMarkRenderer, b as ActivityState, c as AttachmentPreview, d as Avatar, C as ChatContainer, e as ChatLayout, D as DEFAULT_ACTIVITY_LABELS, M as MarkdownContent, f as Message, g as MessageActionBar, h as MessageComposer, i as MessageList, S as ScrollToBottomButton, j as StreamingText, k as SuggestedActions, T as ToolStatusIndicator, l as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-CqQelZhm.js';
+export { A as ActivityLabels, a as ActivityMarkRenderer, b as ActivityState, c as AttachmentPreview, d as Avatar, C as ChatContainer, e as ChatLayout, D as DEFAULT_ACTIVITY_LABELS, M as MarkdownContent, f as Message, g as MessageActionBar, h as MessageComposer, i as MessageList, S as ScrollToBottomButton, j as StreamingText, k as SuggestedActions, T as ToolStatusIndicator, l as TypingIndicator, W as WelcomeScreen } from './WelcomeScreen-yLEbtqHc.js';
 import { ClassValue } from 'clsx';
 import 'react/jsx-runtime';
 import 'react';
@@ -93,7 +93,7 @@ declare function formatRelativeTime(date: Date | string): string;
 declare function getContrastTextColor(bgColor: string): string;
 
 /**
- * Remove every inline marker from `content`.
+ * Remove every inline marker from `content`; a marker link keeps its label.
  *
  * The render floor for the plain-text branches: a marker that reached the
  * renderer without render data behind it cannot be shown to a reader as a
