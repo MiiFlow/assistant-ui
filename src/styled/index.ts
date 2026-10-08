@@ -180,3 +180,11 @@ export type {
 	SourceReference,
 	SourceTypeConfig,
 } from "../types";
+
+export { InteractionProvider, InteractionFailure, interactionSchema } from "../interactions/runtime";
+export type { InteractionSurface, InteractionRequest, InteractionTransport } from "../interactions/runtime";
+export { WorkPanel, useWorkPanel } from "../interactions/WorkPanel";
+
+export { submitVisualizationAction } from "../interactions/submit-action";
+
+export type { VisualizationActionHandler } from "../types/streaming";

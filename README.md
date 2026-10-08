@@ -22,6 +22,8 @@ If you're embedding inside an existing page and want to avoid Tailwind's preflig
 import "@miiflow/assistant-ui/styles-no-preflight.css";
 ```
 
+The rich-interaction workspace uses shared component CSS. Import one of the stylesheets above when using `ChatLayout` or native interaction renderers, including in hosts that already use Tailwind. Use the no-preflight variant alongside an existing design system.
+
 ## Quick Start
 
 ```tsx
@@ -778,3 +780,17 @@ import { VisualizationRenderer } from "@miiflow/assistant-ui/styled";
 ### Key Exports from `@miiflow/assistant-ui/client`
 
 Beyond `useMiiflowChat`: session helpers (`initSession`, `createThread`, `uploadFile`, `sendSystemEvent`, `sendPageContext`, `sendToolResult`, `getBackendBaseUrl`), tool validation (`validateToolDefinition`, `serializeToolDefinition`, `ToolValidationError`), and SSE-reducer helpers for hosts with their own stream parsing (`findToolChunkIndex`, `MatchableToolChunk`, `ToolFrame`).
+
+
+### Native interactions and form acknowledgements
+
+Native interaction creation is opt-in. Only set `nativeInteractions: true` in
+`useMiiflowChat` after mounting the native renderer and a thread-scoped
+`InteractionProvider` with an authenticated `InteractionTransport`. Old hosts
+omit it; the server additionally requires `NATIVE_INTERACTIONS_ENABLED=true` and
+the visualization tool group. Disabling creation does not remove existing results.
+
+`onVisualizationAction` must return `{ accepted: true }` after delivery is
+accepted, or `{ accepted: false }` / throw on rejection. A `void` handler is no
+longer compatible. The unacknowledged `visualization-form-submit` event fallback
+has been removed; see the Unreleased behavior changes in the CHANGELOG.

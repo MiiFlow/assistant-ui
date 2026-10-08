@@ -1,5 +1,6 @@
 @import "./tokens.css";
 @import "./prose.css";
+@import "../interactions/interactions.css";
 
 @tailwind base;
 @tailwind components;

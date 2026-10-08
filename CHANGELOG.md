@@ -1,5 +1,20 @@
 # @miiflow/assistant-ui
 
+## Unreleased
+
+### Behavior changes
+
+- Legacy visualization form hosts must return `{ accepted: true }` only after
+  accepting a submission (or `{ accepted: false }` / throw on rejection).
+  `VisualizationActionHandler` no longer accepts `void`; migrate existing
+  callbacks before upgrading. The unacknowledged `visualization-form-submit`
+  window-event fallback is removed. Missing acknowledgement never reports success.
+- Native interactions are opt-in per request and require a server rollout flag.
+  `useMiiflowChat({ nativeInteractions: true })` advertises v1 support only when
+  the host mounts the renderer and an authenticated `InteractionProvider`.
+  Existing widgets remain on their current visualization tools by default.
+- Product images contact their source only after the user chooses to load them.
+
 ## 0.21.0
 
 KPI blocks whose arrows agree with their numbers, live placeholders for image and video generation, and file links in an answer that open the file. 0.19.0 and 0.20.0 were never published to npm; this is the first release to carry them.

@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { forwardRef, ReactNode } from "react";
+import { WorkPanelLayout } from "../interactions/WorkPanel";
 import { cn } from "../utils/cn";
 
 export interface ChatLayoutProps {
@@ -30,49 +31,51 @@ export const ChatLayout = forwardRef<HTMLDivElement, ChatLayoutProps>(
 	({ isEmpty, header, welcomeScreen, messageList, composer, footer, className }, ref) => {
 		return (
 			<div ref={ref} data-chat-ui className={cn("relative h-full overflow-hidden flex flex-col min-h-0", className)}>
-				<AnimatePresence mode="wait">
-					{isEmpty && welcomeScreen ? (
-						<motion.div
-							key="welcome"
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0 }}
-							transition={{ duration: 0.2 }}
-							className="flex-1 flex flex-col overflow-hidden min-h-0">
-							{header}
-							{welcomeScreen}
-						</motion.div>
-					) : (
-						<motion.div
-							key="active"
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0 }}
-							transition={{ duration: 0.2 }}
-							className="flex-1 flex flex-col overflow-hidden min-h-0">
-							{header}
-
-							{/* Message list */}
+				<WorkPanelLayout>
+					<AnimatePresence mode="wait">
+						{isEmpty && welcomeScreen ? (
 							<motion.div
+								key="welcome"
 								initial={{ opacity: 0 }}
 								animate={{ opacity: 1 }}
-								transition={{ duration: 0.2, delay: 0.05 }}
-								className="flex-1 overflow-hidden flex flex-col min-h-0">
-								{messageList}
+								exit={{ opacity: 0 }}
+								transition={{ duration: 0.2 }}
+								className="flex-1 flex flex-col overflow-hidden min-h-0">
+								{header}
+								{welcomeScreen}
 							</motion.div>
-
-							{/* Footer + Composer: floating over messages */}
+						) : (
 							<motion.div
-								initial={{ opacity: 0, y: 8 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ duration: 0.2, delay: 0.1 }}
-								className="relative z-10 shrink-0">
-								{footer}
-								{composer}
+								key="active"
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								exit={{ opacity: 0 }}
+								transition={{ duration: 0.2 }}
+								className="flex-1 flex flex-col overflow-hidden min-h-0">
+								{header}
+
+								{/* Message list */}
+								<motion.div
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									transition={{ duration: 0.2, delay: 0.05 }}
+									className="flex-1 overflow-hidden flex flex-col min-h-0">
+									{messageList}
+								</motion.div>
+
+								{/* Footer + Composer: floating over messages */}
+								<motion.div
+									initial={{ opacity: 0, y: 8 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ duration: 0.2, delay: 0.1 }}
+									className="relative z-10 shrink-0">
+									{footer}
+									{composer}
+								</motion.div>
 							</motion.div>
-						</motion.div>
-					)}
-				</AnimatePresence>
+						)}
+					</AnimatePresence>
+				</WorkPanelLayout>
 			</div>
 		);
 	},

@@ -6,7 +6,7 @@ export interface VisualizationEntry {
     data: any;
     config?: VisualizationConfig;
     isStreaming?: boolean;
-    onAction?: (event: import("../../types").VisualizationActionEvent) => void;
+    onAction?: import("../../types/streaming").VisualizationActionHandler;
     medias?: import("../../types").MediaChunkData[];
   }>;
   schema?: ZodSchema;
@@ -48,6 +48,7 @@ export function getRegisteredTypes(): string[] {
 // Register built-in visualization types
 // ---------------------------------------------------------------------------
 
+import { InteractionVisualization } from "../../interactions/InteractionVisualization";
 import { ChartVisualization } from "./ChartVisualization";
 import { TableVisualization } from "./TableVisualization";
 import { CardVisualization } from "./CardVisualization";
@@ -59,6 +60,7 @@ import { AuthPromptVisualization } from "./AuthPromptVisualization";
 // Schemas are registered lazily after the schemas module is loaded to avoid
 // circular-dependency issues.  The `registerBuiltinSchemas` helper is called
 // from schemas.ts at module-load time.
+registerVisualization("interaction", { component: InteractionVisualization });
 registerVisualization("chart", { component: ChartVisualization });
 registerVisualization("table", { component: TableVisualization });
 registerVisualization("card", { component: CardVisualization });

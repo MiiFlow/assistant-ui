@@ -1,5 +1,6 @@
+import type { VisualizationActionHandler } from "../../types/streaming";
 import { AlertCircle } from "lucide-react";
-import type { MediaChunkData, VisualizationActionEvent, VisualizationChunkData } from "../../types";
+import type { MediaChunkData, VisualizationChunkData } from "../../types";
 import { getVisualization } from "./registry";
 // Side-effect import: ensures schemas are registered alongside components
 import "./schemas";
@@ -7,7 +8,7 @@ import "./schemas";
 export interface VisualizationRendererProps {
   data: VisualizationChunkData;
   isStreaming?: boolean;
-  onAction?: (event: VisualizationActionEvent) => void;
+  onAction?: VisualizationActionHandler;
   /** Message-level media bag used to resolve `media_ref:<id>` cell values. */
   medias?: MediaChunkData[];
 }

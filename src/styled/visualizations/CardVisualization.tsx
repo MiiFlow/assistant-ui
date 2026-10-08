@@ -2,13 +2,13 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { MarkdownContent } from "../MarkdownContent";
-import type { CardVisualizationData, CardSection, VisualizationConfig, VisualizationActionEvent } from "../../types";
+import type { CardVisualizationData, CardSection, VisualizationConfig } from "../../types";
 
 export interface CardVisualizationProps {
   data: CardVisualizationData;
   config?: VisualizationConfig;
   isStreaming?: boolean;
-  onAction?: (event: VisualizationActionEvent) => void;
+  onAction?: import("../../types/streaming").VisualizationActionHandler;
 }
 
 export function CardVisualization({ data, config, onAction }: CardVisualizationProps) {

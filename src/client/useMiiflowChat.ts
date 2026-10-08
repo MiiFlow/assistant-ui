@@ -1680,6 +1680,9 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
             },
             body: JSON.stringify({
               thread_id: currentSession.config.thread_id,
+              client_capabilities: configRef.current.nativeInteractions
+                ? { native_interactions: 1 }
+                : {},
               text_content: content,
               message_id: optimisticId,
               metadata: extraMetadata || {},

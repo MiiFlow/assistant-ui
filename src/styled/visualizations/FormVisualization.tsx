@@ -1,12 +1,14 @@
+import type { VisualizationActionHandler } from "../../types/streaming";
+import { submitVisualizationAction } from "../../interactions/submit-action";
 import { useState } from "react";
 import { cn } from "../../utils/cn";
-import type { FormVisualizationData, FormField, VisualizationConfig, VisualizationActionEvent } from "../../types";
+import type { FormVisualizationData, FormField, VisualizationConfig } from "../../types";
 
 export interface FormVisualizationProps {
   data: FormVisualizationData;
   config?: VisualizationConfig;
   isStreaming?: boolean;
-  onAction?: (event: VisualizationActionEvent) => void;
+  onAction?: VisualizationActionHandler;
 }
 
 export function FormVisualization({ data, config, isStreaming = false, onAction }: FormVisualizationProps) {
@@ -27,8 +29,11 @@ export function FormVisualization({ data, config, isStreaming = false, onAction 
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string>();
 
   const handleChange = (name: string, value: unknown) => {
+    if (submitting) return;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => { const next = { ...prev }; delete next[name]; return next; });
   };
@@ -56,18 +61,21 @@ export function FormVisualization({ data, config, isStreaming = false, onAction 
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
-    if (onAction) {
-      onAction({ type: "form_submit", action: submitAction || "", data: formData });
-    } else {
-      window.dispatchEvent(new CustomEvent("visualization-form-submit", { detail: { action: submitAction, data: formData } }));
-    }
-    setSubmitted(true);
+    if (submitting || !validate()) return;
+    setSubmitting(true);
+    setSubmitError(undefined);
+    try {
+      await submitVisualizationAction(onAction, { type: "form_submit", action: submitAction || "", data: formData });
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Could not submit. Please try again.");
+    } finally { setSubmitting(false); }
   };
 
   const handleCancel = () => {
+    if (submitting) return;
     if (onAction) {
       onAction({ type: "form_cancel", action: submitAction || "" });
     } else {
@@ -101,8 +109,8 @@ export function FormVisualization({ data, config, isStreaming = false, onAction 
             type={field.type}
             placeholder={field.placeholder}
             required={field.required}
-            value={String(value || "")}
-            onChange={(e) => handleChange(field.name, field.type === "number" ? parseFloat(e.target.value) || "" : e.target.value)}
+            value={String(value ?? "")}
+            onChange={(e) => handleChange(field.name, field.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value)}
             className={cn(inputClass, hasError && errorClass)}
             min={field.validation?.min}
             max={field.validation?.max}
@@ -113,7 +121,7 @@ export function FormVisualization({ data, config, isStreaming = false, onAction 
           <textarea
             placeholder={field.placeholder}
             required={field.required}
-            value={String(value || "")}
+            value={String(value ?? "")}
             onChange={(e) => handleChange(field.name, e.target.value)}
             className={cn(inputClass, "min-h-[100px] resize-y", hasError && errorClass)}
             rows={4}
@@ -122,7 +130,7 @@ export function FormVisualization({ data, config, isStreaming = false, onAction 
       case "select":
         return (
           <select
-            value={String(value || "")}
+            value={String(value ?? "")}
             onChange={(e) => handleChange(field.name, e.target.value)}
             className={cn(inputClass, hasError && errorClass)}
           >
@@ -160,16 +168,18 @@ export function FormVisualization({ data, config, isStreaming = false, onAction 
           </div>
         );
       case "date":
-        return <input type="date" value={String(value || "")} onChange={(e) => handleChange(field.name, e.target.value)} className={cn(inputClass, hasError && errorClass)} />;
+        return <input type="date" value={String(value ?? "")} onChange={(e) => handleChange(field.name, e.target.value)} className={cn(inputClass, hasError && errorClass)} />;
       case "datetime":
-        return <input type="datetime-local" value={String(value || "")} onChange={(e) => handleChange(field.name, e.target.value)} className={cn(inputClass, hasError && errorClass)} />;
+        return <input type="datetime-local" value={String(value ?? "")} onChange={(e) => handleChange(field.name, e.target.value)} className={cn(inputClass, hasError && errorClass)} />;
       default:
         return null;
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} aria-busy={submitting}>
+      <fieldset disabled={submitting} className="space-y-4 border-0 p-0 m-0 min-w-0">
+      {submitError && <p role="alert">{submitError}</p>}
       {fields.map((field) => (
         <div key={field.name}>
           {field.type !== "checkbox" && (
@@ -182,13 +192,14 @@ export function FormVisualization({ data, config, isStreaming = false, onAction 
         </div>
       ))}
       <div className="flex gap-2 pt-2">
-        <button type="submit" disabled={isStreaming} className="px-4 py-2 text-sm rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 transition-colors">
-          {submitButtonText}
+        <button type="submit" disabled={isStreaming || submitting} className="px-4 py-2 text-sm rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 transition-colors">
+          {submitting ? "Submitting…" : submitButtonText}
         </button>
         <button type="button" onClick={handleCancel} className="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
           {cancelButtonText}
         </button>
       </div>
+      </fieldset>
     </form>
   );
 }

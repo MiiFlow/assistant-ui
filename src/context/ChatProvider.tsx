@@ -1,3 +1,4 @@
+import type { VisualizationActionHandler } from "../types/streaming";
 import type { ResolveMediaGeneration } from "../styled/MediaGenerationCard";
 import {
   createContext,
@@ -6,7 +7,7 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import type { ChatMessage, ParticipantRole, VisualizationActionEvent } from "../types";
+import type { ChatMessage, ParticipantRole } from "../types";
 import type { EntityResolver } from "../styled/markdown/entity-references";
 
 export interface ChatContextValue {
@@ -27,7 +28,7 @@ export interface ChatContextValue {
   /** Custom data passed through context */
   customData?: Record<string, unknown>;
   /** Callback when user interacts with a visualization (form submit, card action, etc.) */
-  onVisualizationAction?: (event: VisualizationActionEvent) => void;
+  onVisualizationAction?: VisualizationActionHandler;
   /** Resolve how to render an inline command-token chip (e.g. an
    * `@<id>:ad-account` mention). Wire format only carries id + kind, so the
    * host app supplies the display info. Returning `tag` replaces the default
@@ -71,7 +72,7 @@ const ChatContext = createContext<ChatContextValue | null>(null);
  */
 export interface ChatRenderContextValue {
   viewerRole: ParticipantRole;
-  onVisualizationAction?: (event: VisualizationActionEvent) => void;
+  onVisualizationAction?: VisualizationActionHandler;
   resolveCommandToken?: (
     id: string,
     kind: string,
@@ -94,7 +95,7 @@ export interface ChatProviderProps {
   onStopStreaming?: () => void;
   onRetryLastMessage?: () => Promise<void>;
   customData?: Record<string, unknown>;
-  onVisualizationAction?: (event: VisualizationActionEvent) => void;
+  onVisualizationAction?: VisualizationActionHandler;
   resolveCommandToken?: (
     id: string,
     kind: string,

@@ -2,7 +2,6 @@ import { Lock } from "lucide-react";
 import { cn } from "../../utils/cn";
 import type {
   AuthPromptVisualizationData,
-  VisualizationActionEvent,
   VisualizationConfig,
 } from "../../types";
 
@@ -10,7 +9,7 @@ export interface AuthPromptVisualizationProps {
   data: AuthPromptVisualizationData;
   config?: VisualizationConfig;
   isStreaming?: boolean;
-  onAction?: (event: VisualizationActionEvent) => void;
+  onAction?: import("../../types/streaming").VisualizationActionHandler;
 }
 
 /**

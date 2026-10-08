@@ -205,6 +205,7 @@ export interface ToolApprovalData {
 // ============================================================================
 
 export type VisualizationType =
+  | "interaction"
   | "chart"
   | "table"
   | "card"
@@ -734,3 +735,6 @@ export type VisualizationActionEvent =
       mcpServerId?: string;
       serviceProviderId?: string;
     };
+
+/** Host acknowledgement for interactive legacy visualizations. Void never means submitted. */
+export type VisualizationActionHandler = (event: VisualizationActionEvent) => { accepted: boolean } | Promise<{ accepted: boolean }>;

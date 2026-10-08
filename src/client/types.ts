@@ -72,6 +72,9 @@ export interface MiiflowChatConfig {
    * dynamic tools can still be added later with registerTools().
    */
   tools?: ClientToolDefinition[];
+  /** Opt in only when the host mounts the native interaction renderer and an
+   * authenticated InteractionProvider. Omitted by legacy/read-only widgets. */
+  nativeInteractions?: boolean;
 }
 
 // ============================================================================
