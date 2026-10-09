@@ -1,14 +1,6 @@
-import { Plus } from "lucide-react";
+import { AtSign, Paperclip, WandSparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "../utils/cn";
-
-const GHOST_BUTTON = cn(
-	"flex-shrink-0 rounded-lg flex items-center justify-center",
-	"text-[var(--chat-text-subtle,rgba(0,0,0,0.5))]",
-	"hover:bg-[var(--chat-panel-bg,rgba(0,0,0,0.02))] hover:text-[var(--chat-text,#1d2033)]",
-	"disabled:opacity-40 disabled:cursor-not-allowed",
-	"transition-colors duration-150",
-);
 
 /**
  * Bottom toolbar row for composers: attach button, an Enter-to-send hint that
@@ -16,51 +8,73 @@ const GHOST_BUTTON = cn(
  * a trailing slot for the send/stop button.
  */
 export function ComposerToolbar({
-	onAttachClick,
-	disabled,
-	hint = "Enter to send",
-	showHint = true,
-	endSlot,
-	className,
+  onAttachClick,
+  onContextClick,
+  onSkillsClick,
+  disabled,
+  hint = "Enter to send · Shift + Enter for a new line",
+  showHint = true,
+  endSlot,
+  className,
 }: {
-	/** Renders the "+" attach button when provided. */
-	onAttachClick?: () => void;
-	disabled?: boolean;
-	/** Keyboard hint shown while focused. Pass showHint={false} to hide. */
-	hint?: string;
-	showHint?: boolean;
-	/** Send / stop button. */
-	endSlot?: ReactNode;
-	className?: string;
+  /** Renders the "+" attach button when provided. */
+  onAttachClick?: () => void;
+  onContextClick?: () => void;
+  onSkillsClick?: () => void;
+  disabled?: boolean;
+  /** Keyboard hint shown while focused. Pass showHint={false} to hide. */
+  hint?: string;
+  showHint?: boolean;
+  /** Send / stop button. */
+  endSlot?: ReactNode;
+  className?: string;
 }) {
-	return (
-		<div className={cn("flex items-center gap-1 min-w-0", className)}>
-			{onAttachClick && (
-				<button
-					type="button"
-					title="Attach files"
-					aria-label="Attach files"
-					onClick={onAttachClick}
-					disabled={disabled}
-					className={cn(GHOST_BUTTON, "w-7 h-7")}>
-					<Plus size={16} />
-				</button>
-			)}
+  return (
+    <div className={cn("flex items-center gap-1 min-w-0", className)}>
+      {onContextClick && (
+        <button
+          type="button"
+          className="chat-composer-attach"
+          title="Add accounts or data tables (@)"
+          onClick={onContextClick}
+          disabled={disabled}
+        >
+          <AtSign size={16} aria-hidden="true" />
+          <span>Add context</span>
+        </button>
+      )}
+      {onSkillsClick && (
+        <button
+          type="button"
+          className="chat-composer-attach chat-composer-secondary"
+          title="Choose a skill or search guidelines (/)"
+          aria-label="Skills"
+          onClick={onSkillsClick}
+          disabled={disabled}
+        >
+          <WandSparkles size={16} aria-hidden="true" />
+          <span>Skills</span>
+        </button>
+      )}
+      {onAttachClick && (
+        <button
+          type="button"
+          title="Attach files"
+          aria-label="Attach files"
+          onClick={onAttachClick}
+          disabled={disabled}
+          className="chat-composer-attach chat-composer-secondary"
+        >
+          <Paperclip size={16} aria-hidden="true" />
+          <span>Attach</span>
+        </button>
+      )}
 
-			<div className="flex-1 min-w-0" />
+      <div className="flex-1 min-w-0" />
 
-			{showHint && (
-				<span
-					className={cn(
-						"hidden sm:block flex-shrink-0 mr-1.5 text-[11px] select-none",
-						"text-[var(--chat-placeholder,rgba(0,0,0,0.4))]",
-						"opacity-0 group-focus-within:opacity-100 transition-opacity duration-200",
-					)}>
-					{hint}
-				</span>
-			)}
+      {showHint && <span className="chat-composer-hint">{hint}</span>}
 
-			{endSlot}
-		</div>
-	);
+      {endSlot}
+    </div>
+  );
 }

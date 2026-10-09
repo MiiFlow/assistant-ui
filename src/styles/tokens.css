@@ -72,16 +72,16 @@
 
 	/* Border radius */
 	--chat-radius-message: 0.5rem;
-	--chat-radius-input: 1rem;
+	--chat-radius-input: 18px;
 	--chat-radius-panel: 0.5rem;
 	--chat-radius-button: 0.5rem;
 
 	/* Composer (input box) backgrounds */
 	--chat-composer-bg: #ffffff;
-	--chat-composer-border: rgba(29, 32, 51, 0.08);
-	--chat-composer-border-focus: color-mix(in srgb, var(--chat-primary) 35%, transparent);
-	--chat-composer-shadow: 0 1px 2px rgba(29, 32, 51, 0.04), 0 8px 24px -12px rgba(29, 32, 51, 0.12);
-	--chat-composer-shadow-focus: 0 2px 4px rgba(29, 32, 51, 0.05), 0 16px 40px -14px rgba(29, 32, 51, 0.2);
+	--chat-composer-border: #89867f;
+	--chat-composer-border-focus: #106997;
+	--chat-composer-shadow: none;
+	--chat-composer-shadow-focus: none;
 
 	/* Tool approval panel — raised CTA chrome. Warmed near-white surface
 	   with a tinted border and soft elevation so the gate reads as a
@@ -109,10 +109,10 @@
 
 	/* Composer backgrounds */
 	--chat-composer-bg: #27272a;
-	--chat-composer-border: rgba(255, 255, 255, 0.1);
-	--chat-composer-border-focus: color-mix(in srgb, var(--chat-primary) 50%, transparent);
-	--chat-composer-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -12px rgba(0, 0, 0, 0.45);
-	--chat-composer-shadow-focus: 0 2px 4px rgba(0, 0, 0, 0.25), 0 16px 40px -14px rgba(0, 0, 0, 0.55);
+	--chat-composer-border: #848178;
+	--chat-composer-border-focus: #80bddc;
+	--chat-composer-shadow: none;
+	--chat-composer-shadow-focus: none;
 
 	/* Tool approval panel — dark counterparts */
 	--chat-approval-panel-bg: oklch(0.22 0.005 70);

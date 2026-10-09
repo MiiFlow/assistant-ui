@@ -1,84 +1,65 @@
-import { AnimatePresence, motion } from "framer-motion";
 import { forwardRef, ReactNode } from "react";
 import { WorkPanelLayout } from "../interactions/WorkPanel";
 import { cn } from "../utils/cn";
 
 export interface ChatLayoutProps {
-	/** Whether the chat is in empty state (no messages) */
-	isEmpty: boolean;
-	/** Optional header rendered above the message area */
-	header?: ReactNode;
-	/** Content to display when isEmpty is true (typically a WelcomeScreen) */
-	welcomeScreen?: ReactNode;
-	/** The message list to display when not empty */
-	messageList?: ReactNode;
-	/** The composer rendered at the bottom when not empty */
-	composer?: ReactNode;
-	/** Extra content between message list and composer (e.g. ClarificationPanel) */
-	footer?: ReactNode;
-	/** Additional CSS classes */
-	className?: string;
+  /** Whether the chat is in empty state (no messages) */
+  isEmpty: boolean;
+  /** Optional header rendered above the message area */
+  header?: ReactNode;
+  /** Content to display when isEmpty is true (typically a WelcomeScreen) */
+  welcomeScreen?: ReactNode;
+  /** The message list to display when not empty */
+  messageList?: ReactNode;
+  /** The composer rendered at the bottom when not empty */
+  composer?: ReactNode;
+  /** Keep the bottom composer mounted beside an intro-only welcome screen. */
+  showComposerOnWelcome?: boolean;
+  /** Extra content between message list and composer (e.g. ClarificationPanel) */
+  footer?: ReactNode;
+  /** Additional CSS classes */
+  className?: string;
 }
 
-/**
- * Composable chat layout that handles the empty → active state transition
- * with a smooth crossfade animation.
- *
- * Replaces the repeated `AnimatePresence` + `motion.div` pattern found in
- * `centered-chat-layout.tsx` and `chat/[id]/page.tsx`.
- */
+/** Stable conversation and composer slots beside the shared result workspace. */
 export const ChatLayout = forwardRef<HTMLDivElement, ChatLayoutProps>(
-	({ isEmpty, header, welcomeScreen, messageList, composer, footer, className }, ref) => {
-		return (
-			<div ref={ref} data-chat-ui className={cn("relative h-full overflow-hidden flex flex-col min-h-0", className)}>
-				<WorkPanelLayout>
-					<AnimatePresence mode="wait">
-						{isEmpty && welcomeScreen ? (
-							<motion.div
-								key="welcome"
-								initial={{ opacity: 0 }}
-								animate={{ opacity: 1 }}
-								exit={{ opacity: 0 }}
-								transition={{ duration: 0.2 }}
-								className="flex-1 flex flex-col overflow-hidden min-h-0">
-								{header}
-								{welcomeScreen}
-							</motion.div>
-						) : (
-							<motion.div
-								key="active"
-								initial={{ opacity: 0 }}
-								animate={{ opacity: 1 }}
-								exit={{ opacity: 0 }}
-								transition={{ duration: 0.2 }}
-								className="flex-1 flex flex-col overflow-hidden min-h-0">
-								{header}
-
-								{/* Message list */}
-								<motion.div
-									initial={{ opacity: 0 }}
-									animate={{ opacity: 1 }}
-									transition={{ duration: 0.2, delay: 0.05 }}
-									className="flex-1 overflow-hidden flex flex-col min-h-0">
-									{messageList}
-								</motion.div>
-
-								{/* Footer + Composer: floating over messages */}
-								<motion.div
-									initial={{ opacity: 0, y: 8 }}
-									animate={{ opacity: 1, y: 0 }}
-									transition={{ duration: 0.2, delay: 0.1 }}
-									className="relative z-10 shrink-0">
-									{footer}
-									{composer}
-								</motion.div>
-							</motion.div>
-						)}
-					</AnimatePresence>
-				</WorkPanelLayout>
-			</div>
-		);
-	},
+  (
+    {
+      isEmpty,
+      header,
+      welcomeScreen,
+      messageList,
+      composer,
+      footer,
+      className,
+      showComposerOnWelcome = false,
+    },
+    ref,
+  ) => (
+    <div
+      ref={ref}
+      data-chat-ui
+      data-welcome-composer={
+        (isEmpty && !!welcomeScreen && showComposerOnWelcome) || undefined
+      }
+      className={cn(
+        "chat-workspace relative h-full overflow-hidden flex flex-col min-h-0",
+        className,
+      )}
+    >
+      <WorkPanelLayout>
+        {header}
+        <div className="chat-workspace-body">
+          {isEmpty && welcomeScreen ? welcomeScreen : messageList}
+        </div>
+        {(!isEmpty || !welcomeScreen || showComposerOnWelcome) && (
+          <div className="chat-workspace-bottom">
+            {footer}
+            {composer}
+          </div>
+        )}
+      </WorkPanelLayout>
+    </div>
+  ),
 );
-
 ChatLayout.displayName = "ChatLayout";

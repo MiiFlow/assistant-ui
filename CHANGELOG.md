@@ -4,12 +4,67 @@
 
 ### Behavior changes
 
+- Clarification question tabs are removed; a centered, fixed-width section of
+  the footer top border shows unnumbered steps, completed answers and the current question.
+  The progress list stays non-interactive and names each step for assistive technology. Answer
+  controls are native radios and checkboxes: arrows choose within a radio group,
+  Tab moves between checkbox choices, and Space/Enter selects. Selecting no longer
+  advances automatically; use Previous/Next or Enter in the text field.
+  This keeps keyboard focus predictable and leaves room for additional text.
+  Hosts querying toggle buttons must use the radio/checkbox roles and checked state.
+
+- Clarification uses the shared work-item card and can expand into the result
+  panel without losing answers or the current question. Inline-only hosts stay
+  supported; optional `feedback` travels with the question into the panel.
+  `WorkItemHeader` provides common card identity/navigation, and
+  `WorkPanelActions` places domain actions in the persistent panel footer (or
+  inline without a panel). `WorkPanel` accepts a `label` and opt-in `keepMounted`
+  to retain editor state after first opening. Retained panels are hidden/inert;
+  hosts must key editors by their domain target, and unmount them on scope change.
+
+- Clarification answers remain visible until the host accepts the submission or
+  replaces the prompt. Hosts should key the panel by prompt identity/revision.
+  `ActionSubmission` and `InteractionActionRequest` provide a shared acceptance
+  lifecycle and action envelope for host continuation adapters, including
+  unchanged retry keys after uncertain responses.
+
+- Composers with `@` or `/` providers expose Add context and Skills controls,
+  sharing the keyboard picker and token format. The default picker adapts to
+  the host theme and viewport, with loading, empty, error and keyboard retry
+  states. Providers can expose optional `loading`, `error` and `retry` metadata.
+  `CommandProvider.fetch` now returns `CommandFetchResult`: either the existing
+  command array or `{ commands, error? }` for partial results. Provider
+  implementations returning arrays remain valid. Direct callers must normalize
+  with `Array.isArray(result) ? result : result.commands` and handle `result.error`
+  on the object form; callers that assume an array must migrate before upgrading.
+  `composerRef` exposes `appendText` and `focus` for editable starter prompts;
+  the existing forwarded DOM ref is unchanged. Rejected sends retain chip labels.
+- Expanded native results replace their transcript controls with compact
+  references. Filters, four-item pages, media consent and panel scroll survive
+  opening and closing. Product selections have removable chips, explicit
+  comparison requirements and a persistent panel footer; comparison moves focus
+  to the saved table. `WorkPanel` also accepts optional footer and content-scroll
+  props for hosts that need persistent actions.
+- Shared welcome, composer and result-panel styling now uses semantic host colors,
+  a branded glow, elevated input and responsive touch targets. Welcome suggestions
+  also accept `{ message, title, description?, icon? }`, with an optional `emblem`
+  slot for the brand mark. Existing string suggestions remain supported. Intro welcomes use
+  `WelcomeScreen layout="intro"` with `ChatLayout showComposerOnWelcome` to retain
+  the bottom composer; centered layouts keep their existing composition.
+- The built-in welcome input now uses `MessageComposer`. It retains text/files
+  when an async send rejects or returns `{ accepted: false }`, and applies the
+  same file-type/size validation as the active composer. Attachments remain
+  opt-in on `WelcomeScreen`; synchronous callbacks remain supported.
+
 - Legacy visualization form hosts must return `{ accepted: true }` only after
   accepting a submission (or `{ accepted: false }` / throw on rejection).
   `VisualizationActionHandler` no longer accepts `void`; migrate existing
   callbacks before upgrading. The unacknowledged `visualization-form-submit`
   window-event fallback is removed. Missing acknowledgement never reports success.
-- Native interactions are opt-in per request and require a server rollout flag.
+- Native interaction creation is enabled on the server by default. Set
+  `NATIVE_INTERACTIONS_ENABLED=false` as a kill switch for new creation; existing
+  result reads, actions and rendering remain available. Clients still advertise
+  support per request:
   `useMiiflowChat({ nativeInteractions: true })` advertises v1 support only when
   the host mounts the renderer and an authenticated `InteractionProvider`.
   Existing widgets remain on their current visualization tools by default.

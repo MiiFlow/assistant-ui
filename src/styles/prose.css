@@ -316,15 +316,15 @@
 	border: 1px solid color-mix(in srgb, var(--chat-text) 12%, transparent);
 }
 
-/* Inverted (user bubble on the primary fill): the text-derived mixes
-   above would resolve dark against a saturated background. */
+/* User bubbles derive decoration from their own foreground, whether the host
+   uses a saturated brand fill or a neutral surface. */
 .chat-prose.prose-invert li::marker {
-	color: rgba(255, 255, 255, 0.6);
+	color: color-mix(in srgb, var(--chat-user-message-text, #ffffff) 60%, transparent);
 }
 
 .chat-prose.prose-invert a {
 	color: inherit;
-	text-decoration-color: rgba(255, 255, 255, 0.5);
+	text-decoration-color: color-mix(in srgb, var(--chat-user-message-text, #ffffff) 50%, transparent);
 }
 
 .chat-prose.prose-invert a:hover {
@@ -332,13 +332,13 @@
 }
 
 .chat-prose.prose-invert blockquote {
-	border-left-color: rgba(255, 255, 255, 0.3);
-	color: rgba(255, 255, 255, 0.85);
+	border-left-color: color-mix(in srgb, var(--chat-user-message-text, #ffffff) 30%, transparent);
+	color: color-mix(in srgb, var(--chat-user-message-text, #ffffff) 85%, transparent);
 }
 
 .chat-prose.prose-invert :not(pre) > code {
-	background: rgba(255, 255, 255, 0.16);
-	border-color: rgba(255, 255, 255, 0.22);
+	background: color-mix(in srgb, var(--chat-user-message-text, #ffffff) 16%, transparent);
+	border-color: color-mix(in srgb, var(--chat-user-message-text, #ffffff) 22%, transparent);
 }
 
 /* Compact variant for markdown nested inside visualization cards and

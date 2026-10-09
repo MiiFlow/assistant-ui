@@ -1,10 +1,27 @@
-import { forwardRef, useCallback, useRef, useState, useEffect } from "react";
-import { ArrowUp, X, FileText, Image, Loader2, AlertCircle, Square } from "lucide-react";
+import {
+  forwardRef,
+  useCallback,
+  useRef,
+  useState,
+  useEffect,
+  useImperativeHandle,
+  type Ref,
+} from "react";
+import {
+  ArrowUp,
+  X,
+  FileText,
+  Image,
+  Loader2,
+  AlertCircle,
+  Square,
+} from "lucide-react";
 import { cn } from "../utils/cn";
 import {
   LexicalChatInput,
   type CommandProvider,
   type LexicalChatInputHandle,
+  type ChatComposerToken,
 } from "../composer";
 import { ComposerToolbar } from "./ComposerToolbar";
 
@@ -132,20 +149,28 @@ function AttachmentBar({
             ) : isError ? (
               <AlertCircle size={14} className="flex-shrink-0" />
             ) : isImage && att.previewUrl ? (
-              <img src={att.previewUrl} alt={att.file.name} className="w-5 h-5 rounded object-cover" />
+              <img
+                src={att.previewUrl}
+                alt={att.file.name}
+                className="w-5 h-5 rounded object-cover"
+              />
             ) : isImage ? (
               <Image size={14} className="flex-shrink-0" />
             ) : (
               <FileText size={14} className="flex-shrink-0" />
             )}
-            <span className="truncate" title={isError ? att.error : att.file.name}>
+            <span
+              className="truncate"
+              title={isError ? att.error : att.file.name}
+            >
               {isError ? att.error : att.file.name}
             </span>
             {!disabled && (
               <button
                 type="button"
                 onClick={() => onRemove(att.id)}
-                className="flex-shrink-0 ml-0.5 p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-600 transition-colors"
+                aria-label={`Remove ${att.file.name}`}
+                className="chat-composer-remove flex-shrink-0 ml-0.5 p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-600 transition-colors"
               >
                 <X size={12} />
               </button>
@@ -161,7 +186,14 @@ function AttachmentBar({
 // Main component
 // ============================================================================
 
+export type MessageComposerHandle = Pick<
+  LexicalChatInputHandle,
+  "appendText" | "focus"
+>;
+
 export interface MessageComposerProps {
+  /** Draft actions for host starter cards; the forwarded ref remains the root DOM element. */
+  composerRef?: Ref<MessageComposerHandle>;
   /** Callback when message is submitted */
   /**
    * Resolves once the message is ACCEPTED. A host that rejects the send (an
@@ -194,7 +226,7 @@ export interface MessageComposerProps {
   className?: string;
   /** Whether a message is currently being submitted */
   isSubmitting?: boolean;
-  /** Centered/welcome mode: bigger radius, more padding, nicer shadow (used inside WelcomeScreen) */
+  /** Centered/welcome mode: the host owns the outer spacing. */
   centered?: boolean;
   /** Whether assistant is currently streaming a response */
   isStreaming?: boolean;
@@ -230,6 +262,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       onStopStreaming,
       commandProvider,
       commandProviders,
+      composerRef,
     },
     ref,
   ) => {
@@ -238,15 +271,52 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     const [isDragOver, setIsDragOver] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const inputRef = useRef<LexicalChatInputHandle>(null);
+    const tokenLabels = useRef(new Map<string, string>());
+    const resolveTokenLabel = useCallback(
+      (id: string, kind: string) => tokenLabels.current.get(`${kind}:${id}`),
+      [],
+    );
+    const handleChange = useCallback(
+      ({ text, tokens }: { text: string; tokens: ChatComposerToken[] }) => {
+        for (const token of tokens)
+          tokenLabels.current.set(`${token.kind}:${token.id}`, token.label);
+        setHasText(text.trim().length > 0);
+      },
+      [],
+    );
     const dragCounterRef = useRef(0);
     const isSubmittingRef = useRef(false);
+
+    useImperativeHandle(
+      composerRef,
+      () => ({
+        appendText: (text) => {
+          if (
+            !disabled &&
+            !isSubmitting &&
+            !isSubmittingRef.current &&
+            !isStreaming
+          )
+            inputRef.current?.appendText(text);
+        },
+        focus: () => inputRef.current?.focus(),
+      }),
+      [disabled, isSubmitting, isStreaming],
+    );
+
+    const providers = commandProviders?.length
+      ? commandProviders
+      : commandProvider
+        ? [commandProvider]
+        : [];
 
     const isSubmitDisabled = disabled || isSubmitting;
     const isAnyUploading = attachments.some((a) => a.status === "uploading");
     const uploadedIds = attachments
       .filter((a) => a.status === "uploaded" && a.attachmentId)
       .map((a) => a.attachmentId!);
-    const hasAttachments = uploadedIds.length > 0 || attachments.some((a) => a.status === "pending");
+    const hasAttachments =
+      uploadedIds.length > 0 || attachments.some((a) => a.status === "pending");
     const hasContent = hasText || hasAttachments;
 
     const processFiles = useCallback(
@@ -288,7 +358,8 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                     ? {
                         ...a,
                         status: "error" as const,
-                        error: err instanceof Error ? err.message : "Upload failed",
+                        error:
+                          err instanceof Error ? err.message : "Upload failed",
                       }
                     : a,
                 ),
@@ -311,7 +382,8 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         // click). `onSubmit` must resolve once the message is accepted — if a
         // host holds it open for the whole response, this latch becomes a lock
         // on every conversation the composer is reused for.
-        if (isSubmitDisabled || isAnyUploading || isSubmittingRef.current) return;
+        if (isSubmitDisabled || isAnyUploading || isSubmittingRef.current)
+          return;
         isSubmittingRef.current = true;
 
         const rawFiles = attachments
@@ -333,7 +405,10 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
           const result =
             onUploadFile && uploadedIds.length > 0
               ? await onSubmit(text, undefined, uploadedIds)
-              : await onSubmit(text, rawFiles.length > 0 ? rawFiles : undefined);
+              : await onSubmit(
+                  text,
+                  rawFiles.length > 0 ? rawFiles : undefined,
+                );
           // A rejected send resolves rather than throwing, so without this the
           // text and files were cleared for a message that never went.
           if (result && result.accepted === false) {
@@ -345,7 +420,16 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
           isSubmittingRef.current = false;
         }
       },
-      [attachments, hasContent, isSubmitDisabled, isAnyUploading, isStreaming, onSubmit, onUploadFile, uploadedIds],
+      [
+        attachments,
+        hasContent,
+        isSubmitDisabled,
+        isAnyUploading,
+        isStreaming,
+        onSubmit,
+        onUploadFile,
+        uploadedIds,
+      ],
     );
 
     const handleSendButtonClick = useCallback(() => {
@@ -392,17 +476,20 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       [supportsAttachments, isSubmitting, processFiles],
     );
 
-    const handleRemoveAttachment = useCallback((id: string) => {
-      setAttachments((prev) => {
-        const removed = prev.find((a) => a.id === id);
-        if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
-        // Clean up backend-side metadata for uploaded attachments
-        if (removed?.attachmentId && onRemoveUploadedAttachment) {
-          onRemoveUploadedAttachment(removed.attachmentId);
-        }
-        return prev.filter((a) => a.id !== id);
-      });
-    }, [onRemoveUploadedAttachment]);
+    const handleRemoveAttachment = useCallback(
+      (id: string) => {
+        setAttachments((prev) => {
+          const removed = prev.find((a) => a.id === id);
+          if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+          // Clean up backend-side metadata for uploaded attachments
+          if (removed?.attachmentId && onRemoveUploadedAttachment) {
+            onRemoveUploadedAttachment(removed.attachmentId);
+          }
+          return prev.filter((a) => a.id !== id);
+        });
+      },
+      [onRemoveUploadedAttachment],
+    );
 
     // Drag & drop handlers
     const handleDragEnter = useCallback(
@@ -462,13 +549,15 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       <div
         ref={ref}
         className={cn(
-          "flex-shrink-0",
-          centered
-            ? "p-0 bg-transparent"
-            : "px-3 pb-3",
+          "chat-message-composer flex-shrink-0",
+          centered ? "p-0 bg-transparent" : "px-3 pb-3",
           className,
         )}
-        style={centered ? { padding: 0, background: "transparent", border: "none" } : undefined}
+        style={
+          centered
+            ? { padding: 0, background: "transparent", border: "none" }
+            : undefined
+        }
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
@@ -478,11 +567,11 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
           className={cn(
             "mx-auto max-w-[900px]",
             "chat-composer-shell group",
-            centered ? "overflow-hidden" : "rounded-xl",
+            centered && "overflow-hidden",
             isDragOver &&
               "ring-2 ring-[var(--chat-primary,#106997)] border-[var(--chat-primary,#106997)]",
           )}
-          style={centered ? { borderRadius: "1rem", overflow: "hidden" } : undefined}
+          style={centered ? { overflow: "hidden" } : undefined}
         >
           {/* Drag overlay */}
           {isDragOver && (
@@ -494,19 +583,21 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
           )}
 
           {/* Attachment previews */}
-          <AttachmentBar attachments={attachments} onRemove={handleRemoveAttachment} disabled={isSubmitting} />
+          <AttachmentBar
+            attachments={attachments}
+            onRemove={handleRemoveAttachment}
+            disabled={isSubmitting}
+          />
 
           {/* Text row */}
           <div
-            className={cn(
-              centered ? "px-4 pt-3.5" : "px-3 pt-2.5",
-              attachments.length > 0 && "pt-1.5",
-            )}
+            className={cn("px-4 pt-3.5", attachments.length > 0 && "pt-1.5")}
             onPaste={handlePaste}
           >
             <LexicalChatInput
               ref={inputRef}
               placeholder={placeholder}
+              placeholderClassName="!text-[var(--chat-placeholder)]"
               disabled={isSubmitDisabled}
               commandProvider={commandProvider ?? null}
               commandProviders={commandProviders}
@@ -515,38 +606,41 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                 "text-gray-900 dark:text-zinc-100",
                 "placeholder:text-gray-400 dark:placeholder:text-zinc-500",
               )}
-              onChange={({ text }) => setHasText(text.trim().length > 0)}
+              onChange={handleChange}
+              resolveTokenLabel={resolveTokenLabel}
               onSubmit={({ text }) => submitWithText(text)}
             />
           </div>
 
           {/* Toolbar row */}
           <ComposerToolbar
-            className={centered ? "px-2.5 pb-2.5 pt-1" : "px-2 pb-2 pt-1"}
-            onAttachClick={supportsAttachments ? () => fileInputRef.current?.click() : undefined}
-            disabled={isSubmitting}
+            className="px-2.5 pb-2.5 pt-2"
+            onAttachClick={
+              supportsAttachments
+                ? () => fileInputRef.current?.click()
+                : undefined
+            }
+            onContextClick={
+              providers.some((provider) => provider.trigger === "@")
+                ? () => inputRef.current?.insertTrigger("@")
+                : undefined
+            }
+            onSkillsClick={
+              providers.some((provider) => (provider.trigger ?? "/") === "/")
+                ? () => inputRef.current?.insertTrigger("/")
+                : undefined
+            }
+            disabled={isSubmitDisabled}
             endSlot={
               isStreaming && onStopStreaming ? (
-                <div className="relative flex-shrink-0 w-8 h-8">
-                  {/* Pulsing background glow */}
-                  <span className="absolute inset-0 rounded-lg bg-gray-400 dark:bg-zinc-400"
-                    style={{ animation: "streaming-flash 3s ease-in-out infinite" }}
-                  />
-                  <button
-                    type="button"
-                    onClick={onStopStreaming}
-                    aria-label="Stop generating"
-                    className={cn(
-                      "relative w-full h-full rounded-lg",
-                      "flex items-center justify-center",
-                      "bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900",
-                      "hover:bg-gray-700 dark:hover:bg-zinc-300",
-                      "transition-colors duration-200",
-                    )}
-                  >
-                    <Square size={14} fill="currentColor" />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={onStopStreaming}
+                  aria-label="Stop generating"
+                  className="chat-composer-action"
+                >
+                  <Square size={14} fill="currentColor" />
+                </button>
               ) : (
                 <button
                   type="button"
@@ -554,21 +648,20 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                   // `isStreaming` matters here only for hosts that pass it
                   // without `onStopStreaming` (no Stop button to swap in) —
                   // without it the button would look live but silently no-op.
-                  disabled={!hasContent || isSubmitDisabled || isAnyUploading || isStreaming}
+                  disabled={
+                    !hasContent ||
+                    isSubmitDisabled ||
+                    isAnyUploading ||
+                    isStreaming
+                  }
                   aria-label="Send message"
-                  className={cn(
-                    "flex-shrink-0",
-                    "w-8 h-8 rounded-lg",
-                    "flex items-center justify-center",
-                    "bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900",
-                    "shadow-sm",
-                    "hover:bg-gray-700 dark:hover:bg-zinc-300",
-                    "active:scale-95",
-                    "disabled:bg-gray-200 dark:disabled:bg-zinc-700 disabled:text-gray-400 dark:disabled:text-zinc-500 disabled:shadow-none disabled:cursor-not-allowed",
-                    "transition-[background-color,color,transform] duration-150",
-                  )}
+                  className="chat-composer-action"
                 >
-                  {isSubmitting || isAnyUploading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} />}
+                  {isSubmitting || isAnyUploading ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <ArrowUp size={16} />
+                  )}
                 </button>
               )
             }

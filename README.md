@@ -784,11 +784,12 @@ Beyond `useMiiflowChat`: session helpers (`initSession`, `createThread`, `upload
 
 ### Native interactions and form acknowledgements
 
-Native interaction creation is opt-in. Only set `nativeInteractions: true` in
+Package hosts opt in to native interactions. Only set `nativeInteractions: true` in
 `useMiiflowChat` after mounting the native renderer and a thread-scoped
 `InteractionProvider` with an authenticated `InteractionTransport`. Old hosts
-omit it; the server additionally requires `NATIVE_INTERACTIONS_ENABLED=true` and
-the visualization tool group. Disabling creation does not remove existing results.
+omit it. Server creation defaults on and still requires the visualization tool
+group. Set `NATIVE_INTERACTIONS_ENABLED=false` as a kill switch for new creation;
+existing result reads, actions and rendering remain available.
 
 `onVisualizationAction` must return `{ accepted: true }` after delivery is
 accepted, or `{ accepted: false }` / throw on rejection. A `void` handler is no

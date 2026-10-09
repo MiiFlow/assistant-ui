@@ -50,8 +50,6 @@ const tagStyle: CSSProperties = {
   alignItems: "center",
   fontSize: 10,
   fontWeight: 700,
-  letterSpacing: 0.5,
-  textTransform: "uppercase",
   padding: "2px 5px",
   borderRadius: 3,
   background: TAG_BG,
@@ -72,15 +70,29 @@ export function CommandTokenView({
   htmlId,
 }: CommandTokenViewProps) {
   const display = label ?? id;
+  const kindLabel =
+    (
+      {
+        "ad-account": "Account",
+        "data-table": "Table",
+        skill: "Skill",
+        guideline: "Guideline",
+        action: "Action",
+      } as Record<string, string>
+    )[kind] ?? kind;
 
   // When the caller supplies a tag node (e.g. a platform logo for an
   // ad-account chip), render it raw — no uppercase pill background. The
   // default kind text still uses tagStyle.
   const tagNode =
     tag !== undefined ? (
-      <span style={{ display: "inline-flex", flexShrink: 0, alignItems: "center" }}>{tag}</span>
+      <span
+        style={{ display: "inline-flex", flexShrink: 0, alignItems: "center" }}
+      >
+        {tag}
+      </span>
     ) : (
-      <span style={tagStyle}>{kind}</span>
+      <span style={tagStyle}>{kindLabel}</span>
     );
 
   if (variant === "chip") {
@@ -89,7 +101,7 @@ export function CommandTokenView({
         data-chat-command-chip="true"
         data-command-id={id}
         data-command-kind={kind}
-        title={`${kind}: ${id}`}
+        title={`${kindLabel}: ${display}`}
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -146,7 +158,7 @@ export function CommandTokenView({
         }
       }}
     >
-      <span style={tagStyle}>{kind}</span>
+      <span style={tagStyle}>{kindLabel}</span>
       {icon && (
         <span style={{ display: "inline-flex", flexShrink: 0 }}>{icon}</span>
       )}

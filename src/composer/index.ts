@@ -3,6 +3,7 @@ export type {
   ChatComposerToken,
   ChatComposerSubmitPayload,
   CommandProvider,
+  CommandFetchResult,
 } from "./types";
 
 export {

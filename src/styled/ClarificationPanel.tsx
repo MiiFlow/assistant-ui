@@ -1,8 +1,29 @@
-import { useState, useCallback, useMemo, useRef, useEffect, useId } from "react";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, HelpCircle, Send } from "lucide-react";
+import {
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  useEffect,
+  useId,
+  type ReactNode,
+} from "react";
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  HelpCircle,
+  Send,
+} from "lucide-react";
+import { WorkPanel, useWorkPanel } from "../interactions/WorkPanel";
+import { WorkItemHeader } from "../interactions/WorkItemHeader";
 import { cn } from "../utils/cn";
 import { MarkdownContent } from "./MarkdownContent";
-import type { ClarificationAnswer, ClarificationData, ClarificationQuestion } from "../types";
+import type {
+  ClarificationAnswer,
+  ClarificationData,
+  ClarificationQuestion,
+} from "../types";
 
 export interface ClarificationPanelProps {
   clarification: ClarificationData;
@@ -23,6 +44,8 @@ export interface ClarificationPanelProps {
    * shows what was answered.
    */
   answer?: string;
+  /** Submission/retry feedback follows the questions into the work panel. */
+  feedback?: ReactNode;
 }
 
 /**
@@ -58,7 +81,10 @@ function resolveQuestions(c: ClarificationData): ClarificationQuestion[] {
  * value when present. Free text is ADDITIVE — the user can pick an option,
  * type their own, or both ("Brand only" + a couple of extra keywords).
  */
-function resolveSelected(picked: string[], typed: string | undefined): string[] {
+function resolveSelected(
+  picked: string[],
+  typed: string | undefined,
+): string[] {
   const t = (typed || "").trim();
   return t ? [...picked, t] : picked;
 }
@@ -94,7 +120,7 @@ function formatAnswer(
 
 /**
  * Clarification panel — displays when the agent needs the user to pick from
- * one or more multiple-choice questions. Orange left-border panel.
+ * one or more questions, inline or in the shared interaction workspace.
  *
  * If `answer` is provided, switches to a read-only "answered" view.
  */
@@ -106,33 +132,29 @@ export function ClarificationPanel({
   loading = false,
   className,
   answer,
+  feedback,
 }: ClarificationPanelProps) {
-  const questions = useMemo(() => resolveQuestions(clarification), [clarification]);
+  const questions = useMemo(
+    () => resolveQuestions(clarification),
+    [clarification],
+  );
   const [selections, setSelections] = useState<Record<number, string[]>>({});
   const [freeText, setFreeText] = useState<Record<number, string>>({});
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeQuestion, setActiveQuestion] = useState(0);
   const isAnswered = typeof answer === "string" && answer.length > 0;
   const id = useId();
-  const active = Math.min(activeTab, questions.length - 1);
+  const panel = useWorkPanel();
+  const panelId = `clarification:${id}`;
+  const expanded = panel?.activeId === panelId;
+  const active = Math.min(activeQuestion, questions.length - 1);
   const questionRef = useRef<HTMLDivElement>(null);
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const focusQuestion = useRef(false);
-  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const cancelAdvance = useCallback(() => {
-    if (advanceTimer.current) clearTimeout(advanceTimer.current);
-    advanceTimer.current = null;
-  }, []);
-
-  useEffect(() => {
-    cancelAdvance();
-    return cancelAdvance;
-  }, [cancelAdvance, clarification, disabled, loading, isAnswered]);
-
   const focusFirstAnswer = useCallback(() => {
-    questionRef.current
-      ?.querySelector<HTMLElement>("button:not(:disabled), input:not(:disabled)")
-      ?.focus();
+    const question = questionRef.current;
+    const answer =
+      question?.querySelector<HTMLElement>("input:checked:not(:disabled)") ??
+      question?.querySelector<HTMLElement>("input:not(:disabled)");
+    answer?.focus();
   }, []);
 
   useEffect(() => {
@@ -144,21 +166,20 @@ export function ClarificationPanel({
 
   const showQuestion = useCallback(
     (index: number, moveFocus = false) => {
-      cancelAdvance();
       focusQuestion.current = moveFocus;
-      setActiveTab(index);
+      setActiveQuestion(index);
       if (moveFocus && index === active) {
         focusFirstAnswer();
         focusQuestion.current = false;
       }
     },
-    [active, cancelAdvance, focusFirstAnswer],
+    [active, focusFirstAnswer],
   );
 
   /**
    * A question counts as answered by picking options, typing a custom value,
-   * or both. Submit already used this rule while the counter, the tab tick and
-   * auto-advance each looked at selections only, so a free-text-only answer
+   * or both. Submit already used this rule while the counter, the progress marker and
+   * navigation each looked at selections only, so a free-text-only answer
    * enabled Submit while still being reported as unanswered (BUG-070).
    */
   const isQuestionAnswered = useCallback(
@@ -191,7 +212,6 @@ export function ClarificationPanel({
   const toggle = useCallback(
     (qIndex: number, option: string, multi: boolean) => {
       if (disabled || loading) return;
-      cancelAdvance();
       const current = selections[qIndex] || [];
       const next = multi
         ? current.includes(option)
@@ -201,29 +221,29 @@ export function ClarificationPanel({
       const updated = { ...selections, [qIndex]: next };
       setSelections(updated);
       if (next.includes(option)) onOptionSelect?.(option);
-      // Preserve single-choice auto-advance, but let Tab/Shift+Tab cancel it
-      // so a delayed transition cannot steal focus from the user's next control.
-      if (!multi) {
-        advanceTimer.current = setTimeout(() => {
-          advanceFrom(qIndex, updated, !!questionRef.current?.contains(document.activeElement));
-        }, 250);
-      }
     },
-    [disabled, loading, cancelAdvance, selections, onOptionSelect, advanceFrom],
+    [disabled, loading, selections, onOptionSelect],
   );
 
-  const allAnswered = questions.length > 0 && questions.every((_, i) => isQuestionAnswered(i));
+  const allAnswered =
+    questions.length > 0 && questions.every((_, i) => isQuestionAnswered(i));
 
   const submit = useCallback(() => {
     if (!onSubmit || !allAnswered || disabled || loading) return;
-    cancelAdvance();
     const text = formatAnswer(questions, selections, freeText);
     const structured = buildStructuredAnswers(questions, selections, freeText);
-    setSelections({});
-    setFreeText({});
-    setActiveTab(0);
+    // The host owns acceptance. Keep the answer until it replaces this prompt;
+    // a rejected or interrupted send must not discard the person's work.
     onSubmit(text, structured);
-  }, [onSubmit, allAnswered, disabled, loading, cancelAdvance, questions, selections, freeText]);
+  }, [
+    onSubmit,
+    allAnswered,
+    disabled,
+    loading,
+    questions,
+    selections,
+    freeText,
+  ]);
 
   const focusStyle =
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 dark:focus-visible:outline-gray-100";
@@ -264,7 +284,6 @@ export function ClarificationPanel({
 
   if (questions.length === 0) return null;
 
-  const accent = "var(--chat-clarification-accent,#f97316)";
   const multiQuestion = questions.length > 1;
 
   const renderQuestion = (qi: number) => {
@@ -280,70 +299,68 @@ export function ClarificationPanel({
             </span>
           ) : null}
           <div id={`${id}-question-${qi}`} className="flex-1 min-w-0">
-            <MarkdownContent className="text-sm font-medium">{q.question}</MarkdownContent>
+            <MarkdownContent className="clarification-question">
+              {q.question}
+            </MarkdownContent>
           </div>
         </div>
-        <p id={`${id}-instructions-${qi}`} className="sr-only">
-          {q.options.length > 0 ? (
-            <>
-              {multi ? "Choose one or more options." : "Choose one option."}
-              {!multi && multiQuestion && " Selecting an option advances to the next question."}
-              {
-                " Use Tab to move between answers and Enter or Space to select. You can also type your own answer."
-              }
-            </>
-          ) : (
-            "Type your answer."
-          )}
-          {" Press Enter in the text field to continue or submit when all questions are answered."}
-        </p>
-        <div
-          role="group"
-          aria-labelledby={`${id}-question-${qi}`}
-          aria-describedby={`${id}-instructions-${qi}`}
-          className="ml-5 space-y-1"
+        <p
+          id={`${id}-instructions-${qi}`}
+          className="clarification-instructions"
         >
-          {q.options.map((option, oi) => {
-            const selected = picked.includes(option);
-            return (
-              <button
-                key={oi}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => toggle(qi, option, multi)}
-                disabled={disabled || loading}
-                className={cn(
-                  "flex w-full items-center gap-2 py-0.5 cursor-pointer text-left text-sm rounded px-1 -mx-1 disabled:cursor-default",
-                  "hover:bg-[color-mix(in_oklab,var(--chat-clarification-accent,#f97316)_18%,transparent)]",
-                  focusStyle,
-                )}
-              >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "flex w-3.5 h-3.5 shrink-0 items-center justify-center border",
-                    multi ? "rounded-sm" : "rounded-full",
-                    selected
-                      ? "border-transparent text-white"
-                      : "border-gray-400 dark:border-gray-500",
-                  )}
-                  style={selected ? { backgroundColor: accent } : undefined}
-                >
-                  {selected &&
-                    (multi ? (
-                      <Check size={11} strokeWidth={3} />
-                    ) : (
-                      <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                    ))}
-                </span>
-                {option}
-              </button>
-            );
-          })}
+          {q.options.length > 0
+            ? multi
+              ? "Choose one or more options."
+              : "Choose one option."
+            : "Type your answer below."}
+          <span className="sr-only">
+            {q.options.length > 0 &&
+              (multi
+                ? " Use Tab between options and Space or Enter to toggle a selection."
+                : " Use arrow keys to move and select within the options, or Space or Enter to select.")}
+            {
+              " You can also type your own answer. Press Enter in the text field to continue or submit when all questions are answered."
+            }
+          </span>
+        </p>
+        <div className="clarification-answers">
+          {q.options.length > 0 && (
+            <div
+              role={multi ? "group" : "radiogroup"}
+              aria-labelledby={`${id}-question-${qi}`}
+              aria-describedby={`${id}-instructions-${qi}`}
+              className="clarification-options"
+            >
+              {q.options.map((option, oi) => (
+                <label key={oi} className="clarification-option">
+                  <input
+                    type={multi ? "checkbox" : "radio"}
+                    name={`${id}-choice-${qi}`}
+                    value={option}
+                    checked={picked.includes(option)}
+                    onChange={() => toggle(qi, option, multi)}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Enter" &&
+                        !event.repeat &&
+                        !event.nativeEvent.isComposing
+                      ) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        event.currentTarget.click();
+                      }
+                    }}
+                    disabled={disabled || loading}
+                  />
+                  <span>{option}</span>
+                </label>
+              ))}
+            </div>
+          )}
           {/* Always-present free-text channel, ADDITIVE to the options: the
               user can pick a choice, type their own value, or combine both
               ("Brand only" + two extra keywords). Empty = ignored. */}
-          <div className="flex items-center gap-2 py-0.5 px-1 -mx-1 text-sm">
+          <div className="clarification-other">
             <label
               id={`${id}-other-label-${qi}`}
               htmlFor={`${id}-other-${qi}`}
@@ -357,9 +374,13 @@ export function ClarificationPanel({
               type="text"
               value={freeText[qi] || ""}
               placeholder={
-                picked.length > 0 ? "Add anything else… (optional)" : "Or type your own answer…"
+                picked.length > 0
+                  ? "Add anything else… (optional)"
+                  : "Or type your own answer…"
               }
-              onChange={(e) => setFreeText((prev) => ({ ...prev, [qi]: e.target.value }))}
+              onChange={(e) =>
+                setFreeText((prev) => ({ ...prev, [qi]: e.target.value }))
+              }
               onKeyDown={(e) => {
                 if (
                   e.key === "Enter" &&
@@ -389,17 +410,9 @@ export function ClarificationPanel({
     );
   };
 
-  return (
-    <div
-      onBlurCapture={cancelAdvance}
-      className={cn(
-        "mx-4 mb-3 px-4 py-3 font-sans",
-        "bg-[color-mix(in_oklab,var(--chat-clarification-accent,#f97316)_12%,transparent)]",
-        "border-l-[3px] border-[var(--chat-clarification-accent,#f97316)]",
-        "rounded-r-lg",
-        className,
-      )}
-    >
+  const body = (
+    <div className="clarification-body">
+      {feedback}
       {clarification.context ? (
         <div className="flex items-start gap-2 mb-2">
           <span className="text-[var(--chat-clarification-accent,#f97316)] mt-0.5 flex-shrink-0">
@@ -413,87 +426,50 @@ export function ClarificationPanel({
         </div>
       ) : null}
 
-      {/* Multiple questions render as tabs — one question per tab — so a long
-          set doesn't stack into a wall of radios. A single question renders
-          inline with no tab strip. */}
-      {multiQuestion ? (
-        <div
-          role="tablist"
-          aria-label="Clarification questions"
-          className="flex items-center gap-1 mb-2 border-b border-[color-mix(in_oklab,var(--chat-clarification-accent,#f97316)_30%,transparent)]"
-        >
-          {questions.map((_, qi) => {
-            const isActive = qi === active;
-            const isDone = isQuestionAnswered(qi);
-            return (
-              <button
-                key={qi}
-                ref={(element) => {
-                  tabRefs.current[qi] = element;
-                }}
-                type="button"
-                role="tab"
-                id={`${id}-tab-${qi}`}
-                aria-label={`Question ${qi + 1} of ${questions.length}${isDone ? ", answered" : ""}`}
-                aria-selected={isActive}
-                aria-controls={`${id}-panel-${qi}`}
-                tabIndex={isActive ? 0 : -1}
-                onClick={() => showQuestion(qi)}
-                onKeyDown={(e) => {
-                  let next: number;
-                  if (e.key === "ArrowRight") next = (qi + 1) % questions.length;
-                  else if (e.key === "ArrowLeft")
-                    next = (qi - 1 + questions.length) % questions.length;
-                  else if (e.key === "Home") next = 0;
-                  else if (e.key === "End") next = questions.length - 1;
-                  else return;
-                  e.preventDefault();
-                  showQuestion(next);
-                  tabRefs.current[next]?.focus();
-                }}
-                className={cn(
-                  "flex items-center gap-1 px-2.5 py-1 text-xs rounded-t -mb-px border-b-2 transition-colors",
-                  focusStyle,
-                  isActive
-                    ? "border-[var(--chat-clarification-accent,#f97316)] text-[var(--chat-clarification-accent,#f97316)] font-medium"
-                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200",
-                )}
-              >
-                {isDone ? (
-                  <Check
-                    size={11}
-                    strokeWidth={3}
-                    className="text-emerald-600 dark:text-emerald-500"
-                  />
-                ) : null}
-                <span>{qi + 1}</span>
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-
       {questions.map((_, qi) => (
         <div
           key={qi}
           ref={qi === active ? questionRef : undefined}
           id={`${id}-panel-${qi}`}
-          role={multiQuestion ? "tabpanel" : undefined}
-          aria-labelledby={multiQuestion ? `${id}-tab-${qi}` : undefined}
+          role="group"
+          aria-label={`Question ${qi + 1} of ${questions.length}`}
           hidden={qi !== active}
-          className="max-h-[50vh] overflow-y-auto pr-1"
+          className={expanded ? "" : "max-h-[50vh] overflow-y-auto pr-1"}
         >
           {renderQuestion(qi)}
         </div>
       ))}
-
-      <div className="mt-2 flex items-center justify-between gap-2">
+    </div>
+  );
+  const done = questions.filter((_, i) => isQuestionAnswered(i)).length;
+  const actions = (
+    <div className="clarification-footer" data-work-item>
+      {multiQuestion && (
+        <ol
+          className="clarification-progress"
+          aria-label="Question progress"
+          role="list"
+          // Reserve at most 40% for gaps, even with many questions.
+          style={{ columnGap: `min(4px, ${40 / questions.length}%)` }}
+        >
+          {questions.map((_, qi) => (
+            <li
+              key={qi}
+              aria-current={qi === active ? "step" : undefined}
+              aria-label={`Question ${qi + 1} of ${questions.length}, ${isQuestionAnswered(qi) ? "answered" : "unanswered"}`}
+              data-answered={isQuestionAnswered(qi)}
+            />
+          ))}
+        </ol>
+      )}
+      <div className="clarification-actions">
         {multiQuestion ? (
-          <span role="status" className="text-xs text-gray-500 dark:text-gray-400">
-            {(() => {
-              const done = questions.filter((_, i) => isQuestionAnswered(i)).length;
-              return `${done} of ${questions.length} answered`;
-            })()}
+          <span
+            role="status"
+            className="text-xs text-gray-500 dark:text-gray-400"
+          >
+            <span className="sr-only">Question {active + 1} of {questions.length}. </span>
+            {done} of {questions.length} answered
           </span>
         ) : (
           <span />
@@ -507,7 +483,7 @@ export function ClarificationPanel({
                 onClick={() => showQuestion(Math.max(0, active - 1), true)}
                 disabled={active === 0}
                 className={cn(
-                  "flex items-center justify-center w-6 h-6 rounded transition-colors",
+                  "work-item-icon flex items-center justify-center rounded transition-colors",
                   focusStyle,
                   active === 0
                     ? "text-gray-300 dark:text-gray-600 cursor-default"
@@ -519,10 +495,12 @@ export function ClarificationPanel({
               <button
                 type="button"
                 aria-label="Next question"
-                onClick={() => showQuestion(Math.min(questions.length - 1, active + 1), true)}
+                onClick={() =>
+                  showQuestion(Math.min(questions.length - 1, active + 1), true)
+                }
                 disabled={active === questions.length - 1}
                 className={cn(
-                  "flex items-center justify-center w-6 h-6 rounded transition-colors mr-1",
+                  "work-item-icon flex items-center justify-center rounded transition-colors mr-1",
                   focusStyle,
                   active === questions.length - 1
                     ? "text-gray-300 dark:text-gray-600 cursor-default"
@@ -538,7 +516,7 @@ export function ClarificationPanel({
             onClick={submit}
             disabled={!allAnswered || disabled || loading}
             className={cn(
-              "flex items-center gap-1 px-2 py-1 rounded text-sm transition-colors",
+              "work-item-primary",
               focusStyle,
               allAnswered
                 ? "text-[var(--chat-clarification-accent,#f97316)] hover:text-[var(--chat-clarification-accent-soft,#fdba74)]"
@@ -551,5 +529,46 @@ export function ClarificationPanel({
         </div>
       </div>
     </div>
+  );
+  return (
+    <section
+      data-work-item
+      className={cn(
+        "work-item-card clarification-work-item",
+        expanded && "interaction-reference",
+        className,
+      )}
+      aria-label="Clarification"
+    >
+      <WorkItemHeader
+        title="Your input"
+        label="CLARIFICATION"
+        summary={`${done} of ${questions.length} answered · Your reply continues the task`}
+        expanded={expanded}
+        onOpen={
+          panel
+            ? () => {
+                expanded ? panel.focus() : panel.open(panelId);
+              }
+            : undefined
+        }
+      />
+      {!expanded && (
+        <>
+          {body}
+          {actions}
+        </>
+      )}
+      <WorkPanel
+        id={panelId}
+        title="Your input"
+        label="Clarification"
+        footer={actions}
+      >
+        <div data-work-item className="clarification-work-item">
+          {body}
+        </div>
+      </WorkPanel>
+    </section>
   );
 }

@@ -6,7 +6,7 @@ export { ComposerToolbar } from "./ComposerToolbar";
 export { LoadingDots, type LoadingDotsProps } from "./LoadingDots";
 export { MarkdownContent, type MarkdownContentProps } from "./MarkdownContent";
 export { Message, useMessage, type MessageProps } from "./Message";
-export { MessageComposer, useComposer, type MessageComposerProps } from "./MessageComposer";
+export { MessageComposer, useComposer, type MessageComposerProps, type MessageComposerHandle } from "./MessageComposer";
 export { MessageList, type MessageListProps } from "./MessageList";
 export { StreamingText, type StreamingTextProps } from "./StreamingText";
 export { SuggestedActions, type SuggestedActionsProps } from "./SuggestedActions";
@@ -59,7 +59,7 @@ export { ToolStatusIndicator, type ToolStatusIndicatorProps, type ToolStatus } f
 
 // Layout components
 export { ChatLayout, type ChatLayoutProps } from "./ChatLayout";
-export { WelcomeScreen, type WelcomeScreenProps } from "./WelcomeScreen";
+export { WelcomeScreen, type WelcomeScreenProps, type WelcomeSuggestion } from "./WelcomeScreen";
 
 // Clarification panel
 export { ClarificationPanel, type ClarificationPanelProps } from "./ClarificationPanel";
@@ -183,7 +183,10 @@ export type {
 
 export { InteractionProvider, InteractionFailure, interactionSchema } from "../interactions/runtime";
 export type { InteractionSurface, InteractionRequest, InteractionTransport } from "../interactions/runtime";
-export { WorkPanel, useWorkPanel } from "../interactions/WorkPanel";
+export type { InteractionActionRequest, InteractionActionOutcome } from "../interactions/action-request";
+export { ActionSubmission } from "../interactions/action-submission";
+export { WorkPanel, WorkPanelActions, useWorkPanel } from "../interactions/WorkPanel";
+export { WorkItemHeader } from "../interactions/WorkItemHeader";
 
 export { submitVisualizationAction } from "../interactions/submit-action";
 

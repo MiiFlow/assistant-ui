@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { z } from "zod";
+import type { InteractionActionRequest } from "./action-request";
 
 const httpsUrl = z
   .string()
@@ -45,12 +46,9 @@ export const interactionSchema = z.object({
 });
 export type InteractionSurface = z.infer<typeof interactionSchema>;
 export type InteractionItem = InteractionSurface["data"]["items"][number];
-export interface InteractionRequest {
-  action: "select" | "compare";
-  payload: { ids: string[] } | Record<string, never>;
-  expectedRevision: number;
-  idempotencyKey: string;
-}
+export type InteractionRequest = InteractionActionRequest<
+  "select" | "compare", { ids: string[] } | Record<string, never>
+>;
 export interface InteractionTransport {
   load(id: string, signal: AbortSignal): Promise<InteractionSurface>;
   act(

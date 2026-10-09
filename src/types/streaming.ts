@@ -393,6 +393,8 @@ export interface FormVisualizationData {
  * host app's session and mutations. Hosts wire the button through `onAction`.
  */
 export interface AuthPromptVisualizationData {
+  /** Opaque identity of this persisted connection request, issued by the server. */
+  continuationId?: string;
   providerName: string;
   reason?: string;
   provider?: string;

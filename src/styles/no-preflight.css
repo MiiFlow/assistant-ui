@@ -4,6 +4,7 @@
  * Safe for use alongside MUI or other CSS frameworks that have their own reset.
  */
 @import "./tokens.css";
+@import "./workspace.css";
 @import "./prose.css";
 @import "../interactions/interactions.css";
 
@@ -142,21 +143,6 @@
 		background: rgba(255, 255, 255, 0.2);
 	}
 
-	/* Composer shell: shared chrome for all message inputs. Border and shadow
-	   lift gently on focus; vars keep it brandable per tenant. */
-	.chat-composer-shell {
-		border: 1px solid var(--chat-composer-border, rgba(29, 32, 51, 0.08));
-		background-color: var(--chat-composer-bg, #ffffff);
-		box-shadow: var(--chat-composer-shadow, 0 1px 2px rgba(29, 32, 51, 0.04), 0 8px 24px -12px rgba(29, 32, 51, 0.12));
-		transition:
-			border-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
-			box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
-	}
-
-	.chat-composer-shell:focus-within {
-		border-color: var(--chat-composer-border-focus, rgba(16, 105, 151, 0.35));
-		box-shadow: var(--chat-composer-shadow-focus, 0 2px 4px rgba(29, 32, 51, 0.05), 0 16px 40px -14px rgba(29, 32, 51, 0.2));
-	}
 
 }
 

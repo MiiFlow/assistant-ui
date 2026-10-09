@@ -1,11 +1,15 @@
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
-import { LexicalComposerContext, useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import {
+  LexicalComposerContext,
+  useLexicalComposerContext,
+} from "@lexical/react/LexicalComposerContext";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { usePrefersReducedMotion } from "../hooks/use-reduced-motion";
 import {
   $getRoot,
   $getSelection,
@@ -55,6 +59,10 @@ export interface LexicalChatInputHandle {
    * like "/" or "@" so the matching typeahead opens.
    */
   insertText: (text: string) => void;
+  /** Append a starting prompt without replacing the draft or its command chips. */
+  appendText: (text: string) => void;
+  /** Open a provider at the end of the draft with a valid trigger boundary. */
+  insertTrigger: (trigger: string) => void;
   /**
    * Replace the editor contents with the plain-text projection of an earlier
    * payload (`/id:kind` substrings become chips again) and reset history.
@@ -136,69 +144,70 @@ function readPayload(editor: LexicalEditor): ChatComposerSubmitPayload {
   return { text, tokens };
 }
 
-export const LexicalChatInput = forwardRef<LexicalChatInputHandle, LexicalChatInputProps>(
-  function LexicalChatInput(
-    {
-      placeholder = "Type a message...",
-      ariaLabel = "Message",
-      disabled = false,
-      className,
-      inputClassName,
-      placeholderClassName,
-      children,
-      onChange,
-      onSubmit,
-      submitOnEnter = true,
-      initialContent,
-      resolveTokenLabel,
-      commandProvider,
-      commandProviders,
-    },
-    ref,
-  ) {
-    const initialConfig = useMemo(
-      () => ({
-        namespace: "ChatComposer",
-        theme: EDITOR_THEME,
-        nodes: [CommandTokenNode],
-        editable: !disabled,
-        // Runs once inside the editor's first update — the one place initial
-        // content can be seeded without a flash of empty editor.
-        editorState: initialContent
-          ? () => $hydrateFromEncodedText(initialContent, resolveTokenLabel)
-          : undefined,
-        onError: (error: Error) => {
-          console.error("[chat-ui composer]", error);
-        },
-      }),
-      // The initial config can't change after mount; `disabled` is applied via editor.setEditable below.
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [],
-    );
-
-    return (
-      <LexicalComposer initialConfig={initialConfig}>
-        <ChatInputBody
-          placeholder={placeholder}
-          ariaLabel={ariaLabel}
-          disabled={disabled}
-          className={className}
-          inputClassName={inputClassName}
-          placeholderClassName={placeholderClassName}
-          onChange={onChange}
-          onSubmit={onSubmit}
-          submitOnEnter={submitOnEnter}
-          resolveTokenLabel={resolveTokenLabel}
-          commandProvider={commandProvider}
-          commandProviders={commandProviders}
-          imperativeHandle={ref}
-        >
-          {children}
-        </ChatInputBody>
-      </LexicalComposer>
-    );
+export const LexicalChatInput = forwardRef<
+  LexicalChatInputHandle,
+  LexicalChatInputProps
+>(function LexicalChatInput(
+  {
+    placeholder = "Type a message...",
+    ariaLabel = "Message",
+    disabled = false,
+    className,
+    inputClassName,
+    placeholderClassName,
+    children,
+    onChange,
+    onSubmit,
+    submitOnEnter = true,
+    initialContent,
+    resolveTokenLabel,
+    commandProvider,
+    commandProviders,
   },
-);
+  ref,
+) {
+  const initialConfig = useMemo(
+    () => ({
+      namespace: "ChatComposer",
+      theme: EDITOR_THEME,
+      nodes: [CommandTokenNode],
+      editable: !disabled,
+      // Runs once inside the editor's first update — the one place initial
+      // content can be seeded without a flash of empty editor.
+      editorState: initialContent
+        ? () => $hydrateFromEncodedText(initialContent, resolveTokenLabel)
+        : undefined,
+      onError: (error: Error) => {
+        console.error("[chat-ui composer]", error);
+      },
+    }),
+    // The initial config can't change after mount; `disabled` is applied via editor.setEditable below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  return (
+    <LexicalComposer initialConfig={initialConfig}>
+      <ChatInputBody
+        placeholder={placeholder}
+        ariaLabel={ariaLabel}
+        disabled={disabled}
+        className={className}
+        inputClassName={inputClassName}
+        placeholderClassName={placeholderClassName}
+        onChange={onChange}
+        onSubmit={onSubmit}
+        submitOnEnter={submitOnEnter}
+        resolveTokenLabel={resolveTokenLabel}
+        commandProvider={commandProvider}
+        commandProviders={commandProviders}
+        imperativeHandle={ref}
+      >
+        {children}
+      </ChatInputBody>
+    </LexicalComposer>
+  );
+});
 
 function ChatInputBody({
   placeholder,
@@ -219,10 +228,10 @@ function ChatInputBody({
   imperativeHandle: React.ForwardedRef<LexicalChatInputHandle>;
 }) {
   const [editor] = useLexicalComposerContext();
-  const prefersReducedMotion = useReducedMotion();
+  const prefersReducedMotion = usePrefersReducedMotion();
   const onSubmitRef = useRef(onSubmit);
   onSubmitRef.current = onSubmit;
-  const commandMenuOpenRef = useRef(false);
+  const openCommandMenus = useRef(new Set<string>());
 
   useEffect(() => {
     editor.setEditable(!disabled);
@@ -249,6 +258,33 @@ function ChatInputBody({
       },
       submit,
       focus: () => editor.focus(),
+      appendText: (text: string) => {
+        editor.focus(() =>
+          editor.update(() => {
+            const root = $getRoot();
+            const prefix = root.getTextContent().trim() ? "\n\n" : "";
+            root.selectEnd();
+            const selection = $getSelection();
+            if ($isRangeSelection(selection))
+              selection.insertRawText(prefix + text);
+          }),
+        );
+      },
+      insertTrigger: (trigger: string) => {
+        editor.focus(() =>
+          editor.update(() => {
+            const root = $getRoot();
+            const text = root.getTextContent();
+            root.selectEnd();
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              selection.insertText(
+                (text && !/\s$/.test(text) ? " " : "") + trigger,
+              );
+            }
+          }),
+        );
+      },
       setContent: (text: string) => {
         editor.update(() => {
           $hydrateFromEncodedText(text, resolveTokenLabel);
@@ -284,7 +320,7 @@ function ChatInputBody({
     return editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event) => {
-        if (commandMenuOpenRef.current) return false;
+        if (openCommandMenus.current.size > 0) return false;
         const keyboard = event as KeyboardEvent | null;
         if (keyboard?.shiftKey) return false;
         keyboard?.preventDefault();
@@ -295,9 +331,13 @@ function ChatInputBody({
     );
   }, [editor, submit, submitOnEnter]);
 
-  const handleCommandMenuStateChange = useCallback((isOpen: boolean) => {
-    commandMenuOpenRef.current = isOpen;
-  }, []);
+  const handleCommandMenuStateChange = useCallback(
+    (isOpen: boolean, trigger: string) => {
+      if (isOpen) openCommandMenus.current.add(trigger);
+      else openCommandMenus.current.delete(trigger);
+    },
+    [],
+  );
 
   const handleChange = useCallback(
     (_state: EditorState) => {
@@ -369,8 +409,8 @@ function ChatInputBody({
           commandProviders && commandProviders.length > 0
             ? commandProviders
             : commandProvider
-            ? [commandProvider]
-            : [];
+              ? [commandProvider]
+              : [];
         return providers.map((p, i) => (
           <CommandTokenPlugin
             key={`${p.trigger ?? "/"}-${i}`}

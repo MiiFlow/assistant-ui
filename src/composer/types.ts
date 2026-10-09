@@ -21,6 +21,12 @@ export interface ChatComposerToken {
   label: string;
 }
 
+export type CommandFetchResult = ChatComposerCommand[] | {
+  commands: ChatComposerCommand[];
+  /** A partial lookup failure; available commands remain selectable. */
+  error?: string;
+};
+
 export interface CommandProvider {
   /** Trigger character for typeahead. Defaults to "/". */
   trigger?: string;
@@ -28,7 +34,11 @@ export interface CommandProvider {
    * Resolve commands for the current query (text after the trigger). Called
    * on every query change while the menu is open.
    */
-  fetch: (query: string) => ChatComposerCommand[] | Promise<ChatComposerCommand[]>;
+  fetch: (query: string) => CommandFetchResult | Promise<CommandFetchResult>;
+  /** Optional state for providers backed by an already-running host query. */
+  loading?: boolean;
+  error?: string;
+  retry?: () => void;
   /**
    * Chip kinds that should have at most one instance per message. Picking
    * a chip of a singleton kind removes any prior chip of the same kind from

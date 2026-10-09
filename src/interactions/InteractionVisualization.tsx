@@ -1,5 +1,15 @@
-import { useId, useMemo, useState } from "react";
-import { ArrowUpRight, Check, Columns2, Expand, MapPin } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type Ref,
+  type SetStateAction,
+} from "react";
+import { ArrowUpRight, Check, MapPin } from "lucide-react";
 import {
   interactionSchema,
   useInteraction,
@@ -7,6 +17,18 @@ import {
   type InteractionItem,
 } from "./runtime";
 import { useWorkPanel, WorkPanel } from "./WorkPanel";
+import { WorkItemHeader } from "./WorkItemHeader";
+import {
+  InteractionError,
+  InteractionSelectionBar,
+} from "./InteractionSelectionBar";
+
+type BrowseState = {
+  query: string;
+  page: number;
+  mapEnabled: boolean;
+  images: Record<string, "loaded" | "failed">;
+};
 
 /** One native renderer for all hosts; transport and organization auth are host dependencies. */
 export function InteractionVisualization({ data }: { data: unknown }) {
@@ -18,7 +40,12 @@ export function InteractionVisualization({ data }: { data: unknown }) {
         recreate it.
       </div>
     );
-  return <Surface initial={parsed.data} />;
+  return (
+    <Surface
+      key={`${parsed.data.threadId}:${parsed.data.id}`}
+      initial={parsed.data}
+    />
+  );
 }
 function Surface({ initial }: { initial: InteractionSurface }) {
   const entry = useInteraction(initial);
@@ -26,38 +53,92 @@ function Surface({ initial }: { initial: InteractionSurface }) {
   const panel = useWorkPanel();
   const instanceId = useId();
   const panelId = `${surface.id}:${instanceId}`;
+  const resourceId = `interaction:${surface.threadId}:${surface.id}`;
+  const expanded = panel?.activeResourceId === resourceId;
+  // Presentation changes must not reset browsing or explicit media consent.
+  const [view, setView] = useState<BrowseState>({
+    query: "",
+    page: 0,
+    mapEnabled: false,
+    images: {},
+  });
+  const scrollTop = useRef(0);
+  const scrollElement = useRef<HTMLDivElement | null>(null);
+  const contentRef = useCallback((node: HTMLDivElement | null) => {
+    if (scrollElement.current)
+      scrollTop.current = scrollElement.current.scrollTop;
+    scrollElement.current = node;
+    if (node) node.scrollTop = scrollTop.current;
+  }, []);
+  const resetScroll = () => {
+    scrollTop.current = 0;
+    if (scrollElement.current) scrollElement.current.scrollTop = 0;
+  };
+  const comparison = useRef<HTMLDivElement>(null);
+  const compareTrigger = useRef<Element | null>(null);
+  const pendingComparison = useRef(false);
+  const compare = () => {
+    compareTrigger.current = document.activeElement;
+    pendingComparison.current = true;
+    void runtime?.act(surface.id, "compare", {});
+  };
+  useEffect(() => {
+    if (!pendingComparison.current || entry.busy) return;
+    if (entry.error) {
+      if (!entry.retry) pendingComparison.current = false;
+      return;
+    }
+    pendingComparison.current = false;
+    if (!surface.state.comparing || !comparison.current) return;
+    // Do not interrupt someone who moved back to writing while the save ran.
+    if (
+      document.activeElement !== compareTrigger.current &&
+      document.activeElement !== document.body
+    )
+      return;
+    comparison.current.focus({ preventScroll: true });
+    comparison.current.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [entry.busy, entry.error, entry.retry, surface.state.comparing]);
   const supported =
     surface.version === 1 &&
     ["product_collection", "link_preview", "place_map"].includes(
       surface.component,
     );
-  const content = (expanded = false) => (
-    <SurfaceContent entry={entry} expanded={expanded} />
+  const products = surface.component === "product_collection";
+  const content = (inPanel = false) => (
+    <SurfaceContent
+      entry={entry}
+      expanded={inPanel}
+      view={view}
+      setView={setView}
+      resetScroll={resetScroll}
+      comparisonRef={comparison}
+    />
   );
+  const selection = products ? (
+    <InteractionSelectionBar entry={entry} onCompare={compare} />
+  ) : null;
+  const count = surface.data.items.length;
+  const noun = products
+    ? "product"
+    : surface.component === "place_map"
+      ? "place"
+      : "source";
   return (
-    <section data-interaction aria-label={surface.title}>
-      <header className="interaction-heading">
-        <div>
-          <span className="interaction-eyebrow">
-            {surface.component === "product_collection"
-              ? "PRODUCT COLLECTION"
-              : surface.component === "place_map"
-                ? "PLACES"
-                : "SOURCES"}
-          </span>
-          <h3>{surface.title}</h3>
-        </div>
-        {panel && supported && !entry.unavailable && (
-          <button
-            className="interaction-icon"
-            type="button"
-            aria-label={`Expand ${surface.title}`}
-            onClick={() => panel.open(panelId)}
-          >
-            <Expand size={17} />
-          </button>
-        )}
-      </header>
+    <section
+      data-interaction
+      aria-label={surface.title}
+      className={expanded ? "interaction-reference" : undefined}
+    >
+      <WorkItemHeader
+        title={surface.title}
+        label={products ? "PRODUCT COLLECTION" : surface.component === "place_map" ? "PLACES" : "SOURCES"}
+        expanded={expanded}
+        summary={expanded ? `${count} ${noun}${count === 1 ? "" : "s"}${surface.state.selectedIds.length ? `, ${surface.state.selectedIds.length} selected` : ""} · Open in result panel` : undefined}
+        onOpen={panel && supported && !entry.unavailable
+          ? () => expanded ? panel.focus() : panel.open(panelId, resourceId)
+          : undefined}
+      />
       {!supported ? (
         <p>This result requires a newer version of the app.</p>
       ) : entry.unavailable ? (
@@ -69,8 +150,21 @@ function Surface({ initial }: { initial: InteractionSurface }) {
               Preview only. Open this conversation in the workspace to interact.
             </p>
           )}
-          {content()}
-          <WorkPanel id={panelId} title={surface.title}>
+          {!expanded && (
+            <>
+              {content()}
+              {selection}
+            </>
+          )}
+          <WorkPanel
+            id={panelId}
+            title={surface.title}
+            contentRef={contentRef}
+            onContentScroll={(event) => {
+              scrollTop.current = event.currentTarget.scrollTop;
+            }}
+            footer={selection && <div data-interaction>{selection}</div>}
+          >
             <div data-interaction>{content(true)}</div>
           </WorkPanel>
         </>
@@ -81,13 +175,24 @@ function Surface({ initial }: { initial: InteractionSurface }) {
 function SurfaceContent({
   entry,
   expanded,
+  view,
+  setView,
+  resetScroll,
+  comparisonRef,
 }: {
   entry: ReturnType<typeof useInteraction>;
   expanded: boolean;
+  view: BrowseState;
+  setView: Dispatch<SetStateAction<BrowseState>>;
+  resetScroll: () => void;
+  comparisonRef: Ref<HTMLDivElement>;
 }) {
-  const { surface, runtime, busy, ready, error, retry } = entry;
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(0);
+  const { surface, runtime, busy, ready, retry } = entry;
+  const { query, page } = view;
+  const setPage = (page: number) => {
+    setView((current) => ({ ...current, page }));
+    resetScroll();
+  };
   const { items } = surface.data;
   const selected = surface.state.selectedIds;
   const products = surface.component === "product_collection";
@@ -98,7 +203,7 @@ function SurfaceContent({
       .toLocaleLowerCase()
       .includes(query.toLocaleLowerCase()),
   );
-  const pageSize = expanded ? 12 : 4;
+  const pageSize = 4;
   const safePage = Math.min(
     page,
     Math.max(0, Math.ceil(filtered.length / pageSize) - 1),
@@ -117,18 +222,7 @@ function SurfaceContent({
     });
   return (
     <>
-      {error && (
-        <div className="interaction-error" role="alert">
-          {error}{" "}
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void runtime?.retry(surface.id)}
-          >
-            {retry ? "Retry saving" : "Refresh result"}
-          </button>
-        </div>
-      )}
+      {!products && <InteractionError entry={entry} />}
       {items.length > 4 && (
         <label className="interaction-search">
           <span className="sr-only">
@@ -139,8 +233,9 @@ function SurfaceContent({
             placeholder={places ? "Find a place…" : "Filter these results…"}
             value={query}
             onChange={(e) => {
-              setQuery(e.target.value);
-              setPage(0);
+              const query = e.target.value;
+              setView((current) => ({ ...current, query, page: 0 }));
+              resetScroll();
             }}
           />
         </label>
@@ -149,10 +244,15 @@ function SurfaceContent({
         <PlaceMap
           item={items.find((item) => item.id === selected[0]) ?? items[0]}
           expanded={expanded}
+          enabled={view.mapEnabled}
+          onEnable={() =>
+            setView((current) => ({ ...current, mapEnabled: true }))
+          }
         />
       )}
       {surface.state.comparing && products ? (
         <Comparison
+          comparisonRef={comparisonRef}
           items={items.filter((item) => selected.includes(item.id))}
         />
       ) : null}
@@ -163,7 +263,16 @@ function SurfaceContent({
             className={`interaction-item ${selected.includes(item.id) ? "is-selected" : ""}`}
           >
             {products && item.image_url && (
-              <ProductImage item={item} />
+              <ProductImage
+                item={item}
+                state={view.images[item.image_url]}
+                onState={(state) =>
+                  setView((current) => ({
+                    ...current,
+                    images: { ...current.images, [item.image_url!]: state },
+                  }))
+                }
+              />
             )}
             <div className="interaction-item-body">
               <h4>{item.title}</h4>
@@ -242,41 +351,36 @@ function SurfaceContent({
           </button>
         </nav>
       )}
-      {(products || places) && (
+      {places && (
         <footer className="interaction-footer">
           <span role="status" aria-live="polite">
             {busy
               ? "Saving…"
               : !ready && runtime
                 ? "Connecting…"
-                : products
-                  ? `${selected.length} of ${surface.selectionLimit} selected${ready ? " · Saved to this conversation" : ""}`
-                  : ready
-                    ? "Selection saved to this conversation"
-                    : "Preview"}
+                : ready
+                  ? "Selection saved to this conversation"
+                  : "Preview"}
           </span>
-          {products && (
-            <button
-              className="interaction-primary"
-              type="button"
-              disabled={disabled || selected.length < 2}
-              onClick={() => void runtime?.act(surface.id, "compare", {})}
-            >
-              <Columns2 size={15} /> Compare selected
-            </button>
-          )}
         </footer>
       )}
     </>
   );
 }
-function Comparison({ items }: { items: InteractionItem[] }) {
+function Comparison({
+  items,
+  comparisonRef,
+}: {
+  items: InteractionItem[];
+  comparisonRef: Ref<HTMLDivElement>;
+}) {
   const attributes = [
     ...new Set(items.flatMap((item) => Object.keys(item.details ?? {}))),
   ];
   return (
     <div
       className="interaction-comparison"
+      ref={comparisonRef}
       tabIndex={0}
       role="region"
       aria-label="Product comparison"
@@ -316,11 +420,14 @@ function Comparison({ items }: { items: InteractionItem[] }) {
 function PlaceMap({
   item,
   expanded,
+  enabled,
+  onEnable,
 }: {
   item: InteractionItem;
   expanded: boolean;
+  enabled: boolean;
+  onEnable: () => void;
 }) {
-  const [enabled, setEnabled] = useState(false);
   if (item.latitude === undefined || item.longitude === undefined)
     return <p>Map coordinates are unavailable.</p>;
   const lat = item.latitude,
@@ -351,7 +458,7 @@ function PlaceMap({
           <span>
             {lat.toFixed(4)}, {lon.toFixed(4)}
           </span>
-          <button type="button" onClick={() => setEnabled(true)}>
+          <button type="button" onClick={onEnable}>
             Load interactive map
           </button>
         </div>
@@ -371,19 +478,34 @@ function PlaceMap({
   );
 }
 
-
-function ProductImage({ item }: { item: InteractionItem }) {
-  const [loadedUrl, setLoadedUrl] = useState<string>();
-  const [failedUrl, setFailedUrl] = useState<string>();
-  if (failedUrl === item.image_url)
+function ProductImage({
+  item,
+  state,
+  onState,
+}: {
+  item: InteractionItem;
+  state?: "loaded" | "failed";
+  onState: (state: "loaded" | "failed") => void;
+}) {
+  if (state === "failed")
     return <p className="interaction-note">Image unavailable.</p>;
-  if (loadedUrl !== item.image_url)
+  if (state !== "loaded")
     return (
-      <button type="button" className="interaction-image-placeholder"
-        onClick={() => setLoadedUrl(item.image_url)}>
+      <button
+        type="button"
+        className="interaction-image-placeholder"
+        onClick={() => onState("loaded")}
+      >
         Load image for {item.title}
       </button>
     );
-  return <img src={item.image_url} alt={item.title} loading="lazy"
-    referrerPolicy="no-referrer" onError={() => setFailedUrl(item.image_url)} />;
+  return (
+    <img
+      src={item.image_url}
+      alt={item.title}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => onState("failed")}
+    />
+  );
 }

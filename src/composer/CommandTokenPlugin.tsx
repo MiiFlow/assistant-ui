@@ -13,18 +13,13 @@ import {
   type LexicalNode,
   type TextNode,
 } from "lexical";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { $createCommandTokenNode, $isCommandTokenNode } from "./CommandTokenNode";
-import { CommandTokenView } from "./CommandTokenView";
+import {
+  $createCommandTokenNode,
+  $isCommandTokenNode,
+} from "./CommandTokenNode";
+import { DefaultCommandMenu } from "./DefaultCommandMenu";
 import type { ChatComposerCommand, CommandProvider } from "./types";
 
 const DEFAULT_TRIGGER = "/";
@@ -32,10 +27,12 @@ const QUERY_LENGTH_LIMIT = 75;
 
 class CommandTypeaheadOption extends MenuOption {
   command: ChatComposerCommand;
+  retry: boolean;
 
-  constructor(command: ChatComposerCommand) {
+  constructor(command: ChatComposerCommand, retry = false) {
     super(`${command.kind}:${command.id}`);
     this.command = command;
+    this.retry = retry;
   }
 }
 
@@ -54,7 +51,7 @@ export interface CommandTokenPluginProps {
   commandProvider?: CommandProvider | null;
   /**
    * Optional override for the typeahead UI. When supplied, replaces the
-   * default Tailwind popover (use this to render an MUI/host-themed menu).
+   * default themed picker (use this to render a host-specific menu).
    */
   menuRenderer?: (params: {
     anchorElement: HTMLElement | null;
@@ -68,7 +65,7 @@ export interface CommandTokenPluginProps {
    * Notified whenever the typeahead menu opens or closes. Use this to gate
    * keyboard handlers (e.g. don't submit on Enter while the menu is open).
    */
-  onMenuStateChange?: (isOpen: boolean) => void;
+  onMenuStateChange?: (isOpen: boolean, trigger: string) => void;
 }
 
 export function CommandTokenPlugin({
@@ -79,31 +76,67 @@ export function CommandTokenPlugin({
   const [editor] = useLexicalComposerContext();
   const [queryString, setQueryString] = useState<string | null>(null);
   const [results, setResults] = useState<ChatComposerCommand[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string>();
+  const [attempt, setAttempt] = useState(0);
+  const [open, setOpen] = useState(false);
 
   const trigger = commandProvider?.trigger ?? DEFAULT_TRIGGER;
   const triggerRegex = useMemo(() => buildTriggerRegex(trigger), [trigger]);
 
   useEffect(() => {
-    onMenuStateChange?.(queryString != null);
-  }, [queryString, onMenuStateChange]);
+    onMenuStateChange?.(open, trigger);
+    return () => onMenuStateChange?.(false, trigger);
+  }, [open, trigger, onMenuStateChange]);
 
   useEffect(() => {
-    if (!commandProvider || queryString == null) {
-      setResults([]);
+    setResults([]);
+    setFetchError(undefined);
+    if (
+      !commandProvider ||
+      queryString == null
+    ) {
+      setLoading(false);
       return;
     }
     let cancelled = false;
-    Promise.resolve(commandProvider.fetch(queryString)).then((cmds) => {
-      if (!cancelled) setResults(cmds);
-    });
+    setLoading(true);
+    // The promise boundary also catches a synchronous provider failure.
+    Promise.resolve()
+      .then(() => commandProvider.fetch(queryString))
+      .then((result) => {
+        if (!cancelled) {
+          setResults(Array.isArray(result) ? result : result.commands);
+          setFetchError(Array.isArray(result) ? undefined : result.error);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setFetchError("Could not load options. Try again.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [commandProvider, queryString]);
+  }, [commandProvider, queryString, attempt]);
 
+  const error =
+    commandProvider?.error ||
+    fetchError;
+  const pending = loading || Boolean(commandProvider?.loading);
+  const retryLoad = useCallback(() => {
+    commandProvider?.retry?.();
+    setAttempt((value) => value + 1);
+  }, [commandProvider]);
   const options = useMemo(
-    () => results.map((cmd) => new CommandTypeaheadOption(cmd)),
-    [results],
+    () => [
+      ...(error ? [new CommandTypeaheadOption(
+        { id: "retry", kind: "action", label: "Try again" }, true,
+      )] : []),
+      ...results.map((cmd) => new CommandTypeaheadOption(cmd)),
+    ],
+    [results, error],
   );
 
   const checkForMatch = useCallback(
@@ -129,6 +162,10 @@ export function CommandTokenPlugin({
       nodeToReplace: TextNode | null,
       closeMenu: () => void,
     ) => {
+      if (selectedOption.retry) {
+        retryLoad();
+        return;
+      }
       editor.update(() => {
         const kind = selectedOption.command.kind;
         const isSingleton = singletonKinds?.includes(kind) ?? false;
@@ -137,7 +174,10 @@ export function CommandTokenPlugin({
           // Remove any existing chip of the same kind. Walking once with a
           // collected list (rather than mutating during traversal) keeps the
           // tree stable while we iterate.
-          const stale: { node: ReturnType<typeof $createCommandTokenNode>; index: number }[] = [];
+          const stale: {
+            node: ReturnType<typeof $createCommandTokenNode>;
+            index: number;
+          }[] = [];
           const walk = (n: LexicalNode) => {
             if ($isCommandTokenNode(n) && n.getCommandKind() === kind) {
               stale.push({ node: n, index: 0 });
@@ -178,7 +218,7 @@ export function CommandTokenPlugin({
         closeMenu();
       });
     },
-    [editor, trigger, singletonKinds],
+    [editor, trigger, singletonKinds, retryLoad],
   );
 
   if (!commandProvider) return null;
@@ -186,6 +226,11 @@ export function CommandTokenPlugin({
   return (
     <LexicalTypeaheadMenuPlugin<CommandTypeaheadOption>
       onQueryChange={setQueryString}
+      onOpen={() => setOpen(true)}
+      onClose={() => {
+        setOpen(false);
+        setQueryString(null);
+      }}
       onSelectOption={onSelectOption}
       triggerFn={checkForMatch}
       options={options}
@@ -198,12 +243,14 @@ export function CommandTokenPlugin({
             <>
               {menuRenderer({
                 anchorElement: anchorElementRef.current,
-                options: results,
+                options: options.map((option) => option.command),
                 selectedIndex: selectedIndex ?? 0,
                 setSelectedIndex: setHighlightedIndex,
                 selectOption: (option) => {
                   const match = options.find(
-                    (o) => o.command.id === option.id && o.command.kind === option.kind,
+                    (o) =>
+                      o.command.id === option.id &&
+                      o.command.kind === option.kind,
                   );
                   if (match) selectOptionAndCleanUp(match);
                 },
@@ -215,144 +262,18 @@ export function CommandTokenPlugin({
         return (
           <DefaultCommandMenu
             anchorElement={anchorElementRef.current}
-            options={options}
+            options={options.map((option) => option.command)}
             selectedIndex={selectedIndex ?? 0}
             setHighlightedIndex={setHighlightedIndex}
-            selectOptionAndCleanUp={selectOptionAndCleanUp}
-            visible={results.length > 0 || queryString != null}
+            onSelect={(index) => selectOptionAndCleanUp(options[index])}
             queryString={queryString}
+            editorElement={editor.getRootElement()}
+            trigger={trigger}
+            loading={pending}
+            error={error}
           />
         );
       }}
     />
-  );
-}
-
-function DefaultCommandMenu({
-  anchorElement,
-  options,
-  selectedIndex,
-  setHighlightedIndex,
-  selectOptionAndCleanUp,
-  visible,
-  queryString,
-}: {
-  anchorElement: HTMLElement | null;
-  options: CommandTypeaheadOption[];
-  selectedIndex: number;
-  setHighlightedIndex: (index: number) => void;
-  selectOptionAndCleanUp: (option: CommandTypeaheadOption) => void;
-  visible: boolean;
-  queryString: string | null;
-}) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [flipped, setFlipped] = useState(false);
-  const VERTICAL_GAP = 6;
-
-  useEffect(() => {
-    const menu = menuRef.current;
-    if (!menu || options.length === 0) return;
-    const selectedEl = menu.querySelector<HTMLElement>(
-      `#command-typeahead-item-${selectedIndex}`,
-    );
-    if (!selectedEl) return;
-    const menuRect = menu.getBoundingClientRect();
-    const itemRect = selectedEl.getBoundingClientRect();
-    if (itemRect.top < menuRect.top) {
-      menu.scrollTop -= menuRect.top - itemRect.top;
-    } else if (itemRect.bottom > menuRect.bottom) {
-      menu.scrollTop += itemRect.bottom - menuRect.bottom;
-    }
-  }, [selectedIndex, options.length]);
-
-  useLayoutEffect(() => {
-    if (!anchorElement || !visible || !menuRef.current) return;
-    const reposition = () => {
-      const menuEl = menuRef.current;
-      if (!menuEl) return;
-      const anchorRect = anchorElement.getBoundingClientRect();
-      const menuHeight = menuEl.offsetHeight;
-      const viewportHeight = window.innerHeight;
-      // Lexical positions the anchor right below the cursor; anchorRect.top is
-      // where the menu would render by default. anchorRect.height is the
-      // cursor-line height (~20px), so the cursor's top is anchorRect.top - height.
-      const spaceBelow = viewportHeight - anchorRect.top;
-      const cursorTop = anchorRect.top - anchorRect.height;
-      const spaceAbove = cursorTop;
-      const wouldOverflowBottom = menuHeight + VERTICAL_GAP > spaceBelow;
-      const fitsAbove = menuHeight + VERTICAL_GAP <= spaceAbove;
-      setFlipped(wouldOverflowBottom && fitsAbove);
-    };
-    reposition();
-    window.addEventListener("resize", reposition);
-    window.addEventListener("scroll", reposition, true);
-    return () => {
-      window.removeEventListener("resize", reposition);
-      window.removeEventListener("scroll", reposition, true);
-    };
-  }, [anchorElement, visible, options.length]);
-
-  if (!anchorElement || !visible) return null;
-
-  const anchorHeight = anchorElement.offsetHeight || 20;
-  const transform = flipped
-    ? `translateY(calc(-100% - ${anchorHeight + VERTICAL_GAP}px))`
-    : "none";
-
-  return createPortal(
-    <div
-      ref={menuRef}
-      role="listbox"
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        transform,
-        zIndex: 99999,
-        minWidth: 320,
-        maxWidth: 520,
-        maxHeight: 280,
-        overflowY: "auto",
-        borderRadius: 8,
-        border: "1px solid rgba(0,0,0,0.1)",
-        background: "#ffffff",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-        padding: 4,
-        fontSize: 12,
-        color: "#1f2937",
-      }}
-    >
-      {options.length === 0 ? (
-        <div style={{ padding: "6px 10px", fontSize: 11, color: "#6b7280" }}>
-          No matching commands{queryString ? ` for "${queryString}"` : ""}
-        </div>
-      ) : (
-        options.map((option, i) => {
-          const isSelected = i === selectedIndex;
-          const cmd = option.command;
-          return (
-            <CommandTokenView
-              key={option.key}
-              variant="row"
-              id={cmd.id}
-              kind={cmd.kind}
-              label={cmd.label}
-              description={cmd.description}
-              icon={cmd.icon}
-              selected={isSelected}
-              htmlId={`command-typeahead-item-${i}`}
-              onMouseEnter={() => setHighlightedIndex(i)}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setHighlightedIndex(i);
-                selectOptionAndCleanUp(option);
-              }}
-            />
-          );
-        })
-      )}
-    </div>,
-    anchorElement,
   );
 }
