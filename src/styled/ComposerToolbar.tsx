@@ -17,7 +17,7 @@ export function ComposerToolbar({
   endSlot,
   className,
 }: {
-  /** Renders the "+" attach button when provided. */
+  /** Renders the attach (paperclip) button when provided. */
   onAttachClick?: () => void;
   onContextClick?: () => void;
   onSkillsClick?: () => void;
@@ -31,6 +31,19 @@ export function ComposerToolbar({
 }) {
   return (
     <div className={cn("flex items-center gap-1 min-w-0", className)}>
+      {onAttachClick && (
+        <button
+          type="button"
+          title="Attach files"
+          aria-label="Attach files"
+          onClick={onAttachClick}
+          disabled={disabled}
+          className="chat-composer-attach chat-composer-secondary"
+        >
+          <Paperclip size={16} aria-hidden="true" />
+          <span>Attach</span>
+        </button>
+      )}
       {onContextClick && (
         <button
           type="button"
@@ -54,19 +67,6 @@ export function ComposerToolbar({
         >
           <WandSparkles size={16} aria-hidden="true" />
           <span>Skills</span>
-        </button>
-      )}
-      {onAttachClick && (
-        <button
-          type="button"
-          title="Attach files"
-          aria-label="Attach files"
-          onClick={onAttachClick}
-          disabled={disabled}
-          className="chat-composer-attach chat-composer-secondary"
-        >
-          <Paperclip size={16} aria-hidden="true" />
-          <span>Attach</span>
         </button>
       )}
 
