@@ -43,7 +43,10 @@
   display: flex;
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  /* x hidden: the intro glow ::before is deliberately wider than its container
+     (min(840px, 120%)) and would otherwise give this scroller a horizontal
+     scrollbar. It fades to transparent at the edges, so clipping is invisible. */
+  overflow: hidden auto;
   padding: 56px 24px 32px;
 }
 .chat-welcome-content {

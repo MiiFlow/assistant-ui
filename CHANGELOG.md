@@ -50,7 +50,9 @@
   also accept `{ message, title, description?, icon? }`, with an optional `emblem`
   slot for the brand mark. Existing string suggestions remain supported. Intro welcomes use
   `WelcomeScreen layout="intro"` with `ChatLayout showComposerOnWelcome` to retain
-  the bottom composer; centered layouts keep their existing composition.
+  the bottom composer; centered layouts keep their existing composition. The glow clips
+  at the welcome scroller's edge (`.chat-welcome` is `overflow: hidden auto`), so
+  compact hosts such as a 500px drawer get no horizontal scrollbar from its overhang.
 - The built-in welcome input now uses `MessageComposer`. It retains text/files
   when an async send rejects or returns `{ accepted: false }`, and applies the
   same file-type/size validation as the active composer. Attachments remain
