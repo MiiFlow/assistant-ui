@@ -118,3 +118,8 @@ export type {
   ActivityMarkRenderer,
   ActivityState,
 } from "./styled/transcript/labels";
+
+export { ToolActivityProvider } from "./styled/transcript/ToolActivity";
+export type { ToolActivity, ToolActivityResolver } from "./styled/transcript/ToolActivity";
+
+export type { StreamingChunk } from "./types/streaming";

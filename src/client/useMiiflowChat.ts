@@ -205,6 +205,7 @@ interface AccumulatedChunk {
   progress?: ProgressData;
   toolUseId?: string;
   toolCallId?: string;
+  backgroundTaskId?: string;
   /** Epoch ms; mirrors StreamingChunk so the render layer gets durations. */
   startedAt?: number;
   endedAt?: number;
@@ -607,6 +608,7 @@ export async function parseSSEStream(
               if (idx >= 0) {
                 chunks[idx].status = "completed";
                 chunks[idx].content = parsed.chunk || "";
+                chunks[idx].backgroundTaskId = parsed.background_task_id;
                 // The observation IS the tool's completion — the only frame
                 // that closes a tool's clock.
                 chunks[idx].endedAt = frameTimeMs;

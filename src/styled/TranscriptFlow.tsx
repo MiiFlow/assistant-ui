@@ -16,6 +16,8 @@ import { RunHeader } from "./transcript/RunHeader";
 import { RunMark } from "./transcript/RunMark";
 import { WorkLanes, laneStatus } from "./transcript/WorkLanes";
 
+import { useToolActivity } from "./transcript/ToolActivity";
+
 const MARK_STATE: Record<AgentTranscript["status"], ActivityState> = {
 	running: "running",
 	waiting: "waiting",
@@ -79,6 +81,11 @@ export function TranscriptFlow({
 	 *  run works or waits, so hosts that only set `waitingMark` keep their mark. */
 	waitingMark?: ReactNode;
 }) {
+	const resolveActivity = useToolActivity();
+	const backgroundActive = transcript.blocks.some((b) => {
+		const activity = b.chunk && resolveActivity(b.chunk);
+		return activity && ["queued", "running", "waiting"].includes(activity.status);
+	});
 	const status =
 		transcript.status === "running" && !isStreaming
 			? "stopped"
@@ -121,7 +128,7 @@ export function TranscriptFlow({
 	};
 	const hasAnswer = transcript.blocks.some((_, index) => isAnswer(index));
 	const hasWork = transcript.blocks.some((_, index) => !isAnswer(index));
-	const canFold = status === "completed" && hasAnswer && hasWork;
+	const canFold = status === "completed" && hasAnswer && hasWork && !backgroundActive;
 	const workOpen = expanded ?? (!canFold || keepOpen);
 
 	const [now, setNow] = useState(Date.now);
@@ -155,7 +162,7 @@ export function TranscriptFlow({
 		}
 	}
 	const running = status === "running";
-	const label = status === "completed" ? labels.worked(duration) : labels[STATE_LABEL[status]];
+	const label = backgroundActive ? "Background work" : status === "completed" ? labels.worked(duration) : labels[STATE_LABEL[status]];
 	const stats = [
 		agents ? labels.agents(agents, running ? liveAgents : 0) : "",
 		calls ? labels.calls(calls) : "",
@@ -230,10 +237,10 @@ export function TranscriptFlow({
 				</details>
 			);
 		} else {
-			const statuses = item.units.map((unit) => laneStatus(unit, status));
+			const statuses = item.units.map((unit) => laneStatus(unit, status, unit.kind === "tool" ? resolveActivity(unit.chunk) : undefined));
 			// A lane's own failure is marked on the lane; the node fails only when
 			// nothing in the item came back.
-			state = statuses.some((s) => s === "running") && running
+			state = statuses.some((s) => s === "running") && (running || backgroundActive)
 				? "live"
 				: statuses.every((s) => s === "failed" || s === "interrupted")
 					? "failed"

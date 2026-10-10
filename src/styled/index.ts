@@ -191,3 +191,5 @@ export { WorkItemHeader } from "../interactions/WorkItemHeader";
 export { submitVisualizationAction } from "../interactions/submit-action";
 
 export type { VisualizationActionHandler } from "../types/streaming";
+
+export { TranscriptFlow } from "./TranscriptFlow";

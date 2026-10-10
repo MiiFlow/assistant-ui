@@ -6,10 +6,13 @@ import { humanizeToolName } from "../reasoning/tool-label";
 import { specialistCalls, type WorkUnit } from "./flow";
 import type { ActivityLabels } from "./labels";
 
+import { useToolActivity, type ToolActivity } from "./ToolActivity";
+
 type RunStatus = AgentTranscript["status"];
 type LaneStatus = "queued" | "running" | "waiting" | "done" | "failed" | "interrupted";
 
-export function laneStatus(unit: WorkUnit, run: RunStatus): LaneStatus {
+export function laneStatus(unit: WorkUnit, run: RunStatus, activity?: ToolActivity): LaneStatus {
+	if (activity) return activity.status;
 	if (unit.kind === "tool" ? unit.chunk.success === false : unit.data.status === "failed") return "failed";
 	if (unit.finished) return "done";
 	if (run === "waiting") return "waiting";
@@ -103,9 +106,12 @@ function Lane({
 	enter: boolean;
 }) {
 	const [open, setOpen] = useState(false);
-	const status = laneStatus(unit, run);
-	const { title, handle, action } = describe(unit, status, labels);
-	const seconds = laneSeconds(unit, status, now);
+	const resolveActivity = useToolActivity();
+	const activity = unit.kind === "tool" ? resolveActivity(unit.chunk) : undefined;
+	const status = laneStatus(unit, run, activity);
+	const { title, handle, action: toolAction } = describe(unit, status, labels);
+	const action = activity?.label ?? toolAction;
+	const seconds = activity ? undefined : laneSeconds(unit, status, now);
 	const running = status === "running";
 	const shimmer = running && !reducedMotion ? TEXT_SHIMMER_STYLE : undefined;
 	// A running specialist's news is what it is doing; a running tool's is itself.
@@ -116,14 +122,14 @@ function Lane({
 			<button
 				type="button"
 				className="mf-tx-lane-row mf-focus"
-				title={handle || undefined}
+				title={activity ? undefined : handle || undefined}
 				aria-expanded={open}
 				onClick={() => setOpen((value) => !value)}
 			>
 				<span className="mf-tx-led" aria-hidden />
 				<span className="mf-tx-lane-name">
 					<span className="mf-tx-lane-title" style={shimmerAction ? undefined : shimmer}>
-						{title}
+						{activity?.title ?? title}
 					</span>
 					{unit.kind === "tool" && unit.chunk.toolWrites && <span className="mf-tx-tag">{labels.write}</span>}
 				</span>
@@ -138,7 +144,7 @@ function Lane({
 			</button>
 			{open && (
 				<div className="mf-tx-lane-body">
-					{unit.kind === "subagent" ? <SubagentBody data={unit.data} /> : <ToolOutput unit={unit} status={status} />}
+					{activity?.details ?? (unit.kind === "subagent" ? <SubagentBody data={unit.data} /> : <ToolOutput unit={unit} status={status} />)}
 				</div>
 			)}
 		</div>
@@ -171,7 +177,8 @@ export function WorkLanes({
 	const atMount = useRef<Set<string> | null>(null);
 	if (atMount.current === null) atMount.current = new Set(units.map((u) => u.id));
 	const fork = units.length > 1;
-	const statuses = units.map((unit) => laneStatus(unit, run));
+	const resolveActivity = useToolActivity();
+	const statuses = units.map((unit) => laneStatus(unit, run, unit.kind === "tool" ? resolveActivity(unit.chunk) : undefined));
 	const live = statuses.filter((s) => s === "running").length;
 	const settled = statuses.every((s) => s === "done" || s === "failed");
 	const kinds = new Set(units.map((u) => u.kind));

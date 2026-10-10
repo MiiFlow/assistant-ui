@@ -522,6 +522,8 @@ export interface ArtifactChunkData {
  * Extended streaming chunk with full agentic support
  */
 export interface StreamingChunk {
+  /** Persisted work submitted by this tool call; its lifecycle outlives the turn. */
+  backgroundTaskId?: string;
   type: ChunkType;
   content: string;
 
