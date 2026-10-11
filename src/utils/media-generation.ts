@@ -12,12 +12,14 @@ export interface MediaGeneration {
 // Presentation only: these are the supported media tools, not an authorization policy.
 function mediaKind(name: string): "image" | "video" | undefined {
   const key = name.replace(/[.]/g, "_");
-  if (/(^|_)(generate_ad_video|generate_seedance_video)$/.test(key))
+  if (/(^|_)(generate_ad_video|generate_seedance_video)$/.test(key) || key === "video_generate")
     return "video";
   if (
     /(^|_)(generate_ad_image|edit_ad_image|generate_gpt_image_2|edit_gpt_image_2|generate_nano_banana_(2|pro)|edit_nano_banana_(2|pro))$/.test(
       key,
-    )
+    ) ||
+    key === "image_generate" ||
+    key === "image_edit"
   )
     return "image";
   if (
@@ -101,6 +103,7 @@ export function mediaGenerations(
       jobId,
       editing:
         (chunk.toolName || "").includes("edit_") ||
+        /(^|[._])image[._]edit$/.test(chunk.toolName || "") ||
         !!args.reference_asset_id ||
         !!args.reference_media_ref ||
         !!args.source,
