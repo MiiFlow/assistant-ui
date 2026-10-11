@@ -14,6 +14,8 @@ export interface Participant {
 }
 
 export interface Attachment {
+  width?: number;
+  height?: number;
   id: string;
   filename: string;
   mimeType: string;

@@ -1,3 +1,4 @@
+import { ReservedImage } from "../ReservedImage";
 import { ReferencedMedia, remarkMediaReferences } from "./media-references";
 import { parseMarkerHref } from "../../utils/inline-markers";
 import { ArtifactReference } from "./artifact-references";
@@ -285,7 +286,7 @@ function Anchor({ href, children }: WithChildren & { href?: string }) {
 	if (marker || !href) return <>{children}</>;
 	const isImageUrl = href && /\.(png|jpe?g|gif|webp|svg)([?#]|$)/i.test(href);
 	if (isImageUrl) {
-		return <img src={href} alt={textOf(children)} loading="lazy" />;
+		return <ReservedImage src={href} alt={textOf(children)} loading="lazy" />;
 	}
 	return (
 		<a href={href} target="_blank" rel="noopener noreferrer">
@@ -368,7 +369,7 @@ function Em({ children }: WithChildren) {
 function Img({ src, alt }: { src?: string | Blob; alt?: string }) {
 	if (typeof src === "string" && src.startsWith("media_ref:")) return <ReferencedMedia id={src.slice(10)} alt={alt} />;
 	// React 19 types `src` as `string | Blob`; markdown only ever yields a string.
-	return <img src={typeof src === "string" ? src : undefined} alt={alt ?? ""} loading="lazy" />;
+	return <ReservedImage src={typeof src === "string" ? src : undefined} alt={alt ?? ""} loading="lazy" />;
 }
 
 export const COMPONENTS: Components = {

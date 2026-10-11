@@ -1,3 +1,4 @@
+import { ReservedImage } from "./ReservedImage";
 import { mediaGenerations } from "../utils/media-generation";
 import { MediaGenerationCard } from "./MediaGenerationCard";
 import { readTranscript } from "../types/transcript";
@@ -674,7 +675,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 							className="block cursor-zoom-in border-0 bg-transparent p-0"
 							aria-label={media.altText || "Open image"}
 						>
-							<img
+							<ReservedImage width={512} height={384}
 								src={media.url}
 								alt={media.altText || "Generated image"}
 								className="max-w-full rounded-lg"

@@ -15,10 +15,15 @@ import {
 	useMessageScroller,
 	useMessageScrollerScrollable,
 } from "@shadcn/react/message-scroller";
+import { StableMessageList } from "./StableMessageList";
 import { cn } from "../utils/cn";
 import { ScrollToBottomButton } from "./ScrollToBottomButton";
 
 export interface MessageListProps {
+	/** Explicit local turn anchor. Passing null opts into stable history scrolling. */
+	scrollAnchorId?: string | null;
+	history?: { hasOlder: boolean; loading: boolean; error: string | null; onLoadOlder: () => void };
+
 	/** Messages to render. A direct child carrying `data-message-id` is
 	 *  registered with the scroll engine under that id; one also carrying
 	 *  `data-scroll-anchor="true"` is a turn anchor (see below). Children
@@ -156,7 +161,7 @@ function TurnFill({ liveAnchorId, peek }: { liveAnchorId: string | null; peek: n
  * Anchoring is opt-in per child, so the extension and the embed snippet, which
  * pass plain rows, keep the following behaviour unchanged.
  */
-export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(
+const LegacyMessageList = forwardRef<HTMLDivElement, MessageListProps>(
 	(
 		{
 			children,
@@ -233,4 +238,10 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(
 	},
 );
 
+LegacyMessageList.displayName = "LegacyMessageList";
+export const MessageList = forwardRef<HTMLDivElement, MessageListProps>((props, ref) =>
+	props.scrollAnchorId !== undefined
+		? <StableMessageList {...props} ref={ref} />
+		: <LegacyMessageList {...props} ref={ref} />,
+);
 MessageList.displayName = "MessageList";

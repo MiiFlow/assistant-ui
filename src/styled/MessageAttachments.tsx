@@ -116,13 +116,13 @@ export function MessageAttachments({
       {attachments.map((attachment) => {
         const showThumbnail =
           attachment.isImage &&
-          !!(attachment.previewUrl || attachment.url) &&
-          !brokenIds.has(attachment.id);
+          !!(attachment.previewUrl || attachment.url);
 
         return showThumbnail ? (
           <AttachmentThumbnail
             key={attachment.id}
             attachment={attachment}
+            broken={brokenIds.has(attachment.id)}
             onDownload={() => handleDownload(attachment)}
             onPreview={() => handlePreview(attachment)}
             onError={() =>
@@ -175,21 +175,17 @@ function AttachmentThumbnail({
   onDownload,
   onPreview,
   onError,
+  broken,
 }: {
   attachment: Attachment;
+  broken: boolean;
   onDownload: () => void;
   onPreview: () => void;
   onError: () => void;
 }) {
   const source = attachment.previewUrl || attachment.url;
-  const [loadedImage, setLoadedImage] = useState<{
-    source: string | undefined;
-    width: number;
-    height: number;
-  } | null>(null);
-  const boundedSize = loadedImage && loadedImage.source === source
-    ? getBoundedImageSize(loadedImage.width, loadedImage.height)
-    : null;
+  const boundedSize = getBoundedImageSize(attachment.width ?? 320, attachment.height ?? 240)
+    ?? { width: 320, height: 240 };
 
   return (
     <div
@@ -212,21 +208,11 @@ function AttachmentThumbnail({
       }}
       aria-label={`Open ${attachment.filename}`}
     >
-      {/* Give the wrapper the image's bounded dimensions once it loads. Relying
-          on max-width/max-height on the image alone lets flexbox size this
-          wrapper from the uncapped intrinsic width, which leaves a padded strip. */}
-      <img
+      {broken ? <span className="flex h-full items-center justify-center p-3 text-sm" role="status">Preview unavailable: {attachment.filename}</span> : <img
         src={source}
         alt={attachment.filename}
         title={attachment.filename}
         loading="lazy"
-        onLoad={(event) => {
-          setLoadedImage({
-            source,
-            width: event.currentTarget.naturalWidth,
-            height: event.currentTarget.naturalHeight,
-          });
-        }}
         onError={onError}
         className={cn(
           "block object-contain",
@@ -234,7 +220,7 @@ function AttachmentThumbnail({
             ? "h-full w-full"
             : "max-h-[280px] max-w-[min(320px,100%)]",
         )}
-      />
+      />}
 
       {/* Overlay the border so it does not alter the image's aspect-ratio box. */}
       {boundedSize && (

@@ -325,6 +325,8 @@ Children opt in through data attributes on the direct child element:
 | `data-message-id="<id>"` | Registers the row with the engine (position preservation, visibility) |
 | `data-scroll-anchor="true"` | Makes the row the turn anchor. Give it to the live turn only |
 
+The main app opts into stable history scrolling by passing `scrollAnchorId` (including `null` for history). This mode opens at the end without animation, anchors explicit local sends once, and preserves the first visible message through prepends and resizes. Manual scrolling releases the anchor; only the scroll-to-bottom button resumes following. Pass `history={{ hasOlder, loading, error, onLoadOlder }}` for upward pagination and its retry control. Existing callers that omit `scrollAnchorId` keep the original engine.
+
 The list publishes two pixel custom properties on the transcript content element: `--chat-turn-fill` (the height the row *after* the anchor needs to fill the viewport) and `--chat-turn-fill-self` (the same for a row that is itself the anchor). Put `min-height: var(--chat-turn-fill)` on the live assistant row so the transcript stays still when content inside it shrinks (a step window folding, an action bar appearing). Keep the anchor and the fill on the finished turn until the next one starts.
 
 ```tsx
@@ -418,7 +420,7 @@ Use `isStreaming` (not `disabled`) while a response is streaming — it keeps th
 
 ### `MessageAttachments`
 
-Attachment strip rendered inside messages. Image attachments render as inline thumbnails that open a shared lightbox (Esc to close, arrow-key paging, body scroll-lock); non-image files render as downloadable chips. Images whose URL fails to load fall back to the file chip.
+Attachment strip rendered inside messages. Image attachments render as inline thumbnails that open a shared lightbox (Esc to close, arrow-key paging, body scroll-lock); non-image files render as downloadable chips. Image previews reserve space before loading, using optional attachment `width` / `height` or a 320×240 fallback. Failed previews keep that space and their download action.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
