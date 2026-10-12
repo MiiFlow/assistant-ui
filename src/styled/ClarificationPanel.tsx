@@ -149,6 +149,7 @@ export function ClarificationPanel({
   const active = Math.min(activeQuestion, questions.length - 1);
   const questionRef = useRef<HTMLDivElement>(null);
   const focusQuestion = useRef(false);
+  const navigatingOptions = useRef(false);
   const focusFirstAnswer = useCallback(() => {
     const question = questionRef.current;
     const answer =
@@ -221,6 +222,7 @@ export function ClarificationPanel({
       const updated = { ...selections, [qIndex]: next };
       setSelections(updated);
       if (next.includes(option)) onOptionSelect?.(option);
+
     },
     [disabled, loading, selections, onOptionSelect],
   );
@@ -311,13 +313,17 @@ export function ClarificationPanel({
           {q.options.length > 0
             ? multi
               ? "Choose one or more options."
-              : "Choose one option."
+              : qi + 1 < questions.length
+                ? "Choose one option to continue to the next question."
+                : "Choose one option."
             : "Type your answer below."}
           <span className="sr-only">
             {q.options.length > 0 &&
               (multi
                 ? " Use Tab between options and Space or Enter to toggle a selection."
-                : " Use arrow keys to move and select within the options, or Space or Enter to select.")}
+                : qi + 1 < questions.length
+                  ? " Use arrow keys to move and select within the options, then Space or Enter to continue."
+                  : " Use arrow keys to move and select within the options, or Space or Enter to select.")}
             {
               " You can also type your own answer. Press Enter in the text field to continue or submit when all questions are answered."
             }
@@ -330,6 +336,9 @@ export function ClarificationPanel({
               aria-labelledby={`${id}-question-${qi}`}
               aria-describedby={`${id}-instructions-${qi}`}
               className="clarification-options"
+              onPointerDown={() => {
+                navigatingOptions.current = false;
+              }}
             >
               {q.options.map((option, oi) => (
                 <label key={oi} className="clarification-option">
@@ -339,9 +348,22 @@ export function ClarificationPanel({
                     value={option}
                     checked={picked.includes(option)}
                     onChange={() => toggle(qi, option, multi)}
+                    onClick={() => {
+                      // Native radio arrow navigation also dispatches clicks.
+                      // Only explicit activation should leave the question.
+                      if (!multi && !navigatingOptions.current && qi + 1 < questions.length) {
+                        showQuestion(qi + 1, true);
+                      }
+                    }}
+                    onKeyUp={() => {
+                      navigatingOptions.current = false;
+                    }}
                     onKeyDown={(event) => {
+                      navigatingOptions.current = [
+                        "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+                      ].includes(event.key);
                       if (
-                        event.key === "Enter" &&
+                        (event.key === "Enter" || (!multi && event.key === " ")) &&
                         !event.repeat &&
                         !event.nativeEvent.isComposing
                       ) {
