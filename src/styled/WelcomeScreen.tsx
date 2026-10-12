@@ -36,6 +36,8 @@ export interface WelcomeScreenProps {
   emblem?: ReactNode;
   /** Intro leaves composing to ChatLayout with showComposerOnWelcome enabled. */
   layout?: "centered" | "intro";
+  /** Split intro and suggestions around a persistent host composer. */
+  section?: "all" | "intro" | "suggestions";
   /** Whether to show the attachment (paperclip) button */
   supportsAttachments?: boolean;
   /** Blocks the built-in input (e.g. while a response is already streaming).
@@ -99,6 +101,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
     {
       placeholders = [],
       suggestions = [],
+      section = "all",
       onSubmit,
       onSuggestionClick,
       welcomeText = "What would you like to work on?",
@@ -124,23 +127,25 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
         data-layout={layout}
       >
         <div className="chat-welcome-content">
-          <div className="chat-welcome-intro">
-            <div className="chat-welcome-emblem" aria-hidden="true">
-              {assistantAvatar ? (
-                <Avatar
-                  name={assistantName}
-                  src={assistantAvatar}
-                  role="assistant"
-                  className="w-14 h-14"
-                />
-              ) : (
-                (emblem ?? <Sparkles size={38} strokeWidth={1.5} />)
-              )}
+          {section !== "suggestions" && (
+            <div className="chat-welcome-intro">
+              <div className="chat-welcome-emblem" aria-hidden="true">
+                {assistantAvatar ? (
+                  <Avatar
+                    name={assistantName}
+                    src={assistantAvatar}
+                    role="assistant"
+                    className="w-14 h-14"
+                  />
+                ) : (
+                  (emblem ?? <Sparkles size={38} strokeWidth={1.5} />)
+                )}
+              </div>
+              {welcomeText && <h2>{welcomeText}</h2>}
+              {description && <p>{description}</p>}
             </div>
-            {welcomeText && <h2>{welcomeText}</h2>}
-            {description && <p>{description}</p>}
-          </div>
-          {layout === "centered" && (
+          )}
+          {layout === "centered" && section !== "suggestions" && (
             <div className="chat-welcome-composer">
               {composerSlot ?? (
                 <MessageComposer
@@ -155,7 +160,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
               )}
             </div>
           )}
-          {suggestions.length > 0 && (
+          {section !== "intro" && suggestions.length > 0 && (
             <div
               className="chat-welcome-suggestions"
               role="group"

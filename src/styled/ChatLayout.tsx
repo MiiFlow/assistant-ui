@@ -15,6 +15,8 @@ export interface ChatLayoutProps {
   composer?: ReactNode;
   /** Keep the bottom composer mounted beside an intro-only welcome screen. */
   showComposerOnWelcome?: boolean;
+  /** Optional suggestions below the persistent composer on the welcome screen. */
+  welcomeFooter?: ReactNode;
   /** Extra content between message list and composer (e.g. ClarificationPanel) */
   footer?: ReactNode;
   /** Additional CSS classes */
@@ -33,11 +35,13 @@ export const ChatLayout = forwardRef<HTMLDivElement, ChatLayoutProps>(
       footer,
       className,
       showComposerOnWelcome = false,
+      welcomeFooter,
     },
     ref,
   ) => (
     <div
       ref={ref}
+      data-welcome-footer={(isEmpty && !!welcomeFooter) || undefined}
       data-chat-ui
       data-welcome-composer={
         (isEmpty && !!welcomeScreen && showComposerOnWelcome) || undefined
@@ -57,6 +61,9 @@ export const ChatLayout = forwardRef<HTMLDivElement, ChatLayoutProps>(
             {footer}
             {composer}
           </div>
+        )}
+        {isEmpty && welcomeFooter && (
+          <div className="chat-workspace-welcome-footer">{welcomeFooter}</div>
         )}
       </WorkPanelLayout>
     </div>
