@@ -586,6 +586,7 @@ export function ClarificationPanel({
         id={panelId}
         title="Your input"
         label="Clarification"
+        inlineSummary="Needs your input"
         footer={actions}
       >
         <div data-work-item className="clarification-work-item">

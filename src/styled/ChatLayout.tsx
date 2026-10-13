@@ -1,4 +1,5 @@
-import { forwardRef, ReactNode } from "react";
+import { forwardRef, ReactNode, useCallback, useState } from "react";
+import { ThreadLayoutProvider } from "../layout/ThreadLayoutProvider";
 import { WorkPanelLayout } from "../interactions/WorkPanel";
 import { cn } from "../utils/cn";
 
@@ -38,35 +39,51 @@ export const ChatLayout = forwardRef<HTMLDivElement, ChatLayoutProps>(
       welcomeFooter,
     },
     ref,
-  ) => (
-    <div
-      ref={ref}
-      data-welcome-footer={(isEmpty && !!welcomeFooter) || undefined}
-      data-chat-ui
-      data-welcome-composer={
-        (isEmpty && !!welcomeScreen && showComposerOnWelcome) || undefined
-      }
-      className={cn(
-        "chat-workspace relative h-full overflow-hidden flex flex-col min-h-0",
-        className,
-      )}
-    >
-      <WorkPanelLayout>
-        {header}
-        <div className="chat-workspace-body">
-          {isEmpty && welcomeScreen ? welcomeScreen : messageList}
+  ) => {
+    const [host, setHost] = useState<HTMLDivElement | null>(null);
+    const hostRef = useCallback(
+      (node: HTMLDivElement | null) => {
+        setHost(node);
+        if (typeof ref === "function") {
+          ref(node);
+        } else if (ref) {
+          ref.current = node;
+        }
+      },
+      [ref],
+    );
+    return (
+      <ThreadLayoutProvider host={host}>
+        <div
+          ref={hostRef}
+          data-welcome-footer={(isEmpty && !!welcomeFooter) || undefined}
+          data-chat-ui
+          data-welcome-composer={
+            (isEmpty && !!welcomeScreen && showComposerOnWelcome) || undefined
+          }
+          className={cn(
+            "chat-workspace relative h-full overflow-hidden flex flex-col min-h-0",
+            className,
+          )}
+        >
+          <WorkPanelLayout>
+            {header}
+            <div className="chat-workspace-body">
+              {isEmpty && welcomeScreen ? welcomeScreen : messageList}
+            </div>
+            {(!isEmpty || !welcomeScreen || showComposerOnWelcome) && (
+              <div className="chat-workspace-bottom">
+                {footer}
+                {composer}
+              </div>
+            )}
+            {isEmpty && welcomeFooter && (
+              <div className="chat-workspace-welcome-footer">{welcomeFooter}</div>
+            )}
+          </WorkPanelLayout>
         </div>
-        {(!isEmpty || !welcomeScreen || showComposerOnWelcome) && (
-          <div className="chat-workspace-bottom">
-            {footer}
-            {composer}
-          </div>
-        )}
-        {isEmpty && welcomeFooter && (
-          <div className="chat-workspace-welcome-footer">{welcomeFooter}</div>
-        )}
-      </WorkPanelLayout>
-    </div>
-  ),
+      </ThreadLayoutProvider>
+    );
+  },
 );
 ChatLayout.displayName = "ChatLayout";

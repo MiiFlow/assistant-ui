@@ -134,7 +134,7 @@ function Surface({ initial }: { initial: InteractionSurface }) {
         title={surface.title}
         label={products ? "PRODUCT COLLECTION" : surface.component === "place_map" ? "PLACES" : "SOURCES"}
         expanded={expanded}
-        summary={expanded ? `${count} ${noun}${count === 1 ? "" : "s"}${surface.state.selectedIds.length ? `, ${surface.state.selectedIds.length} selected` : ""} · Open in result panel` : undefined}
+        summary={expanded ? `${count} ${noun}${count === 1 ? "" : "s"}${surface.state.selectedIds.length ? `, ${surface.state.selectedIds.length} selected` : ""} · Open` : undefined}
         onOpen={panel && supported && !entry.unavailable
           ? () => expanded ? panel.focus() : panel.open(panelId, resourceId)
           : undefined}

@@ -61,6 +61,15 @@ export { ToolStatusIndicator, type ToolStatusIndicatorProps, type ToolStatus } f
 export { ChatLayout, type ChatLayoutProps } from "./ChatLayout";
 export { WelcomeScreen, type WelcomeScreenProps, type WelcomeSuggestion } from "./WelcomeScreen";
 
+// Container-driven thread layout
+export {
+	ThreadLayoutProvider,
+	useThreadLayout,
+	type ThreadLayoutProviderProps,
+	type ThreadLayoutValue,
+} from "../layout/ThreadLayoutProvider";
+export { THREAD_LAYOUT, classifyTier, deriveTier, type ThreadLayoutTier } from "../layout/layout-tiers";
+
 // Clarification panel
 export { ClarificationPanel, type ClarificationPanelProps } from "./ClarificationPanel";
 
@@ -185,7 +194,7 @@ export { InteractionProvider, InteractionFailure, interactionSchema } from "../i
 export type { InteractionSurface, InteractionRequest, InteractionTransport } from "../interactions/runtime";
 export type { InteractionActionRequest, InteractionActionOutcome } from "../interactions/action-request";
 export { ActionSubmission } from "../interactions/action-submission";
-export { WorkPanel, WorkPanelActions, useWorkPanel } from "../interactions/WorkPanel";
+export { WorkPanel, WorkPanelActions, WorkPanelLayout, useWorkPanel } from "../interactions/WorkPanel";
 export { WorkItemHeader } from "../interactions/WorkItemHeader";
 
 export { submitVisualizationAction } from "../interactions/submit-action";

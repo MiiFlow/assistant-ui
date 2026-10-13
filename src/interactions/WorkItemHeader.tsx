@@ -32,14 +32,12 @@ export function WorkItemHeader({
           type="button"
           aria-label={
             actionLabel ||
-            (expanded ? `Focus ${title} in result panel` : `Expand ${title}`)
+            (expanded ? `Focus ${title}` : `Expand ${title}`)
           }
           onClick={onOpen}
         >
           <Expand size={17} aria-hidden="true" />
-          {(expanded || actionLabel) && (
-            <span>{actionLabel || "View in panel"}</span>
-          )}
+          {(expanded || actionLabel) && <span>{actionLabel || "View"}</span>}
         </button>
       )}
     </header>
