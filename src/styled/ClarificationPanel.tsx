@@ -456,7 +456,8 @@ export function ClarificationPanel({
           role="group"
           aria-label={`Question ${qi + 1} of ${questions.length}`}
           hidden={qi !== active}
-          className={expanded ? "" : "max-h-[50vh] overflow-y-auto pr-1"}
+          // Contain the 2px focus outlines and 3px offsets for options and Other.
+          className={expanded ? "" : "max-h-[50vh] overflow-y-auto p-[5px]"}
         >
           {renderQuestion(qi)}
         </div>
