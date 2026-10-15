@@ -1,5 +1,6 @@
 import type { VisualizationActionHandler } from "../types/streaming";
 import type { ResolveMediaGeneration } from "../styled/MediaGenerationCard";
+import type { RenderMediaActions } from "../styled/MediaLightbox";
 import {
   createContext,
   useContext,
@@ -56,6 +57,12 @@ export interface ChatContextValue {
    * consumer, so neither is a reliable signal. Defaults to false (light). */
   isDarkSurface: boolean;
   resolveMediaGeneration?: ResolveMediaGeneration;
+  /** Host actions for chat media (generated images, attachments, inline and
+   * table media), drawn on each tile and under the item in the lightbox. The
+   * second argument says which surface and transcript origin is asking, so a
+   * host can offer different verbs per place. chat-ui only places the result.
+   * Pass a stable function: it is part of the render context every message reads. */
+  renderMediaActions?: RenderMediaActions;
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -81,6 +88,7 @@ export interface ChatRenderContextValue {
   entityPrefixes?: Record<string, string>;
   isDarkSurface: boolean;
   resolveMediaGeneration?: ResolveMediaGeneration;
+  renderMediaActions?: RenderMediaActions;
 }
 
 const ChatRenderContext = createContext<ChatRenderContextValue | null>(null);
@@ -104,6 +112,7 @@ export interface ChatProviderProps {
   entityPrefixes?: Record<string, string>;
   isDarkSurface?: boolean;
   resolveMediaGeneration?: ResolveMediaGeneration;
+  renderMediaActions?: RenderMediaActions;
 }
 
 export function ChatProvider({
@@ -122,6 +131,7 @@ export function ChatProvider({
   entityPrefixes,
   isDarkSurface = false,
   resolveMediaGeneration,
+  renderMediaActions,
 }: ChatProviderProps) {
   const sendMessage = useCallback(
     async (content: string, attachments?: File[]) => {
@@ -146,6 +156,7 @@ export function ChatProvider({
       entityPrefixes,
       isDarkSurface,
       resolveMediaGeneration,
+      renderMediaActions,
     }),
     [
       messages,
@@ -162,6 +173,7 @@ export function ChatProvider({
       entityPrefixes,
       isDarkSurface,
       resolveMediaGeneration,
+      renderMediaActions,
     ]
   );
 
@@ -174,8 +186,9 @@ export function ChatProvider({
       entityPrefixes,
       isDarkSurface,
       resolveMediaGeneration,
+      renderMediaActions,
     }),
-    [viewerRole, onVisualizationAction, resolveCommandToken, resolveEntity, entityPrefixes, isDarkSurface, resolveMediaGeneration]
+    [viewerRole, onVisualizationAction, resolveCommandToken, resolveEntity, entityPrefixes, isDarkSurface, resolveMediaGeneration, renderMediaActions]
   );
 
   return (

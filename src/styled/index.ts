@@ -17,6 +17,16 @@ export { ThinkingIndicator, decodeFrame, type ThinkingIndicatorProps } from "./T
 // New components for main app integration
 export { ChatHeader, type ChatHeaderAction, type ChatHeaderProps } from "./ChatHeader";
 export { MessageAttachments, type MessageAttachmentsProps } from "./MessageAttachments";
+export {
+	MediaLightbox,
+	useMediaLightbox,
+	type MediaItem,
+	type MediaLightboxProps,
+	type MediaActionContext,
+	type MediaActionSurface,
+	type MediaOrigin,
+	type RenderMediaActions,
+} from "./MediaLightbox";
 export { ReasoningPanel, type ReasoningPanelProps } from "./ReasoningPanel";
 export {
 	ReasoningStream,

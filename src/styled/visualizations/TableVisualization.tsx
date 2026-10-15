@@ -658,6 +658,7 @@ export function TableVisualization({
 
       {lightboxIndex !== null && (
         <MediaLightbox
+          origin="table"
           items={mediaIndex.items}
           index={lightboxIndex}
           onClose={closeLightbox}

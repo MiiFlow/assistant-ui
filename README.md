@@ -276,6 +276,7 @@ Wraps children and provides chat context via React context.
 | `resolveEntity` | `(ref: { kind, id, label }) => { label?, icon?, href?, onNavigate?, renderHoverCard? } \| undefined` | — | Render an `entity:<kind>/<id>` link in an answer as a named chip: route, in-app navigation, hover card. Without it the chip shows the label and does not navigate |
 | `entityPrefixes` | `Record<string, string>` | — | prefix → kind (e.g. `{ sched_: "schedule" }`) so a bare id in streaming text renders as the same chip. Pass a stable object |
 | `isDarkSurface` | `boolean` | `false` | Tells the package the host surface is dark — drives choices CSS variables can't express, currently the code-block syntax theme |
+| `renderMediaActions` | `(media: MediaItem, context: { surface: "tile" \| "lightbox"; origin: "message" \| "attachment" \| "inline" \| "table" }) => ReactNode` | — | Host actions (save, edit, …) for chat media, drawn on each media tile and under the item in `MediaLightbox`. `media` carries `fileAssetId` / `sourceUrl` when the server sent them. Return `null` for none. Pass a stable function: it is part of the render context every message reads |
 
 ### `ChatLayout`
 

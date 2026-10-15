@@ -2,7 +2,7 @@ import { ReservedImage } from "../ReservedImage";
 import { mediaReferenceMatches } from "../../utils/media";
 import { createContext, useContext, useState } from "react";
 import type { MediaChunkData } from "../../types";
-import { MediaLightbox, useMediaLightbox } from "../MediaLightbox";
+import { MediaLightbox, MediaTileActions, toMediaItem, useMediaLightbox } from "../MediaLightbox";
 
 export const MarkdownMediaContext = createContext<readonly MediaChunkData[]>([]);
 
@@ -34,7 +34,7 @@ export function remarkMediaReferences() {
 export function ReferencedMedia({ id, alt }: { id: string; alt?: string }) {
   const media = useContext(MarkdownMediaContext).find(item => item.id === id);
   const [failedPreview, setFailedPreview] = useState<string>();
-  const items = media?.url ? [media] : [];
+  const items = media?.url ? [toMediaItem(media)] : [];
   const { index, open, close, navigate } = useMediaLightbox(items);
   if (!media || !media.url || media.status === "pending" || media.status === "failed") {
     return <span style={{ display: "inline-flex", width: 240, maxWidth: "100%", aspectRatio: "4 / 3", alignItems: "center" }} role="status">{media?.status === "pending" ? "Loading preview…" : "Preview unavailable"}</span>;
@@ -50,6 +50,7 @@ export function ReferencedMedia({ id, alt }: { id: string; alt?: string }) {
       </span> : <ReservedImage width={240} height={180} onError={() => setFailedPreview(media.url)} src={media.url} alt={label} loading="lazy"  />}
     </button>
     {media.previewUrl && /^https?:\/\//i.test(media.previewUrl) && <a href={media.previewUrl} target="_blank" rel="noopener noreferrer">Open in Meta</a>}
-    {index !== null && <MediaLightbox items={items} index={index} onClose={close} onNavigate={navigate} />}
+    {!previewFailed && <MediaTileActions media={items[0]} origin="inline" placement="below" />}
+    {index !== null && <MediaLightbox items={items} index={index} origin="inline" onClose={close} onNavigate={navigate} />}
   </span>;
 }

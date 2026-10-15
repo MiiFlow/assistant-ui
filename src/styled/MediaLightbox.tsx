@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { ChatRenderContext } from "../context/ChatProvider";
 import { cn } from "../utils/cn";
 import type { MediaChunkData, VisualizationChunkData, TableVisualizationData } from "../types";
 
@@ -29,6 +30,61 @@ export interface MediaItem {
 	url: string;
 	mediaType: string;
 	altText?: string;
+	/** The host's stored-file id for these bytes, when the server sent one.
+	 *  Lets a host action (save, reuse, edit) address the file, not the URL. */
+	fileAssetId?: string;
+	/** Where the media came from before the host proxied or mirrored it. */
+	sourceUrl?: string;
+}
+
+/** Where a media item is drawn. */
+export type MediaActionSurface = "tile" | "lightbox";
+/** Which part of the transcript the item belongs to: a message's media
+ *  gallery, a user attachment, an inline `media_ref` in the answer text, or a
+ *  table cell. */
+export type MediaOrigin = "message" | "attachment" | "inline" | "table";
+export interface MediaActionContext {
+	surface: MediaActionSurface;
+	origin: MediaOrigin;
+}
+/** Host-supplied actions for one media item (Save, Edit, …). chat-ui only
+ *  places them; it never decides which apply. Return null for none. */
+export type RenderMediaActions = (media: MediaItem, context: MediaActionContext) => ReactNode;
+
+/**
+ * The host's actions for a media tile. Reads the provider-level
+ * `renderMediaActions`; draws nothing when there is none or it returns
+ * nothing. `overlay` sits over the tile's bottom-right corner (the tile's
+ * container must be `relative`); `below` is a row under it, for inline video
+ * players whose own controls occupy the bottom edge. Clicks inside never reach
+ * the tile, so an action does not also open the lightbox.
+ */
+export function MediaTileActions({
+	media,
+	origin,
+	placement = "overlay",
+}: {
+	media: MediaItem;
+	origin: MediaOrigin;
+	placement?: "overlay" | "below";
+}) {
+	const render = useContext(ChatRenderContext)?.renderMediaActions;
+	const actions = render?.(media, { surface: "tile", origin });
+	if (actions == null || actions === false) return null;
+	return (
+		// A span: inline media references render inside markdown paragraphs.
+		<span
+			data-media-actions="tile"
+			className={cn(
+				"flex gap-1",
+				placement === "overlay" ? "absolute bottom-1.5 right-1.5 z-[1]" : "mt-1.5",
+			)}
+			onClick={(e) => e.stopPropagation()}
+			onKeyDown={(e) => e.stopPropagation()}
+		>
+			{actions}
+		</span>
+	);
 }
 
 export const YOUTUBE_ID_RE =
@@ -38,6 +94,30 @@ export const extractYouTubeId = (url: string): string | null => {
 	const m = url.match(YOUTUBE_ID_RE);
 	return m ? m[1] : null;
 };
+
+/** The MediaItem view of a message media record: exactly the fields a tile,
+ *  the lightbox and host actions read (not its stream status or context). */
+export function toMediaItem(media: {
+	id: string;
+	url: string;
+	mediaType?: string;
+	altText?: string;
+	posterUrl?: string;
+	previewUrl?: string;
+	fileAssetId?: string;
+	sourceUrl?: string;
+}): MediaItem {
+	return {
+		id: media.id,
+		url: media.url,
+		mediaType: media.mediaType || "image",
+		altText: media.altText,
+		posterUrl: media.posterUrl,
+		previewUrl: media.previewUrl,
+		fileAssetId: media.fileAssetId,
+		sourceUrl: media.sourceUrl,
+	};
+}
 
 /** Parse a table cell / MediaResult-shaped value into a MediaItem.
  *
@@ -55,6 +135,7 @@ export function parseMediaValue(
 		mediaType?: string;
 		altText?: string;
 		sourceUrl?: string;
+		fileAssetId?: string;
 		posterUrl?: string;
 		previewUrl?: string;
 	}>,
@@ -78,10 +159,12 @@ export function parseMediaValue(
 				altText: hit.altText,
 				posterUrl: hit.posterUrl,
 				previewUrl: hit.previewUrl,
+				fileAssetId: hit.fileAssetId,
+				sourceUrl: hit.sourceUrl,
 			};
 		}
 		const matched = medias?.find((m) => m.sourceUrl === raw || m.url === raw);
-		if (matched) return { ...matched, mediaType: matched.mediaType || "image" };
+		if (matched) return toMediaItem(matched);
 		if (!/^(https?:\/\/|\/|blob:|data:image\/)/i.test(raw)) return null;
 		const url = raw;
 		const isVideo =
@@ -114,6 +197,8 @@ export function parseMediaValue(
 			altText: alt,
 			posterUrl: matched?.posterUrl || (v.poster_url || v.posterUrl) as string | undefined,
 			previewUrl: matched?.previewUrl || (v.preview_url || v.previewUrl) as string | undefined,
+			fileAssetId: matched?.fileAssetId || (v.file_asset_id || v.fileAssetId) as string | undefined,
+			sourceUrl: matched?.sourceUrl || (v.source_url || v.sourceUrl) as string | undefined,
 		};
 	}
 	return null;
@@ -144,6 +229,11 @@ export interface MediaLightboxProps {
 	index: number;
 	onClose: () => void;
 	onNavigate: (direction: -1 | 1) => void;
+	/** Actions for the item on screen, drawn under it. Defaults to the
+	 *  provider-level `renderMediaActions`; pass `() => null` to show none. */
+	renderActions?: RenderMediaActions;
+	/** Passed to the provider-level `renderMediaActions`. Defaults to "message". */
+	origin?: MediaOrigin;
 }
 
 /**
@@ -160,12 +250,18 @@ export function MediaLightbox({
 	index,
 	onClose,
 	onNavigate,
+	renderActions,
+	origin = "message",
 }: MediaLightboxProps) {
 	const active = items[index];
 	const [failedUrl, setFailedUrl] = useState<string | null>(null);
+	const providerActions = useContext(ChatRenderContext)?.renderMediaActions;
 
 	useEffect(() => {
 		const handleKey = (e: KeyboardEvent) => {
+			// Keys pressed inside a host action (a menu, a text field) are the
+			// action's own, not the viewer's navigation.
+			if (e.target instanceof Element && e.target.closest("[data-media-actions]")) return;
 			if (e.key === "Escape") onClose();
 			else if (e.key === "ArrowLeft") onNavigate(-1);
 			else if (e.key === "ArrowRight") onNavigate(1);
@@ -191,6 +287,7 @@ export function MediaLightbox({
 
 	const ytId = active.mediaType === "video" ? extractYouTubeId(active.url) : null;
 	const hasMany = items.length > 1;
+	const actions = (renderActions ?? providerActions)?.(active, { surface: "lightbox", origin });
 
 	const overlay = (
 		<div
@@ -310,6 +407,11 @@ export function MediaLightbox({
 				{active.altText && (
 					<div className="mt-2 max-w-[90vw] text-center text-sm text-white/80">
 						{active.altText}
+					</div>
+				)}
+				{actions != null && actions !== false && (
+					<div data-media-actions="lightbox" className="mt-3 flex flex-wrap justify-center gap-2">
+						{actions}
 					</div>
 				)}
 			</div>

@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Features
+
+- **Host actions on chat media.** `ChatProvider` accepts `renderMediaActions(media,
+  { surface, origin })`. Its result is drawn on each media tile (message galleries,
+  image attachments, inline `media_ref` previews) and under the item in the
+  `MediaLightbox`. `surface` is `"tile"` or `"lightbox"`; `origin` is `"message"`,
+  `"attachment"`, `"inline"` or `"table"`. chat-ui only places the actions, and a
+  click on one never opens the lightbox. `MediaLightbox` also takes its own
+  `renderActions`, which wins over the provider's. `MediaItem` now carries
+  `fileAssetId` and `sourceUrl` from the message media, so an action can address
+  the stored file. `MediaLightbox`, `useMediaLightbox` and the media types are
+  exported from the package root and `/styled`.
+
 ### Behavior changes
 
 - Clarification question tabs are removed; a centered, fixed-width section of

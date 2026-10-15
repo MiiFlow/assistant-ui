@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Download, FileIcon, FileText, Image as ImageIcon, Video } from "lucide-react";
 import { cn } from "../utils/cn";
-import { MediaLightbox, type MediaItem } from "./MediaLightbox";
+import { MediaLightbox, MediaTileActions, type MediaItem } from "./MediaLightbox";
 import type { Attachment } from "../types";
 
 const THUMBNAIL_MAX_WIDTH = 320;
@@ -40,6 +40,16 @@ export interface MessageAttachmentsProps {
  * Display attachments in messages: images render as inline thumbnails that open
  * a lightbox; everything else renders as a compact file chip.
  */
+/** An image attachment as the lightbox and host media actions see it. */
+function attachmentMediaItem(attachment: Attachment): MediaItem {
+  return {
+    id: attachment.id,
+    url: (attachment.url || attachment.previewUrl)!,
+    mediaType: "image",
+    altText: attachment.filename,
+  };
+}
+
 export function MessageAttachments({
   attachments,
   onDownload,
@@ -61,12 +71,7 @@ export function MessageAttachments({
         .filter(
           (a) => a.isImage && !!(a.previewUrl || a.url) && !brokenIds.has(a.id),
         )
-        .map((a) => ({
-          id: a.id,
-          url: (a.url || a.previewUrl)!,
-          mediaType: "image",
-          altText: a.filename,
-        })),
+        .map(attachmentMediaItem),
     [attachments, brokenIds],
   );
 
@@ -156,6 +161,7 @@ export function MessageAttachments({
         <MediaLightbox
           items={imageItems}
           index={Math.min(lightboxIndex, imageItems.length - 1)}
+          origin="attachment"
           onClose={() => setLightboxIndex(null)}
           onNavigate={(direction) =>
             setLightboxIndex((current) =>
@@ -229,6 +235,8 @@ function AttachmentThumbnail({
           className="pointer-events-none absolute inset-0 rounded-xl border border-[var(--chat-border)]"
         />
       )}
+
+      {!broken && <MediaTileActions media={attachmentMediaItem(attachment)} origin="attachment" />}
 
       {/* Download sits on the image so the thumbnail stays uncluttered. */}
       {attachment.url && (

@@ -87,6 +87,14 @@ export {
   WelcomeScreen,
   ScrollToBottomButton,
   ToolStatusIndicator,
+  MediaLightbox,
+  useMediaLightbox,
+  type MediaItem,
+  type MediaLightboxProps,
+  type MediaActionContext,
+  type MediaActionSurface,
+  type MediaOrigin,
+  type RenderMediaActions,
 } from "./styled";
 
 // Utilities

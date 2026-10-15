@@ -15,8 +15,10 @@ import {
 } from "react";
 import {
 	MediaLightbox,
+	MediaTileActions,
 	PlayOverlay,
 	YOUTUBE_ID_RE,
+	toMediaItem,
 	useMediaLightbox,
 	tableMediaIds,
 	type MediaItem,
@@ -612,14 +614,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 					// Skip media items already rendered inline as markdown images
 					return !!media.url && !textContent.includes(media.url);
 				})
-				.map((m) => ({
-					id: m.id,
-					url: m.url,
-					mediaType: m.mediaType,
-					altText: m.altText,
-					posterUrl: m.posterUrl,
-					previewUrl: m.previewUrl,
-				}));
+				.map(toMediaItem);
 		}, [medias, referenceText, referencedTableIds, referencedInlineIds]);
 
 		const {
@@ -653,11 +648,10 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 						}}
 					>
 						{filteredMedias.map((media, idx) => (
-							<MediaGridTile
-								key={`media-${media.id}`}
-								media={media}
-								onOpen={() => openLightbox(idx)}
-							/>
+							<div key={`media-${media.id}`} className="relative">
+								<MediaGridTile media={media} onOpen={() => openLightbox(idx)} />
+								<MediaTileActions media={media} origin="message" />
+							</div>
 						))}
 					</div>
 				);
@@ -668,7 +662,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 			const media = filteredMedias[0];
 			if (media.mediaType === "image") {
 				return (
-					<div className="my-3">
+					<div className="relative my-3 w-fit max-w-full">
 						<button
 							type="button"
 							onClick={() => openLightbox(0)}
@@ -683,28 +677,26 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 								style={{ maxHeight: 512, display: "block" }}
 							/>
 						</button>
+						<MediaTileActions media={media} origin="message" />
 					</div>
 				);
 			}
 			if (media.mediaType === "video") {
 				const ytMatch = media.url.match(YOUTUBE_ID_RE);
-				if (ytMatch) {
-					return (
-						<LazyYouTubeEmbed
-							key={`media-${media.id}`}
-							ytId={ytMatch[1]}
-							altText={media.altText}
-						/>
-					);
-				}
 				return (
-					<LazyHtmlVideo
-						key={`media-${media.id}`}
-						url={media.url}
-						posterUrl={media.posterUrl}
-						previewUrl={media.previewUrl}
-						altText={media.altText}
-					/>
+					<div key={`media-${media.id}`}>
+						{ytMatch ? (
+							<LazyYouTubeEmbed ytId={ytMatch[1]} altText={media.altText} />
+						) : (
+							<LazyHtmlVideo
+								url={media.url}
+								posterUrl={media.posterUrl}
+								previewUrl={media.previewUrl}
+								altText={media.altText}
+							/>
+						)}
+						<MediaTileActions media={media} origin="message" placement="below" />
+					</div>
 				);
 			}
 			return null;
