@@ -4,6 +4,11 @@
 
 ### Features
 
+- **Chat media names its library creative.** `MediaChunkData` and `MediaItem`
+  carry an optional `creativeId` and `creativeUnsaved`, read from the server's
+  top-level `creative_id` / `creative_unsaved` (never from a tool's
+  `metadata`), so a host action can treat a chat image as that creative.
+
 - **Host actions on chat media.** `ChatProvider` accepts `renderMediaActions(media,
   { surface, origin })`. Its result is drawn on each media tile (message galleries,
   image attachments, inline `media_ref` previews) and under the item in the

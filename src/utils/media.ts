@@ -12,6 +12,10 @@ export function normalizeMedia(value: Record<string, any>): MediaChunkData {
     altText: value.alt_text || value.altText || "",
     fileAssetId:
       value.file_asset_id || value.fileAssetId || value.metadata?.file_asset_id,
+    // Only the server's top-level answer: a creative id kept in a tool's
+    // metadata can outlive the creative.
+    creativeId: value.creative_id || value.creativeId || undefined,
+    creativeUnsaved: value.creative_unsaved ?? value.creativeUnsaved ?? undefined,
     sourceUrl: value.source_url || value.sourceUrl,
     status: value.status,
     errorMessage: value.error_message || value.errorMessage,

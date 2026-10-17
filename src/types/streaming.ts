@@ -473,6 +473,11 @@ export interface MediaChunkData {
   mediaType: string; // "image", "video", "audio"
   altText?: string;
   fileAssetId?: string;
+  /** The host's library creative holding these bytes, when the server names
+   *  one (resolved at every read; absent once that creative is gone). */
+  creativeId?: string;
+  /** That creative is a draft the host keeps only if someone saves it. */
+  creativeUnsaved?: boolean;
   sourceUrl?: string;
   status?: "pending" | "ready" | "failed";
   errorMessage?: string;

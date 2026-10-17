@@ -33,6 +33,11 @@ export interface MediaItem {
 	/** The host's stored-file id for these bytes, when the server sent one.
 	 *  Lets a host action (save, reuse, edit) address the file, not the URL. */
 	fileAssetId?: string;
+	/** The host's library creative holding these bytes, when the server
+	 *  named one: a host action can treat the item as that creative. */
+	creativeId?: string;
+	/** That creative is a draft the host keeps only if someone saves it. */
+	creativeUnsaved?: boolean;
 	/** Where the media came from before the host proxied or mirrored it. */
 	sourceUrl?: string;
 }
@@ -108,6 +113,8 @@ export function toMediaItem(media: {
 	posterUrl?: string;
 	previewUrl?: string;
 	fileAssetId?: string;
+	creativeId?: string;
+	creativeUnsaved?: boolean;
 	sourceUrl?: string;
 }): MediaItem {
 	return {
@@ -118,6 +125,8 @@ export function toMediaItem(media: {
 		posterUrl: media.posterUrl,
 		previewUrl: media.previewUrl,
 		fileAssetId: media.fileAssetId,
+		creativeId: media.creativeId,
+		creativeUnsaved: media.creativeUnsaved,
 		sourceUrl: media.sourceUrl,
 	};
 }
