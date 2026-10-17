@@ -1,11 +1,14 @@
 import { useContext, useEffect, useState } from "react";
 import { ChatRenderContext } from "../context/ChatProvider";
+import { MediaTileActions } from "./MediaLightbox";
 import { usePrefersReducedMotion } from "../hooks/use-reduced-motion";
 import type { MediaGeneration } from "../utils/media-generation";
 
 export interface GenerationStatus {
   status: string;
   url?: string;
+  /** The host's stored file for the finished video, for its media actions. */
+  fileAssetId?: string;
 }
 export type ResolveMediaGeneration = (
   jobId: string,
@@ -70,19 +73,33 @@ export function MediaGenerationCard({
   };
   if (snapshot?.status === "completed" && snapshot.url && !playbackFailed) {
     return (
-      <div className="my-4 overflow-hidden rounded-2xl" style={frame}>
-        <video
-          src={snapshot.url}
-          controls
-          playsInline
-          preload="metadata"
-          aria-label="Generated video"
-          onError={() => setPlaybackFailed(true)}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            background: "#111",
+      <div className="my-4">
+        <div className="overflow-hidden rounded-2xl" style={frame}>
+          <video
+            src={snapshot.url}
+            controls
+            playsInline
+            preload="metadata"
+            aria-label="Generated video"
+            onError={() => setPlaybackFailed(true)}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              background: "#111",
+            }}
+          />
+        </div>
+        {/* The host's actions (Save, Animate, ...), under the player: its own
+          controls take the bottom edge. */}
+        <MediaTileActions
+          origin="inline"
+          placement="below"
+          media={{
+            id: generation.id,
+            url: snapshot.url,
+            mediaType: "video",
+            fileAssetId: snapshot.fileAssetId,
           }}
         />
       </div>

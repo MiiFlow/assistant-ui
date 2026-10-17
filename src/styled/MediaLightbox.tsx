@@ -46,6 +46,9 @@ export type MediaOrigin = "message" | "attachment" | "inline" | "table";
 export interface MediaActionContext {
 	surface: MediaActionSurface;
 	origin: MediaOrigin;
+	/** In the lightbox: closes it, for an action that opens the host's own UI
+	 *  (a panel, a dialog) in its place. */
+	close?: () => void;
 }
 /** Host-supplied actions for one media item (Save, Edit, …). chat-ui only
  *  places them; it never decides which apply. Return null for none. */
@@ -287,7 +290,7 @@ export function MediaLightbox({
 
 	const ytId = active.mediaType === "video" ? extractYouTubeId(active.url) : null;
 	const hasMany = items.length > 1;
-	const actions = (renderActions ?? providerActions)?.(active, { surface: "lightbox", origin });
+	const actions = (renderActions ?? providerActions)?.(active, { surface: "lightbox", origin, close: onClose });
 
 	const overlay = (
 		<div

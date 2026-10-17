@@ -14,6 +14,14 @@
   `fileAssetId` and `sourceUrl` from the message media, so an action can address
   the stored file. `MediaLightbox`, `useMediaLightbox` and the media types are
   exported from the package root and `/styled`.
+- **Actions on finished background videos.** `MediaGenerationCard` draws the
+  provider's `renderMediaActions` under a completed video (`surface: "tile"`,
+  `origin: "inline"`), and `GenerationStatus` takes an optional `fileAssetId`
+  that the card passes on as the `MediaItem`'s, so a host action can address the
+  stored video.
+- **`MediaActionContext.close`.** In the lightbox, the action context carries
+  `close()`, so a host action that opens its own UI (a panel, a dialog) can
+  dismiss the lightbox first.
 
 ### Behavior changes
 
