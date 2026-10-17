@@ -93,6 +93,15 @@
   Existing widgets remain on their current visualization tools by default.
 - Product images contact their source only after the user chooses to load them.
 
+### Dependencies
+
+- **`react-syntax-highlighter` ^15 → ^16 (security).** v15 reached `prismjs ~1.27.0`
+  through `refractor` 3, so every install of this package carried prismjs's DOM
+  clobbering advisory (GHSA-x7hr-w5r2-h6wg, fixed in 1.30.0). v16 depends on
+  `prismjs ^1.30.0` directly. The `Prism` component and `styles/prism` themes are
+  unchanged. `refractor` 5 is ESM-only, so a consumer running CJS test tooling (for
+  example Jest without a transform for `refractor`) may need to transform it.
+
 ## 0.21.0
 
 KPI blocks whose arrows agree with their numbers, live placeholders for image and video generation, and file links in an answer that open the file. 0.19.0 and 0.20.0 were never published to npm; this is the first release to carry them.
