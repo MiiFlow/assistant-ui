@@ -16,6 +16,8 @@ export function normalizeMedia(value: Record<string, any>): MediaChunkData {
     // metadata can outlive the creative.
     creativeId: value.creative_id || value.creativeId || undefined,
     creativeUnsaved: value.creative_unsaved ?? value.creativeUnsaved ?? undefined,
+    creativeHasStoredMedia:
+      value.creative_has_stored_media ?? value.creativeHasStoredMedia ?? undefined,
     sourceUrl: value.source_url || value.sourceUrl,
     status: value.status,
     errorMessage: value.error_message || value.errorMessage,

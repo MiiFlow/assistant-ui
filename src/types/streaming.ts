@@ -478,6 +478,8 @@ export interface MediaChunkData {
   creativeId?: string;
   /** That creative is a draft the host keeps only if someone saves it. */
   creativeUnsaved?: boolean;
+  /** That creative holds its own file, which the host's verbs start from. */
+  creativeHasStoredMedia?: boolean;
   sourceUrl?: string;
   status?: "pending" | "ready" | "failed";
   errorMessage?: string;

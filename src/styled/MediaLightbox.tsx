@@ -38,6 +38,8 @@ export interface MediaItem {
 	creativeId?: string;
 	/** That creative is a draft the host keeps only if someone saves it. */
 	creativeUnsaved?: boolean;
+	/** That creative holds its own file, which the host's verbs start from. */
+	creativeHasStoredMedia?: boolean;
 	/** Where the media came from before the host proxied or mirrored it. */
 	sourceUrl?: string;
 }
@@ -115,6 +117,7 @@ export function toMediaItem(media: {
 	fileAssetId?: string;
 	creativeId?: string;
 	creativeUnsaved?: boolean;
+	creativeHasStoredMedia?: boolean;
 	sourceUrl?: string;
 }): MediaItem {
 	return {
@@ -127,6 +130,7 @@ export function toMediaItem(media: {
 		fileAssetId: media.fileAssetId,
 		creativeId: media.creativeId,
 		creativeUnsaved: media.creativeUnsaved,
+		creativeHasStoredMedia: media.creativeHasStoredMedia,
 		sourceUrl: media.sourceUrl,
 	};
 }
