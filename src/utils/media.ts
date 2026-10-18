@@ -2,7 +2,7 @@ import { Lexer, type Token } from "marked";
 import type { MediaChunkData, VisualizationChunkData, TableVisualizationData } from "../types/streaming";
 
 export const CHAT_MEDIA_PATH =
-  /^\/assistant\/(?:media\/[^/]+|messages\/[^/]+\/media\/[^/]+)\/content\/$/;
+  /^\/assistant\/(?:media\/[^/]+|attachments\/[^/]+|messages\/[^/]+\/media\/[^/]+)\/content\/$/;
 
 export function normalizeMedia(value: Record<string, any>): MediaChunkData {
   return {
