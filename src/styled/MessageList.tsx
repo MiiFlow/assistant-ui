@@ -31,13 +31,16 @@ export interface MessageListProps {
 	children: ReactNode;
 	/** Follow the live edge while the reader is at it. Ignored while a turn is
 	 *  anchored — an anchored transcript holds still and grows downward — unless
-	 *  the reader asks to follow via the scroll-to-bottom button. */
+	 *  the reader asks to follow via the scroll-to-bottom button or (with
+	 *  `scrollAnchorId`) catches up with a reply that has outgrown the screen. */
 	autoScroll?: boolean;
 	/** Whether to show the scroll-to-bottom button */
 	showScrollToBottom?: boolean;
 	/** Additional CSS classes applied to the transcript container (e.g. horizontal padding) */
 	className?: string;
-	/** Pixels of the previous turn left visible above an anchored one. */
+	/** Pixels of the previous turn left visible above an anchored one. Defaults
+	 *  to 64; with `scrollAnchorId`, to the transcript's top padding, so a sent
+	 *  question sits where a conversation's first message does. */
 	scrollPreviousItemPeek?: number;
 	/** Where the transcript opens. `last-anchor` lands the last anchored turn at
 	 *  the top when what follows it overflows the viewport, and is the same as

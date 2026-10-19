@@ -4,6 +4,14 @@
 
 ### Features
 
+- **Stable transcript scrolls like a conversation.** With `scrollAnchorId`, a
+  sent question glides to the top (instant under `prefers-reduced-motion`) and
+  sits at the transcript's top padding instead of under a 64px sliver of the
+  previous turn; pass `scrollPreviousItemPeek` to keep a sliver. A reader who
+  scrolls to the bottom of a reply that has outgrown the screen is followed
+  again while it streams, and the scroll-to-bottom control becomes a "Jump to
+  latest" pill. `ScrollToBottomButton` takes an optional `label`.
+
 - **Chat media names its library creative.** `MediaChunkData` and `MediaItem`
   carry an optional `creativeId`, `creativeUnsaved` and `creativeHasStoredMedia`,
   read from the server's top-level `creative_id` / `creative_unsaved` /

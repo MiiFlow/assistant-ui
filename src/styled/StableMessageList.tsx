@@ -11,21 +11,41 @@ import {
 import type { MessageListProps } from "./MessageList";
 import { cn } from "../utils/cn";
 import { ScrollToBottomButton } from "./ScrollToBottomButton";
+import { glideOffPath, readScroll } from "./scroll-rules";
 
 type Mode = "initial" | "anchored" | "reading" | "following";
 type Landmark = { id: string; top: number };
-const SCROLL_KEYS = new Set([
-  "ArrowUp",
-  "ArrowDown",
-  "PageUp",
-  "PageDown",
-  "Home",
-  "End",
-  " ",
-]);
+/** A programmatic smooth scroll in flight: where it is heading, and the last
+ *  position it was seen at (a glide only moves from there toward `target`). */
+type Glide = { target: number; from: number };
+const SCROLL_KEYS: Record<string, "up" | "down"> = {
+  ArrowUp: "up",
+  PageUp: "up",
+  Home: "up",
+  ArrowDown: "down",
+  PageDown: "down",
+  End: "down",
+  " ": "down",
+};
+// Quiet time after the last glide frame that counts as "the glide stopped",
+// for browsers without `scrollend` (and as a backstop for a stalled glide).
+// The first frame can take longer to arrive.
+const GLIDE_SETTLE_MS = 150;
+const GLIDE_START_MS = 300;
+
+const prefers = (query: string) =>
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia(query).matches;
 
 /** One owner for positioning, prepends, and delayed layout. Opt-in so existing
- * package consumers retain the original scroller's contract. */
+ * package consumers retain the original scroller's contract.
+ *
+ * Modes: `anchored` holds a just-sent message near the top while its reply
+ * grows below; `reading` keeps whatever the reader is looking at in place;
+ * `following` sticks to the bottom. A send glides to its anchor. The reader
+ * scrolling releases the hold, and reaching the bottom resumes following once
+ * the reply has outgrown the screen (see `readScroll`). */
 export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
   function StableMessageList(
     {
@@ -34,7 +54,7 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
       autoScroll = true,
       showScrollToBottom = true,
       scrollAnchorId = null,
-      scrollPreviousItemPeek = 64,
+      scrollPreviousItemPeek,
       history,
     },
     forwardedRef,
@@ -46,6 +66,12 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
     const lastAnchor = useRef<string | null>(null);
     const landmarks = useRef<Landmark[]>([]);
     const expectedTop = useRef(0);
+    const glide = useRef<Glide | null>(null);
+    // Set when the next positioning should glide rather than jump: a send, or
+    // the jump-to-latest button.
+    const glideNext = useRef(false);
+    const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const touchY = useRef<number | null>(null);
     const [atBottom, setAtBottom] = useState(true);
     const [ready, setReady] = useState(false);
     const props = useRef({
@@ -78,16 +104,57 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
           top: row.getBoundingClientRect().top - top,
         }));
       expectedTop.current = el.scrollTop;
-      setAtBottom(el.scrollHeight - el.clientHeight - el.scrollTop <= 2);
+      setAtBottom(readScroll(el, null).atEdge);
     }, []);
+
+    // The gap left above a pinned message. Defaults to the transcript's own
+    // top padding, so a sent question sits where a conversation's first
+    // message does rather than under a sliver of the previous turn.
+    const pinGap = () => {
+      const body = content.current;
+      const explicit = props.current.scrollPreviousItemPeek;
+      if (explicit !== undefined || !body) return explicit ?? 0;
+      return parseFloat(getComputedStyle(body).paddingTop) || 0;
+    };
+
+    // The scroll offset at which the anchor sits at its pin, or null.
+    const pinTop = () => {
+      const el = viewport.current;
+      const anchorId = props.current.scrollAnchorId;
+      const anchor =
+        anchorId && rows().find((row) => row.dataset.messageId === anchorId);
+      if (!el || !anchor) return null;
+      return (
+        anchor.getBoundingClientRect().top -
+        el.getBoundingClientRect().top +
+        el.scrollTop -
+        pinGap()
+      );
+    };
+
+    const endGlide = () => {
+      glide.current = null;
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+      settleTimer.current = null;
+    };
+
+    // After the reader moved the viewport: follow from the bottom (once any
+    // pinned reply has outgrown the screen), otherwise hold their place.
+    const settleFromPosition = () => {
+      const el = viewport.current;
+      if (!el) return;
+      const { follow } = readScroll(el, pinTop());
+      mode.current = follow && props.current.autoScroll ? "following" : "reading";
+      capture();
+    };
 
     const correct = useCallback(() => {
       const el = viewport.current;
       const body = content.current;
       const fill = spacer.current;
       if (!el || !body || !fill) return;
-      const { scrollAnchorId: anchorId, scrollPreviousItemPeek: peek } =
-        props.current;
+      const anchorId = props.current.scrollAnchorId;
+      const peek = pinGap();
       const items = rows();
       const anchor = items.find((row) => row.dataset.messageId === anchorId);
       // Keep the same reservation even after manual scrolling or completion.
@@ -113,11 +180,40 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
       if (mode.current === "initial")
         mode.current = anchor ? "anchored" : "following";
       const viewportTop = el.getBoundingClientRect().top;
-      if (mode.current === "anchored" && anchor) {
-        el.scrollTop += anchor.getBoundingClientRect().top - viewportTop - peek;
-      } else if (mode.current === "following") {
-        el.scrollTop = el.scrollHeight;
+      const bottom = Math.max(0, el.scrollHeight - el.clientHeight);
+      const target =
+        mode.current === "anchored" && anchor
+          ? Math.min(
+              bottom,
+              Math.max(
+                0,
+                el.scrollTop + anchor.getBoundingClientRect().top - viewportTop - peek,
+              ),
+            )
+          : mode.current === "following"
+            ? bottom
+            : null;
+      if (target !== null) {
+        const smooth = glideNext.current || glide.current !== null;
+        glideNext.current = false;
+        if (!smooth || prefers("(prefers-reduced-motion: reduce)")) {
+          endGlide();
+          el.scrollTop = target;
+        } else if (
+          Math.abs(target - el.scrollTop) > 1 &&
+          (!glide.current || Math.abs(target - glide.current.target) > 1)
+        ) {
+          // Start, or re-aim when the destination moved (content above the
+          // anchor changed size, or the bottom moved while following). Never
+          // assign scrollTop mid-glide: that would cancel the animation.
+          glide.current = { target, from: el.scrollTop };
+          el.scrollTo({ top: target, behavior: "smooth" });
+          armSettle(GLIDE_START_MS);
+        } else if (!glide.current) {
+          el.scrollTop = target;
+        }
       } else {
+        endGlide();
         const reference = landmarks.current.find((mark) =>
           items.some((row) => row.dataset.messageId === mark.id),
         );
@@ -128,20 +224,49 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
           el.scrollTop +=
             row.getBoundingClientRect().top - viewportTop - reference.top;
       }
-      capture();
+      if (!glide.current) capture();
       if (mode.current === "following" && !props.current.autoScroll)
         mode.current = "reading";
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- helpers read refs only
     }, [capture]);
+
+    // The glide stopped. Short of its target with no gesture from the reader
+    // (those end the glide in `release`), it was stalled, not taken over.
+    // Either way, finish where the current mode points now: exactly, since a
+    // glide can come to rest a fraction of a pixel away.
+    const settleGlide = () => {
+      if (!glide.current) return;
+      endGlide();
+      correct();
+    };
+    function armSettle(ms: number) {
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+      settleTimer.current = setTimeout(settleGlide, ms);
+    }
 
     useLayoutEffect(() => {
       if (lastAnchor.current !== scrollAnchorId) {
-        if (scrollAnchorId) mode.current = "anchored";
-        else if (mode.current === "anchored") mode.current = "reading";
+        if (scrollAnchorId) {
+          // The first layout is hidden until positioned; jump there.
+          if (ready) glideNext.current = true;
+          mode.current = "anchored";
+        } else if (mode.current === "anchored") mode.current = "reading";
         lastAnchor.current = scrollAnchorId;
       }
       correct();
       setReady(true);
     });
+
+    useLayoutEffect(() => {
+      const el = viewport.current;
+      if (!el) return;
+      el.addEventListener("scrollend", settleGlide);
+      return () => {
+        el.removeEventListener("scrollend", settleGlide);
+        if (settleTimer.current) clearTimeout(settleTimer.current);
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- helpers read refs only
+    }, []);
 
     useLayoutEffect(() => {
       if (typeof ResizeObserver === "undefined") return;
@@ -154,7 +279,12 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
       return () => observer.disconnect();
     }, [children, correct]);
 
-    const release = () => {
+    // The reader started scrolling. Releasing before the scroll lands keeps a
+    // resize correction from snapping them back mid-gesture; scrolling down
+    // while following is the one gesture that cannot need releasing.
+    const release = (direction: "up" | "down" | "unknown" = "unknown") => {
+      endGlide();
+      if (direction === "down" && mode.current === "following") return;
       mode.current = "reading";
       capture();
     };
@@ -197,27 +327,62 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
           }}
           onWheel={(event) => {
             if (event.deltaY) {
-              release();
+              release(event.deltaY < 0 ? "up" : "down");
               if (event.deltaY < 0) loadHistory();
             }
           }}
-          onTouchMove={release}
+          onTouchStart={(event) => {
+            touchY.current = event.touches[0]?.clientY ?? null;
+          }}
+          onTouchMove={(event) => {
+            const y = event.touches[0]?.clientY;
+            const previous = touchY.current;
+            touchY.current = y ?? null;
+            // A finger moving up scrolls the transcript down.
+            release(
+              y === undefined || previous === null || y === previous
+                ? "unknown"
+                : y < previous
+                  ? "down"
+                  : "up",
+            );
+          }}
           onKeyDown={(event) => {
-            if (
-              SCROLL_KEYS.has(event.key) &&
-              event.target === event.currentTarget
-            )
-              release();
+            const direction = SCROLL_KEYS[event.key];
+            if (direction && event.target === event.currentTarget)
+              release(event.key === " " && event.shiftKey ? "up" : direction);
           }}
           onPointerDown={(event) => {
             if (event.target === event.currentTarget) release();
           }}
+          onPointerUp={(event) => {
+            // A scrollbar press that ended at the bottom resumes following.
+            if (event.target === event.currentTarget) settleFromPosition();
+          }}
           onScroll={() => {
             const el = viewport.current!;
+            const current = glide.current;
+            if (current) {
+              if (
+                glideOffPath({
+                  from: current.from,
+                  target: current.target,
+                  scrollTop: el.scrollTop,
+                })
+              ) {
+                endGlide();
+                settleFromPosition();
+              } else if (Math.abs(el.scrollTop - current.target) <= 1) {
+                settleGlide();
+              } else {
+                current.from = el.scrollTop;
+                armSettle(GLIDE_SETTLE_MS);
+              }
+              return;
+            }
             if (Math.abs(el.scrollTop - expectedTop.current) <= 1) return;
             // Also catches assistive technology and scrollbar scrolls.
-            mode.current = "reading";
-            capture();
+            settleFromPosition();
             loadHistory();
           }}
         >
@@ -259,9 +424,11 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
         </div>
         {showScrollToBottom && (
           <ScrollToBottomButton
+            label="Jump to latest"
             isAtBottom={atBottom}
             onScrollToBottom={() => {
               mode.current = "following";
+              glideNext.current = true;
               correct();
             }}
           />

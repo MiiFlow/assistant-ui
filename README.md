@@ -326,7 +326,7 @@ Children opt in through data attributes on the direct child element:
 | `data-message-id="<id>"` | Registers the row with the engine (position preservation, visibility) |
 | `data-scroll-anchor="true"` | Makes the row the turn anchor. Give it to the live turn only |
 
-The main app opts into stable history scrolling by passing `scrollAnchorId` (including `null` for history). This mode opens at the end without animation, anchors explicit local sends once, and preserves the first visible message through prepends and resizes. Manual scrolling releases the anchor; only the scroll-to-bottom button resumes following. Pass `history={{ hasOlder, loading, error, onLoadOlder }}` for upward pagination and its retry control. Existing callers that omit `scrollAnchorId` keep the original engine.
+The main app opts into stable history scrolling by passing `scrollAnchorId` (including `null` for history). This mode opens at the end without animation, glides each explicit local send to the top once (instantly under `prefers-reduced-motion`), and preserves the first visible message through prepends and resizes. The sent message sits at the transcript's top padding unless `scrollPreviousItemPeek` is passed. Scrolling releases the anchor. Reaching the bottom resumes following once the reply has outgrown the screen; while it still fits, the bottom is the anchor and the hold stays. The scroll-to-bottom control is a "Jump to latest" pill that also resumes following. Pass `history={{ hasOlder, loading, error, onLoadOlder }}` for upward pagination and its retry control. Existing callers that omit `scrollAnchorId` keep the original engine.
 
 The list publishes two pixel custom properties on the transcript content element: `--chat-turn-fill` (the height the row *after* the anchor needs to fill the viewport) and `--chat-turn-fill-self` (the same for a row that is itself the anchor). Put `min-height: var(--chat-turn-fill)` on the live assistant row so the transcript stays still when content inside it shrinks (a step window folding, an action bar appearing). Keep the anchor and the fill on the finished turn until the next one starts.
 
@@ -348,10 +348,10 @@ The list publishes two pixel custom properties on the transcript content element
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `children` | `ReactNode` | — | **Required.** Message elements |
-| `autoScroll` | `boolean` | `true` | Follow streamed output while at the live edge. Ignored while a turn is anchored, unless the reader presses the scroll-to-bottom button |
+| `autoScroll` | `boolean` | `true` | Follow streamed output while at the live edge. Ignored while a turn is anchored, unless the reader presses the scroll-to-bottom button or (with `scrollAnchorId`) catches up with a reply that has outgrown the screen |
 | `showScrollToBottom` | `boolean` | `true` | Render the floating scroll-to-bottom button |
 | `className` | `string` | — | Classes applied to the inner transcript content container |
-| `scrollPreviousItemPeek` | `number` | `64` | Pixels of the previous turn left visible above an anchored one |
+| `scrollPreviousItemPeek` | `number` | `64`; with `scrollAnchorId`, the transcript's top padding | Pixels of the previous turn left visible above an anchored one |
 | `defaultScrollPosition` | `"end" \| "last-anchor"` | `"last-anchor"` | Where the transcript opens; `last-anchor` equals `end` when no child is an anchor. Must not change between renders |
 
 ### `Message`

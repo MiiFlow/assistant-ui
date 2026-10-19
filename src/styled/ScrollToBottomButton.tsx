@@ -7,6 +7,9 @@ export interface ScrollToBottomButtonProps {
   onScrollToBottom: () => void;
   /** Additional CSS classes */
   className?: string;
+  /** Visible text beside the arrow, e.g. "Jump to latest". Without it the
+   *  button is a round icon labelled "Scroll to bottom" for assistive tech. */
+  label?: string;
 }
 
 /**
@@ -18,16 +21,17 @@ export function ScrollToBottomButton({
   isAtBottom,
   onScrollToBottom,
   className,
+  label,
 }: ScrollToBottomButtonProps) {
   return (
     <button
       type="button"
       onClick={onScrollToBottom}
-      aria-label="Scroll to bottom"
+      aria-label={label ? undefined : "Scroll to bottom"}
       className={cn(
         "absolute bottom-4 left-1/2 -translate-x-1/2 z-10",
         "flex items-center justify-center",
-        "w-8 h-8 rounded-full",
+        label ? "h-8 gap-1.5 rounded-full px-3 text-[13px] font-medium" : "w-8 h-8 rounded-full",
         "bg-[var(--chat-bg,#ffffff)] border border-[var(--chat-border)]",
         "shadow-subtle hover:shadow-button-hover",
         "text-[var(--chat-text-subtle)] hover:text-[var(--chat-text)]",
@@ -40,8 +44,8 @@ export function ScrollToBottomButton({
     >
       {/* ArrowDown icon — inline SVG to avoid lucide-react dependency */}
       <svg
-        width="16"
-        height="16"
+        width={label ? 14 : 16}
+        height={label ? 14 : 16}
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -52,6 +56,7 @@ export function ScrollToBottomButton({
         <path d="M12 5v14" />
         <path d="m19 12-7 7-7-7" />
       </svg>
+      {label}
     </button>
   );
 }
