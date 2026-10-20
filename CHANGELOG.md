@@ -10,6 +10,13 @@
 
 ### Features
 
+- **Queued messages and Steer.** `MessageComposer` takes a `queue` prop
+  (`MessageComposerQueue`). With it, sending during a turn goes through
+  `onSubmit` for the host to queue instead of being blocked, and the queued
+  messages show in a tray above the composer with Steer (Send now when not
+  streaming), Edit and Remove. `QueuedMessages` and `QueuedComposerMessage`
+  are exported. Without `queue` the composer behaves as before.
+
 - **Live host-owned tool activity.** Export `useToolActivity` so activity
   providers can compose, and accept `ToolActivity.defaultExpanded` to reveal
   a running agent's tools until the reader folds them. Transcript marks now

@@ -24,6 +24,7 @@ import {
   type ChatComposerToken,
 } from "../composer";
 import { ComposerToolbar } from "./ComposerToolbar";
+import { QueuedMessages, type QueuedComposerMessage } from "./QueuedMessages";
 
 // ============================================================================
 // File upload constants (matching in-house backend)
@@ -196,6 +197,23 @@ export type MessageComposerHandle = Pick<
   "appendText" | "focus"
 >;
 
+/**
+ * Messages sent while a turn is running wait in a queue the host owns. With
+ * this set, sending during a turn goes through `onSubmit` (the host queues it)
+ * instead of being blocked.
+ */
+export interface MessageComposerQueue {
+  messages: QueuedComposerMessage[];
+  /** Stop the turn in progress and send this message in its place. */
+  onSteer: (id: string) => void;
+  onRemove: (id: string) => void;
+  /** Remove the message from the queue and hand back what to put in the
+   *  composer for editing. */
+  onTakeForEdit?: (
+    id: string,
+  ) => { text: string; attachments?: File[] } | undefined;
+}
+
 export interface MessageComposerProps {
   /** Draft actions for host starter cards; the forwarded ref remains the root DOM element. */
   composerRef?: Ref<MessageComposerHandle>;
@@ -237,6 +255,8 @@ export interface MessageComposerProps {
   isStreaming?: boolean;
   /** Callback to stop the current streaming response */
   onStopStreaming?: () => void;
+  /** Queue for messages sent during a turn; see MessageComposerQueue. */
+  queue?: MessageComposerQueue;
   /** Optional slash-command typeahead provider (e.g. for skill picker). */
   commandProvider?: CommandProvider | null;
   /** Multiple typeahead providers for distinct triggers (e.g. `/` skills +
@@ -265,6 +285,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       centered = false,
       isStreaming = false,
       onStopStreaming,
+      queue,
       commandProvider,
       commandProviders,
       composerRef,
@@ -291,6 +312,9 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     );
     const dragCounterRef = useRef(0);
     const isSubmittingRef = useRef(false);
+    // A running turn blocks sending only when the host has no queue to put
+    // the message in: a second concurrent turn on one conversation is invalid.
+    const sendBlockedByTurn = isStreaming && !queue;
 
     useImperativeHandle(
       composerRef,
@@ -300,13 +324,13 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
             !disabled &&
             !isSubmitting &&
             !isSubmittingRef.current &&
-            !isStreaming
+            !sendBlockedByTurn
           )
             inputRef.current?.appendText(text);
         },
         focus: () => inputRef.current?.focus(),
       }),
-      [disabled, isSubmitting, isStreaming],
+      [disabled, isSubmitting, sendBlockedByTurn],
     );
 
     const providers = commandProviders?.length
@@ -376,13 +400,26 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       [allowedFileTypes, maxFileSize, onUploadFile, onAttach],
     );
 
+    const takeQueuedForEdit = queue?.onTakeForEdit;
+    const handleEditQueued = useCallback(
+      (id: string) => {
+        const taken = takeQueuedForEdit?.(id);
+        if (!taken) return;
+        inputRef.current?.setContent(taken.text);
+        setHasText(taken.text.trim().length > 0);
+        if (taken.attachments?.length) processFiles(taken.attachments);
+        inputRef.current?.focus();
+      },
+      [takeQueuedForEdit, processFiles],
+    );
+
     const submitWithText = useCallback(
       async (text: string) => {
         if (!hasContent && text.trim().length === 0) return;
-        // `isStreaming` is the per-conversation gate: the send button is already
-        // swapped for Stop while a turn is running, but Enter bypasses the
-        // button, and a second concurrent turn on one conversation is invalid.
-        if (isStreaming) return;
+        // The per-conversation gate: the send button is already swapped for
+        // Stop while a turn is running, but Enter bypasses the button. With a
+        // queue the host takes the message and sends it after the turn.
+        if (sendBlockedByTurn) return;
         // `isSubmittingRef` guards only the handshake (double Enter / double
         // click). `onSubmit` must resolve once the message is accepted — if a
         // host holds it open for the whole response, this latch becomes a lock
@@ -430,7 +467,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         hasContent,
         isSubmitDisabled,
         isAnyUploading,
-        isStreaming,
+        sendBlockedByTurn,
         onSubmit,
         onUploadFile,
         uploadedIds,
@@ -568,6 +605,18 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
+        {queue && queue.messages.length > 0 && (
+          <div className="mx-auto max-w-[900px]">
+            <QueuedMessages
+              messages={queue.messages}
+              onSteer={queue.onSteer}
+              onRemove={queue.onRemove}
+              onEdit={takeQueuedForEdit ? handleEditQueued : undefined}
+              isStreaming={isStreaming}
+              canEdit={!hasContent}
+            />
+          </div>
+        )}
         <div
           className={cn(
             "mx-auto max-w-[900px]",
@@ -637,7 +686,9 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
             }
             disabled={isSubmitDisabled}
             endSlot={
-              isStreaming && onStopStreaming ? (
+              // With a queue, a draft during a turn shows Send (it queues);
+              // Stop comes back once the draft is empty.
+              isStreaming && onStopStreaming && !(queue && hasContent) ? (
                 <button
                   type="button"
                   onClick={onStopStreaming}
@@ -657,9 +708,9 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                     !hasContent ||
                     isSubmitDisabled ||
                     isAnyUploading ||
-                    isStreaming
+                    sendBlockedByTurn
                   }
-                  aria-label="Send message"
+                  aria-label={isStreaming ? "Queue message" : "Send message"}
                   className="chat-composer-action"
                 >
                   {isSubmitting || isAnyUploading ? (
