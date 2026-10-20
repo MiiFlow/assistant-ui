@@ -105,9 +105,10 @@ function Lane({
 	reducedMotion: boolean;
 	enter: boolean;
 }) {
-	const [open, setOpen] = useState(false);
+	const [expanded, setExpanded] = useState<boolean | null>(null);
 	const resolveActivity = useToolActivity();
 	const activity = unit.kind === "tool" ? resolveActivity(unit.chunk) : undefined;
+	const open = expanded ?? activity?.defaultExpanded ?? false;
 	const status = laneStatus(unit, run, activity);
 	const { title, handle, action: toolAction } = describe(unit, status, labels);
 	const action = activity?.label ?? toolAction;
@@ -124,7 +125,7 @@ function Lane({
 				className="mf-tx-lane-row mf-focus"
 				title={activity ? undefined : handle || undefined}
 				aria-expanded={open}
-				onClick={() => setOpen((value) => !value)}
+				onClick={() => setExpanded(!open)}
 			>
 				<span className="mf-tx-led" aria-hidden />
 				<span className="mf-tx-lane-name">

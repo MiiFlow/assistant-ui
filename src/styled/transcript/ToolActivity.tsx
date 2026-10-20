@@ -7,6 +7,8 @@ export interface ToolActivity {
 	label: string;
 	title?: string;
 	details?: ReactNode;
+	/** Show live host-owned work until the reader explicitly folds it. */
+	defaultExpanded?: boolean;
 }
 export type ToolActivityResolver = (chunk: StreamingChunk) => ToolActivity | undefined;
 const ToolActivityContext = createContext<ToolActivityResolver>(() => undefined);

@@ -82,10 +82,12 @@ export function TranscriptFlow({
 	waitingMark?: ReactNode;
 }) {
 	const resolveActivity = useToolActivity();
-	const backgroundActive = transcript.blocks.some((b) => {
+	const backgroundActivities = transcript.blocks.flatMap((b) => {
 		const activity = b.chunk && resolveActivity(b.chunk);
-		return activity && ["queued", "running", "waiting"].includes(activity.status);
+		return activity ? [activity] : [];
 	});
+	const backgroundActive = backgroundActivities.some((a) => ["queued", "running", "waiting"].includes(a.status));
+	const backgroundWorking = backgroundActivities.some((a) => ["queued", "running"].includes(a.status));
 	const status =
 		transcript.status === "running" && !isStreaming
 			? "stopped"
@@ -167,7 +169,7 @@ export function TranscriptFlow({
 		agents ? labels.agents(agents, running ? liveAgents : 0) : "",
 		calls ? labels.calls(calls) : "",
 	].filter(Boolean);
-	const markState = MARK_STATE[status];
+	const markState = backgroundWorking ? "running" : MARK_STATE[status];
 	// `live` means "may perform its completion", so reduced motion clears it
 	// for every mark, not only the package's own.
 	const markLive = watchedLive && !reducedMotion;

@@ -4,6 +4,12 @@
 
 ### Features
 
+- **Live host-owned tool activity.** Export `useToolActivity` so activity
+  providers can compose, and accept `ToolActivity.defaultExpanded` to reveal
+  a running agent's tools until the reader folds them. Transcript marks now
+  show running activity when host-owned work is queued or running, including
+  work that outlives a paused parent turn.
+
 - **Stable transcript scrolls like a conversation.** With `scrollAnchorId`, a
   sent question glides to the top (instant under `prefers-reduced-motion`) and
   sits at the transcript's top padding instead of under a 64px sliver of the
