@@ -1,6 +1,7 @@
 import { ReservedImage } from "./ReservedImage";
 import { mediaGenerations } from "../utils/media-generation";
 import { MediaGenerationCard } from "./MediaGenerationCard";
+import { readBackgroundWait, isBackgroundWaitOpen } from "../utils/background-wait";
 import { readTranscript } from "../types/transcript";
 import { TranscriptFlow } from "./TranscriptFlow";
 import type { ActivityLabels, ActivityMarkRenderer } from "./transcript/labels";
@@ -42,6 +43,7 @@ import { Avatar } from "./Avatar";
 import { CitationSources } from "./CitationSources";
 import { ClarificationPanel } from "./ClarificationPanel";
 import { ToolApprovalPanel } from "./ToolApprovalPanel";
+import { useToolActivity, isToolActivityActive } from "./transcript/ToolActivity";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { MarkdownContent } from "./MarkdownContent";
 import { MessageActionBar } from "./MessageActionBar";
@@ -443,6 +445,19 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 		// then the panel — changed the row's height twice before the first
 		// token arrived.
 		const transcript = readTranscript(message.metadata?.transcript);
+		const resolveActivity = useToolActivity();
+		// Saved transcript statuses survive resolved interrupts. Only the live
+		// stream, an open durable wait, or active host work suppress completion UI.
+		const progressChunks = transcript
+			? transcript.blocks.flatMap((block) => block.chunk ? [block.chunk] : [])
+			: reasoningChunks ?? [];
+		const activities = progressChunks.flatMap((chunk) => {
+			const activity = resolveActivity(chunk);
+			return activity ? [activity] : [];
+		});
+		const needsAttention = activities.some((activity) => activity.status === "waiting" && !isToolActivityActive(activity));
+		const isWorking = !!isStreaming || activities.some(isToolActivityActive)
+			|| (isBackgroundWaitOpen(readBackgroundWait(message.metadata)) && !needsAttention);
 		const generations = useMemo(() => {
             const source = transcript
                 ? [...transcript.blocks.flatMap(block => block.chunk ? [block.chunk] : []),
@@ -896,13 +911,13 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 									<div
 										className={cn("flex items-center gap-2 mt-1", isViewer && "flex-row-reverse")}
 										style={{
-											opacity: isStreaming ? 0 : 1,
-											visibility: isStreaming ? "hidden" : "visible",
+											opacity: isWorking ? 0 : 1,
+											visibility: isWorking ? "hidden" : "visible",
 											transition: reducedMotion
 												? undefined
 												: "opacity 240ms cubic-bezier(.16,1,.3,1), visibility 0s",
 										}}
-										aria-hidden={isStreaming ? true : undefined}>
+										aria-hidden={isWorking ? true : undefined}>
 										{showTimestamp && message.createdAt && (
 											<MessageTimestamp
 												createdAt={

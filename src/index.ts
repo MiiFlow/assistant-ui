@@ -131,3 +131,6 @@ export { ToolActivityProvider, useToolActivity } from "./styled/transcript/ToolA
 export type { ToolActivity, ToolActivityResolver } from "./styled/transcript/ToolActivity";
 
 export type { StreamingChunk } from "./types/streaming";
+
+export { readBackgroundWait, isBackgroundWaitOpen } from "./utils/background-wait";
+export type { BackgroundWait } from "./utils/background-wait";

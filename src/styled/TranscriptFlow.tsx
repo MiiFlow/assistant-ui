@@ -16,7 +16,7 @@ import { RunHeader } from "./transcript/RunHeader";
 import { RunMark } from "./transcript/RunMark";
 import { WorkLanes, laneStatus } from "./transcript/WorkLanes";
 
-import { useToolActivity } from "./transcript/ToolActivity";
+import { useToolActivity, isToolActivityActive } from "./transcript/ToolActivity";
 
 const MARK_STATE: Record<AgentTranscript["status"], ActivityState> = {
 	running: "running",
@@ -86,8 +86,9 @@ export function TranscriptFlow({
 		const activity = b.chunk && resolveActivity(b.chunk);
 		return activity ? [activity] : [];
 	});
-	const backgroundActive = backgroundActivities.some((a) => ["queued", "running", "waiting"].includes(a.status));
-	const backgroundWorking = backgroundActivities.some((a) => ["queued", "running"].includes(a.status));
+	const backgroundActive = backgroundActivities.some(isToolActivityActive);
+	const backgroundNeedsAttention = backgroundActivities.some((activity) => activity.status === "waiting" && !isToolActivityActive(activity));
+	const backgroundWorking = backgroundActivities.some((a) => isToolActivityActive(a) && ["queued", "running"].includes(a.status));
 	const status =
 		transcript.status === "running" && !isStreaming
 			? "stopped"
@@ -130,7 +131,7 @@ export function TranscriptFlow({
 	};
 	const hasAnswer = transcript.blocks.some((_, index) => isAnswer(index));
 	const hasWork = transcript.blocks.some((_, index) => !isAnswer(index));
-	const canFold = status === "completed" && hasAnswer && hasWork && !backgroundActive;
+	const canFold = status === "completed" && hasAnswer && hasWork && !backgroundActive && !backgroundNeedsAttention;
 	const workOpen = expanded ?? (!canFold || keepOpen);
 
 	const [now, setNow] = useState(Date.now);
@@ -164,12 +165,12 @@ export function TranscriptFlow({
 		}
 	}
 	const running = status === "running";
-	const label = backgroundActive ? "Background work" : status === "completed" ? labels.worked(duration) : labels[STATE_LABEL[status]];
+	const label = backgroundActive ? "Background work" : backgroundNeedsAttention ? "Needs attention" : status === "completed" ? labels.worked(duration) : labels[STATE_LABEL[status]];
 	const stats = [
 		agents ? labels.agents(agents, running ? liveAgents : 0) : "",
 		calls ? labels.calls(calls) : "",
 	].filter(Boolean);
-	const markState = backgroundWorking ? "running" : MARK_STATE[status];
+	const markState = backgroundWorking ? "running" : backgroundActive || backgroundNeedsAttention ? "waiting" : MARK_STATE[status];
 	// `live` means "may perform its completion", so reduced motion clears it
 	// for every mark, not only the package's own.
 	const markLive = watchedLive && !reducedMotion;
