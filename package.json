@@ -78,7 +78,7 @@
 		"remark-breaks": "^4.0.0",
 		"remark-gfm": "^4.0.0",
 		"remend": "^1.4.0",
-		"tailwind-merge": "^2.5.5"
+		"tailwind-merge": "^2.6.1"
 	},
 	"devDependencies": {
 		"@lexical/react": "^0.36.0",
