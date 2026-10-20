@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `MessageComposer` refuses an empty (0-byte) file from paste, drop or the file picker: it shows a "File is empty" chip and is never passed to `onUploadFile` or `onSubmit`. A clipboard can hand the browser an empty image.
+
 - Approval evidence no longer implies tool execution has finished; actual execution status controls live lanes, and failure messages take precedence over approval labels.
 
 - `StreamingChunk.backgroundWaitId` lets hosts bind each tool card to its own durable wait across resumed and merged messages.

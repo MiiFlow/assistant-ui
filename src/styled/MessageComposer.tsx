@@ -103,6 +103,11 @@ function validateFile(
   allowedTypes: string[],
   maxSize: number,
 ): string | null {
+  // An empty file has nothing to send; a clipboard can hand over one (an
+  // "image.png" of 0 bytes), and uploading it only tells the reader later.
+  if (file.size === 0) {
+    return "File is empty. Copy or export it again.";
+  }
   if (file.size > maxSize) {
     return `File size (${formatFileSize(file.size)}) exceeds max (${formatFileSize(maxSize)})`;
   }
