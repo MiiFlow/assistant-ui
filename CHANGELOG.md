@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `StreamingChunk.backgroundWaitId` lets hosts bind each tool card to its own durable wait across resumed and merged messages.
+
 ### Features
 
 - **Live host-owned tool activity.** Export `useToolActivity` so activity

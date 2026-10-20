@@ -531,6 +531,8 @@ export interface ArtifactChunkData {
 export interface StreamingChunk {
   /** Persisted work submitted by this tool call; its lifecycle outlives the turn. */
   backgroundTaskId?: string;
+  /** Host-bound durable wait for this tool call; preserved across merged turns. */
+  backgroundWaitId?: string;
   type: ChunkType;
   content: string;
 
