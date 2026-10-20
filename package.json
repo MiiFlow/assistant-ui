@@ -86,7 +86,7 @@
 		"@types/react-dom": "^19.0.0",
 		"@types/react-syntax-highlighter": "^15.5.0",
 		"@typescript-eslint/parser": "^8.71.2",
-		"autoprefixer": "^10.4.20",
+		"autoprefixer": "^10.6.1",
 		"eslint": "^9.17.0",
 		"eslint-plugin-react-hooks": "^5.0.0",
 		"lexical": "^0.52.0",
