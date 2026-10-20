@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Approval evidence no longer implies tool execution has finished; actual execution status controls live lanes, and failure messages take precedence over approval labels.
+
 - `StreamingChunk.backgroundWaitId` lets hosts bind each tool card to its own durable wait across resumed and merged messages.
 
 ### Features

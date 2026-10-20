@@ -56,10 +56,10 @@ function describe(unit: WorkUnit, status: LaneStatus, labels: ActivityLabels) {
 	const approvalLabel = chunk.approvalOutcome === "approved"
 		? labels.approved
 		: chunk.approvalOutcome === "denied" ? labels.declined : null;
-	const action = approvalLabel ?? (
-		status === "failed"
-			? firstLine(chunk.content) || labels.failed
-			: status === "interrupted"
+	const action = status === "failed"
+		? firstLine(chunk.content) || labels.failed
+		: approvalLabel ?? (
+			status === "interrupted"
 				? labels.interrupted
 				: status === "waiting"
 					? labels.awaitingApproval
