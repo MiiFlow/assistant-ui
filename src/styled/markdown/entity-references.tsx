@@ -1,4 +1,5 @@
 import { useContext, type MouseEvent, type ReactNode } from "react";
+import { findInlineCommandTokens } from "../../composer/CommandTokenNode";
 import { CommandTokenView } from "../../composer/CommandTokenView";
 import { ChatRenderContext } from "../../context/ChatProvider";
 import { MarkdownRenderContext } from "./render-context";
@@ -151,8 +152,16 @@ export function remarkEntityReferences(options?: { prefixes?: Record<string, str
 				}
 				const parts: MdastNode[] = [];
 				let end = 0;
+				// An id that is the whole id of an `@<id>:<kind>` command token
+				// belongs to that chip: linking it first split the token apart, so
+				// the bubble showed `@`, a raw-id link and `:kind` instead of the
+				// named chip. Only an exact id counts, since the token pattern
+				// also matches loose prose like `/ <id> at 10:30`.
+				let tokens: ReturnType<typeof findInlineCommandTokens> | undefined;
 				for (const match of child.value.matchAll(inline)) {
 					const index = match.index ?? 0;
+					tokens ??= findInlineCommandTokens(child.value);
+					if (tokens.some((t) => t.index + 1 === index && t.id === match[0])) continue;
 					if (index > end) parts.push({ type: "text", value: child.value.slice(end, index) });
 					parts.push(link(match[1], match[2]));
 					end = index + match[0].length;
