@@ -8,6 +8,7 @@ import type { ActivityLabels, ActivityMarkRenderer } from "./transcript/labels";
 import {
 	forwardRef,
 	memo,
+	useCallback,
 	useContext,
 	useEffect,
 	useMemo,
@@ -38,6 +39,21 @@ import type {
 import { cn } from "../utils/cn";
 import { isCreativeReviewMedia, placeUnreferencedCreatives, inlineMediaIds, replaceMediaUrls } from "../utils/media";
 import { ChatRenderContext } from "../context/ChatProvider";
+import {
+	$getRoot,
+	$getSelection,
+	$isNodeSelection,
+	$isRangeSelection,
+	COMMAND_PRIORITY_HIGH,
+	INSERT_PARAGRAPH_COMMAND,
+	KEY_ENTER_COMMAND,
+	KEY_ESCAPE_COMMAND,
+} from "lexical";
+import {
+	LexicalChatInput,
+	useLexicalComposerContext,
+	type LexicalChatInputHandle,
+} from "../composer/LexicalChatInput";
 import { usePrefersReducedMotion } from "../hooks/use-reduced-motion";
 import { Avatar } from "./Avatar";
 import { CitationSources } from "./CitationSources";
@@ -1036,10 +1052,12 @@ export const Message = memo(MessageImpl);
 
 /**
  * Inline editor shown when the viewer edits one of their own messages
- * (ChatGPT-style). Renders in place of the bubble: an auto-growing textarea
- * with Cancel / Send. Esc cancels, Cmd/Ctrl+Enter sends.
+ * (ChatGPT-style). Renders in place of the bubble: the composer's rich-text
+ * input, so `@<id>:<kind>` mentions come back as the same named chips the
+ * bubble shows instead of their raw wire tokens, with Cancel / Send. Esc
+ * cancels, Cmd/Ctrl+Enter sends; the edit is sent in the wire form.
  */
-function UserMessageEditor({
+export function UserMessageEditor({
 	initialText,
 	onCancel,
 	onSubmit,
@@ -1049,24 +1067,17 @@ function UserMessageEditor({
 	onSubmit: (newText: string) => void;
 }) {
 	const [draft, setDraft] = useState(initialText);
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const inputRef = useRef<LexicalChatInputHandle>(null);
 	const canSubmit = draft.trim().length > 0;
+	const resolveCommandToken = useContext(ChatRenderContext)?.resolveCommandToken;
+	const resolveTokenLabel = useCallback(
+		(id: string, kind: string) => resolveCommandToken?.(id, kind)?.label,
+		[resolveCommandToken],
+	);
 
-	// Auto-grow the textarea to fit content
-	const resize = () => {
-		const el = textareaRef.current;
-		if (!el) return;
-		el.style.height = "auto";
-		el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
-	};
-
-	// On mount: focus with the caret at the end, sized to content
+	// On mount: focus with the caret at the end (Lexical's default selection).
 	useEffect(() => {
-		const el = textareaRef.current;
-		if (!el) return;
-		el.focus();
-		el.setSelectionRange(el.value.length, el.value.length);
-		resize();
+		inputRef.current?.focus();
 	}, []);
 
 	return (
@@ -1077,27 +1088,18 @@ function UserMessageEditor({
 				border: "1px solid var(--chat-border)",
 			}}
 		>
-			<textarea
-				ref={textareaRef}
-				value={draft}
-				onChange={(e) => {
-					setDraft(e.target.value);
-					resize();
-				}}
-				onKeyDown={(e) => {
-					if (e.key === "Escape") {
-						e.preventDefault();
-						onCancel();
-					} else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-						e.preventDefault();
-						if (canSubmit) onSubmit(draft.trim());
-					}
-				}}
-				rows={1}
-				aria-label="Edit message"
-				className="w-full resize-none border-0 bg-transparent p-0 outline-none text-[var(--chat-text)]"
-				style={{ font: "inherit", lineHeight: "inherit", overflowY: "auto" }}
-			/>
+			<LexicalChatInput
+				ref={inputRef}
+				initialContent={initialText}
+				resolveTokenLabel={resolveTokenLabel}
+				submitOnEnter={false}
+				ariaLabel="Edit message"
+				placeholder=""
+				onChange={(payload) => setDraft(payload.text)}
+				inputClassName="max-h-[320px] text-[color:var(--chat-text)] dark:text-[color:var(--chat-text)]"
+			>
+				<EditorShortcutsPlugin onCancel={onCancel} onSubmit={onSubmit} />
+			</LexicalChatInput>
 			<div className="mt-2 flex items-center justify-end gap-2">
 				<button
 					type="button"
@@ -1130,6 +1132,81 @@ function UserMessageEditor({
 			</div>
 		</div>
 	);
+}
+
+/**
+ * Break the line at the caret, or just after a selected mention chip (a
+ * NodeSelection, which Lexical's own line-break handler ignores).
+ */
+function $insertEditLineBreak(): boolean {
+	let selection = $getSelection();
+	if ($isNodeSelection(selection)) {
+		const nodes = selection.getNodes();
+		selection = nodes.length > 0 ? nodes[nodes.length - 1].selectNext(0, 0) : null;
+	}
+	if (!$isRangeSelection(selection)) return false;
+	selection.insertLineBreak(false);
+	return true;
+}
+
+/**
+ * Esc cancels, Cmd/Ctrl+Enter sends, and a plain Enter breaks the line the
+ * way the earlier textarea did (a new paragraph would send a blank line).
+ * Android and some IMEs send Enter as an `insertParagraph` input with no key
+ * event, so the paragraph command is turned into a line break as well.
+ */
+function EditorShortcutsPlugin({
+	onCancel,
+	onSubmit,
+}: {
+	onCancel: () => void;
+	onSubmit: (newText: string) => void;
+}) {
+	const [editor] = useLexicalComposerContext();
+	const handlers = useRef({ onCancel, onSubmit });
+	useEffect(() => {
+		handlers.current = { onCancel, onSubmit };
+	});
+	useEffect(() => {
+		const offEscape = editor.registerCommand(
+			KEY_ESCAPE_COMMAND,
+			(event) => {
+				event.preventDefault();
+				handlers.current.onCancel();
+				return true;
+			},
+			COMMAND_PRIORITY_HIGH,
+		);
+		const offEnter = editor.registerCommand(
+			KEY_ENTER_COMMAND,
+			(event) => {
+				if (!event) return false;
+				event.preventDefault();
+				if (event.metaKey || event.ctrlKey) {
+					const text = editor.getEditorState().read(() => $getRoot().getTextContent()).trim();
+					if (text) handlers.current.onSubmit(text);
+				} else {
+					$insertEditLineBreak();
+				}
+				return true;
+			},
+			COMMAND_PRIORITY_HIGH,
+		);
+		const offParagraph = editor.registerCommand(
+			INSERT_PARAGRAPH_COMMAND,
+			() => {
+				$insertEditLineBreak();
+				return true;
+			},
+			COMMAND_PRIORITY_HIGH,
+		);
+		return () => {
+			offEscape();
+			offEnter();
+			offParagraph();
+		};
+	}, [editor]);
+	return null;
 }
 
 function MessageTimestamp({ createdAt }: { createdAt: string; isViewer?: boolean }) {

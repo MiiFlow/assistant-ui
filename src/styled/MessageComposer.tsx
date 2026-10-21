@@ -59,11 +59,16 @@ const ALLOWED_VIDEO_TYPES = [
   "video/mp4",
   "video/webm",
   "video/ogg",
+  // Browsers report the registered names (a .mov is video/quicktime, .avi
+  // video/x-msvideo, .wmv video/x-ms-wmv, .mkv video/x-matroska, .flv
+  // video/x-flv); the short names are not registered, so listing only them
+  // rejected every such upload. Some platforms still report video/avi.
+  "video/quicktime",
+  "video/x-msvideo",
+  "video/x-ms-wmv",
+  "video/x-matroska",
+  "video/x-flv",
   "video/avi",
-  "video/mov",
-  "video/wmv",
-  "video/flv",
-  "video/mkv",
 ];
 
 const DEFAULT_ALLOWED_TYPES = [

@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ExternalLink, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "../utils/cn";
 import { citationTextToMarkdown, parseCitationContent } from "../utils/citation-content";
 import { MarkdownContent } from "./MarkdownContent";
+import { trapTabKey } from "../interactions/focus-trap";
 import type { SourceReference, SourceTypeConfig } from "../types";
 
 function getSourceTypeDisplay(sourceType: string): SourceTypeConfig {
@@ -126,11 +127,18 @@ export function SourceDetailModal({
     };
   }, [source]);
 
+  // Parsing a capped 10k payload is not free; keep it off the render path for
+  // re-renders that do not change the source (the Raw/Formatted toggle, say).
+  const fullContent = source?.full_content;
+  const parsed = useMemo(
+    () => (fullContent ? parseCitationContent(fullContent) : null),
+    [fullContent],
+  );
+
   if (!source || typeof document === "undefined") return null;
 
   const typeDisplay = getSourceTypeDisplay(source.source_type);
   const rawText = source.full_content ?? source.snippet ?? null;
-  const parsed = source.full_content ? parseCitationContent(source.full_content) : null;
   const markdownText = parsed ? parsed.text : rawText;
 
   return createPortal(
@@ -160,6 +168,15 @@ export function SourceDetailModal({
             aria-modal="true"
             aria-label={source.title}
             tabIndex={-1}
+            // aria-modal promises the page behind is out of reach, so Tab
+            // and Shift+Tab cycle inside the panel instead of escaping to it.
+            // stopPropagation: React bubbles portal events up the component
+            // tree, so the chat's own key handlers would otherwise see Tab too.
+            onKeyDown={(event) => {
+              if (event.key !== "Tab") return;
+              event.stopPropagation();
+              trapTabKey(event.currentTarget, event);
+            }}
             className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden outline-none"
           >
             {/* Header */}
@@ -176,8 +193,13 @@ export function SourceDetailModal({
                   {typeDisplay.label}
                 </span>
               </div>
-              <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 ml-2">
-                <X size={16} />
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 ml-2"
+              >
+                <X size={16} aria-hidden="true" />
               </button>
             </div>
 
