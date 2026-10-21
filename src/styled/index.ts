@@ -6,7 +6,7 @@ export { ComposerToolbar } from "./ComposerToolbar";
 export { LoadingDots, type LoadingDotsProps } from "./LoadingDots";
 export { MarkdownContent, type MarkdownContentProps } from "./MarkdownContent";
 export { Message, useMessage, type MessageProps } from "./Message";
-export { MessageComposer, useComposer, type MessageComposerProps, type MessageComposerHandle, type MessageComposerQueue } from "./MessageComposer";
+export { MessageComposer, useComposer, type MessageComposerProps, type MessageComposerHandle, type MessageComposerQueue, type UploadedComposerAttachment, type UploadFileOptions } from "./MessageComposer";
 export { QueuedMessages, type QueuedComposerMessage } from "./QueuedMessages";
 export { MessageList, type MessageListProps } from "./MessageList";
 export { StreamingText, type StreamingTextProps } from "./StreamingText";

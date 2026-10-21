@@ -2,7 +2,11 @@ import { forwardRef, useEffect, useRef, useState, type ReactNode } from "react";
 import type { CommandProvider } from "../composer";
 import { cn } from "../utils/cn";
 import { Avatar } from "./Avatar";
-import { MessageComposer } from "./MessageComposer";
+import {
+  MessageComposer,
+  type MessageComposerProps,
+  type UploadedComposerAttachment,
+} from "./MessageComposer";
 import { usePrefersReducedMotion } from "../hooks/use-reduced-motion";
 import { MessageCircle, Sparkles } from "lucide-react";
 
@@ -25,7 +29,11 @@ export interface WelcomeScreenProps {
   onSubmit?: (
     message: string,
     files?: File[],
+    attachmentIds?: string[],
+    uploadedAttachments?: UploadedComposerAttachment[],
   ) => void | Promise<void | { accepted?: boolean }>;
+  /** Passed to the built-in composer: upload files as soon as they are attached. */
+  onUploadFile?: MessageComposerProps["onUploadFile"];
   /** Called when the user clicks a suggestion card */
   onSuggestionClick?: (suggestion: string) => void;
   /** Welcome heading text */
@@ -103,6 +111,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
       suggestions = [],
       section = "all",
       onSubmit,
+      onUploadFile,
       onSuggestionClick,
       welcomeText = "What would you like to work on?",
       description,
@@ -151,7 +160,10 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
                 <MessageComposer
                   centered
                   placeholder={placeholder}
-                  onSubmit={async (msg, files) => onSubmit?.(msg, files)}
+                  onSubmit={async (msg, files, ids, uploaded) =>
+                    onSubmit?.(msg, files, ids, uploaded)
+                  }
+                  onUploadFile={onUploadFile}
                   supportsAttachments={supportsAttachments}
                   disabled={disabled || !onSubmit}
                   commandProvider={commandProvider ?? null}

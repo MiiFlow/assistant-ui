@@ -400,8 +400,8 @@ Rich text editor (Lexical) with file upload, drag-and-drop, and Enter-to-send.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `onSubmit` | `(content: string, attachments?: File[], attachmentIds?: string[]) => Promise<void>` | — | **Required.** Submit handler; `attachmentIds` carries server-uploaded IDs |
-| `onUploadFile` | `(file: File) => Promise<string>` | — | File upload handler (returns attachment ID) |
+| `onSubmit` | `(content: string, attachments?: File[], attachmentIds?: string[], uploadedAttachments?: UploadedComposerAttachment[]) => Promise<void \| { accepted?: boolean }>` | — | **Required.** Submit handler; `attachmentIds` carries server-uploaded IDs and `uploadedAttachments` the files behind them, for the sent bubble. Resolve `{ accepted: false }` to hand the draft back |
+| `onUploadFile` | `(file: File, options?: UploadFileOptions) => Promise<string>` | — | Uploads each file as soon as it is attached (returns attachment ID). Report `options.onProgress(loaded, total)` to show progress; stop on `options.signal` |
 | `onAttach` | `(files: File[]) => void` | — | Called when files are attached |
 | `onRemoveUploadedAttachment` | `(attachmentId: string) => void` | — | Called when an uploaded attachment is removed pre-send |
 | `disabled` | `boolean` | `false` | Disable the composer entirely |
@@ -515,7 +515,9 @@ const { sendMessage, uploadFile } = useMiiflowChat(config);
 />
 ```
 
-The composer handles file picking, validation, drag-and-drop, and preview thumbnails. Files are uploaded via `uploadFile()` which returns an attachment ID; the IDs arrive as `onSubmit`'s third argument. A message with attachments and no text is valid — the composer allows attachment-only sends.
+The composer handles file picking, validation, drag-and-drop, and preview thumbnails. Each file starts uploading via `onUploadFile` the moment it is attached, while the person types; the returned IDs arrive as `onSubmit`'s third argument, and the files behind them as its fourth. A message with attachments and no text is valid — the composer allows attachment-only sends.
+
+While a file uploads, its chip shows how far along it is when the handler reports `options.onProgress` (only `loaded / total` is used, so a host may compress the file first), and a spinner otherwise. Send stays available: pressed mid-upload, the message waits ("Sends when uploaded") and goes out when the uploads finish. Pressing the button again calls the send off; removing a file aborts its upload through `options.signal`; and if an upload the send was waiting for fails, the draft stays in the composer.
 
 ## Client-Side Tools
 

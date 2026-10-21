@@ -90,11 +90,75 @@ interface AttachmentFile {
   status: AttachmentStatus;
   attachmentId?: string;
   error?: string;
+  /** Share of the upload sent so far (0–1); absent when the host reports none. */
+  uploadedFraction?: number;
+}
+
+/** A file the host already uploaded, with the id the server gave it. */
+export interface UploadedComposerAttachment {
+  file: File;
+  attachmentId: string;
+}
+
+export interface UploadFileOptions {
+  /**
+   * Called as the body goes out. Only `loaded / total` is used: the request is
+   * not the file (a host may compress it, and the multipart envelope adds bytes).
+   */
+  onProgress?: (loaded: number, total: number) => void;
+  /** Aborted when the person removes the file or the composer unmounts. */
+  signal?: AbortSignal;
 }
 
 // ============================================================================
 // Utility
 // ============================================================================
+
+function newAttachmentId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function previewUrlFor(file: File): string | undefined {
+  return file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
+}
+
+function revokePreviews(attachments: AttachmentFile[]) {
+  for (const a of attachments) if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
+}
+
+const MB = 1024 * 1024;
+
+/** "12 / 33 MB", "0.4 / 1.5 MB" under 10 MB, "45%" under 1 MB. */
+function formatUploadProgress(fraction: number, size: number): string {
+  if (size < MB) return `${Math.floor(100 * fraction)}%`;
+  const digits = size < 10 * MB ? 1 : 0;
+  const mb = (bytes: number) => (bytes / MB).toFixed(digits);
+  // Floor the part sent so it never reads as done before it is.
+  const sent = Math.floor((fraction * size) / MB * 10 ** digits) / 10 ** digits;
+  return `${sent.toFixed(digits)} / ${mb(size)} MB`;
+}
+
+function ProgressRing({ fraction }: { fraction: number }) {
+  const radius = 5.5;
+  const circumference = 2 * Math.PI * radius;
+  return (
+    <svg width={14} height={14} viewBox="0 0 14 14" className="flex-shrink-0 -rotate-90" aria-hidden>
+      <circle cx={7} cy={7} r={radius} fill="none" stroke="currentColor" strokeOpacity={0.25} strokeWidth={2} />
+      <circle
+        cx={7}
+        cy={7}
+        r={radius}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={circumference * (1 - fraction)}
+        className="transition-[stroke-dashoffset] duration-200"
+      />
+    </svg>
+  );
+}
 
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return "0 Bytes";
@@ -144,18 +208,31 @@ function AttachmentBar({
         const isImage = att.file.type.startsWith("image/");
         const isError = att.status === "error";
         const isUploading = att.status === "uploading";
+        const fraction = isUploading ? att.uploadedFraction : undefined;
 
         return (
           <div
             key={att.id}
             className={cn(
-              "relative flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs max-w-[200px]",
+              "relative flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs",
+              isUploading ? "max-w-[280px]" : "max-w-[200px]",
               isError
                 ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400"
                 : "bg-gray-100 dark:bg-zinc-700 text-gray-600 dark:text-zinc-300",
             )}
+            {...(isUploading && {
+              role: "progressbar",
+              "aria-label": `Uploading ${att.file.name}`,
+              "aria-valuemin": 0,
+              "aria-valuemax": 100,
+              ...(fraction !== undefined && {
+                "aria-valuenow": Math.floor(100 * fraction),
+              }),
+            })}
           >
-            {isUploading ? (
+            {fraction !== undefined ? (
+              <ProgressRing fraction={fraction} />
+            ) : isUploading ? (
               <Loader2 size={14} className="flex-shrink-0 animate-spin" />
             ) : isError ? (
               <AlertCircle size={14} className="flex-shrink-0" />
@@ -176,6 +253,13 @@ function AttachmentBar({
             >
               {isError ? att.error : att.file.name}
             </span>
+            {isUploading && (
+              <span className="flex-shrink-0 tabular-nums opacity-70">
+                {fraction !== undefined
+                  ? formatUploadProgress(fraction, att.file.size)
+                  : "Uploading…"}
+              </span>
+            )}
             {!disabled && (
               <button
                 type="button"
@@ -216,7 +300,13 @@ export interface MessageComposerQueue {
    *  composer for editing. */
   onTakeForEdit?: (
     id: string,
-  ) => { text: string; attachments?: File[] } | undefined;
+  ) =>
+    | {
+        text: string;
+        attachments?: File[];
+        uploadedAttachments?: UploadedComposerAttachment[];
+      }
+    | undefined;
 }
 
 export interface MessageComposerProps {
@@ -233,11 +323,18 @@ export interface MessageComposerProps {
     content: string,
     attachments?: File[],
     attachmentIds?: string[],
+    /** The files behind `attachmentIds`, in order, for the host's sent bubble. */
+    uploadedAttachments?: UploadedComposerAttachment[],
   ) => Promise<void | { accepted?: boolean }>;
   /** Callback when files are attached (for upload handling) */
   onAttach?: (files: File[]) => void;
-  /** Upload a file to backend, returning an attachment ID. When provided, enables server-side upload flow. */
-  onUploadFile?: (file: File) => Promise<string>;
+  /**
+   * Upload a file to backend, returning an attachment ID. When provided, files
+   * upload as soon as they are attached, and a send pressed during an upload
+   * goes out when it finishes. Rejects with an Error whose message is shown on
+   * the file. Report `onProgress` to show how far along the upload is.
+   */
+  onUploadFile?: (file: File, options?: UploadFileOptions) => Promise<string>;
   /** Notify backend/hook that an uploaded attachment was removed before sending. */
   onRemoveUploadedAttachment?: (attachmentId: string) => void;
   /** Whether the composer is disabled */
@@ -300,6 +397,14 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     const [hasText, setHasText] = useState(false);
     const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
+    // A send pressed while files were still uploading: its text and the
+    // uploads it waits for. It goes out when they finish; the draft stays
+    // locked until then.
+    const [pendingSend, setPendingSend] = useState<{
+      text: string;
+      waitingOn: string[];
+    } | null>(null);
+    const isSendPending = pendingSend !== null;
     const fileInputRef = useRef<HTMLInputElement>(null);
     const inputRef = useRef<LexicalChatInputHandle>(null);
     const tokenLabels = useRef(new Map<string, string>());
@@ -329,13 +434,14 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
             !disabled &&
             !isSubmitting &&
             !isSubmittingRef.current &&
-            !sendBlockedByTurn
+            !sendBlockedByTurn &&
+            !isSendPending
           )
             inputRef.current?.appendText(text);
         },
         focus: () => inputRef.current?.focus(),
       }),
-      [disabled, isSubmitting, sendBlockedByTurn],
+      [disabled, isSubmitting, sendBlockedByTurn, isSendPending],
     );
 
     const providers = commandProviders?.length
@@ -346,63 +452,89 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
 
     const isSubmitDisabled = disabled || isSubmitting;
     const isAnyUploading = attachments.some((a) => a.status === "uploading");
-    const uploadedIds = attachments
-      .filter((a) => a.status === "uploaded" && a.attachmentId)
-      .map((a) => a.attachmentId!);
-    const hasAttachments =
-      uploadedIds.length > 0 || attachments.some((a) => a.status === "pending");
+    const uploaded = attachments.filter(
+      (a): a is AttachmentFile & { attachmentId: string } =>
+        a.status === "uploaded" && !!a.attachmentId,
+    );
+    const uploadedIds = uploaded.map((a) => a.attachmentId);
+    const hasAttachments = attachments.some((a) => a.status !== "error");
     const hasContent = hasText || hasAttachments;
 
+    // One controller per upload in flight, so removing a file (or leaving)
+    // stops sending its bytes instead of finishing an upload nobody will use.
+    const uploadAbortersRef = useRef(new Map<string, AbortController>());
+
+    const updateAttachment = useCallback(
+      (id: string, patch: Partial<AttachmentFile>) =>
+        setAttachments((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, ...patch } : a)),
+        ),
+      [],
+    );
+
+    const uploadAttachment = useCallback(
+      async (att: AttachmentFile, upload: NonNullable<typeof onUploadFile>) => {
+        const controller = new AbortController();
+        uploadAbortersRef.current.set(att.id, controller);
+        let reportedPercent = -1;
+        try {
+          const attachmentId = await upload(att.file, {
+            signal: controller.signal,
+            onProgress: (loaded, total) => {
+              // Progress events fire many times a second; re-render only when
+              // the visible figure can change.
+              const fraction = total > 0 ? Math.min(loaded / total, 1) : 0;
+              const percent = Math.floor(100 * fraction);
+              if (percent === reportedPercent) return;
+              reportedPercent = percent;
+              updateAttachment(att.id, { uploadedFraction: fraction });
+            },
+          });
+          updateAttachment(att.id, {
+            status: "uploaded",
+            attachmentId,
+            uploadedFraction: undefined,
+          });
+        } catch (err) {
+          // Removed by the person: the attachment is already gone.
+          if (controller.signal.aborted) return;
+          updateAttachment(att.id, {
+            status: "error",
+            error: err instanceof Error ? err.message : "Upload failed",
+            uploadedFraction: undefined,
+          });
+        } finally {
+          uploadAbortersRef.current.delete(att.id);
+        }
+      },
+      [updateAttachment],
+    );
+
     const processFiles = useCallback(
-      async (files: File[]) => {
+      (files: File[]) => {
         const newAttachments: AttachmentFile[] = files.map((file) => {
           const error = validateFile(file, allowedFileTypes, maxFileSize);
-          const att: AttachmentFile = {
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          return {
+            id: newAttachmentId(),
             file,
             status: error ? "error" : onUploadFile ? "uploading" : "pending",
             error: error || undefined,
+            previewUrl: error ? undefined : previewUrlFor(file),
           };
-          if (!error && file.type.startsWith("image/")) {
-            att.previewUrl = URL.createObjectURL(file);
-          }
-          return att;
         });
 
         setAttachments((prev) => [...prev, ...newAttachments]);
         onAttach?.(files);
 
-        // Upload files to backend if onUploadFile is provided
+        // Upload to the backend now, in parallel, while the person types.
         if (onUploadFile) {
           for (const att of newAttachments) {
-            if (att.status !== "uploading") continue;
-            try {
-              const attachmentId = await onUploadFile(att.file);
-              setAttachments((prev) =>
-                prev.map((a) =>
-                  a.id === att.id
-                    ? { ...a, status: "uploaded" as const, attachmentId }
-                    : a,
-                ),
-              );
-            } catch (err) {
-              setAttachments((prev) =>
-                prev.map((a) =>
-                  a.id === att.id
-                    ? {
-                        ...a,
-                        status: "error" as const,
-                        error:
-                          err instanceof Error ? err.message : "Upload failed",
-                      }
-                    : a,
-                ),
-              );
-            }
+            if (att.status === "uploading")
+              void uploadAttachment(att, onUploadFile);
           }
         }
       },
-      [allowedFileTypes, maxFileSize, onUploadFile, onAttach],
+      [allowedFileTypes, maxFileSize, onUploadFile, onAttach, uploadAttachment],
     );
 
     const takeQueuedForEdit = queue?.onTakeForEdit;
@@ -413,6 +545,19 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         inputRef.current?.setContent(taken.text);
         setHasText(taken.text.trim().length > 0);
         if (taken.attachments?.length) processFiles(taken.attachments);
+        // Already on the server: back in the composer as uploaded, not again.
+        const restored = taken.uploadedAttachments ?? [];
+        if (restored.length)
+          setAttachments((prev) => [
+            ...prev,
+            ...restored.map(({ file, attachmentId }) => ({
+              id: newAttachmentId(),
+              file,
+              status: "uploaded" as const,
+              attachmentId,
+              previewUrl: previewUrlFor(file),
+            })),
+          ]);
         inputRef.current?.focus();
       },
       [takeQueuedForEdit, processFiles],
@@ -425,12 +570,23 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         // Stop while a turn is running, but Enter bypasses the button. With a
         // queue the host takes the message and sends it after the turn.
         if (sendBlockedByTurn) return;
+        // Pressed before an upload finished: the send waits for it (see the
+        // effect below) instead of being dropped without a word.
+        if (isAnyUploading) {
+          if (!isSubmitDisabled)
+            setPendingSend({
+              text,
+              waitingOn: attachments
+                .filter((a) => a.status === "uploading")
+                .map((a) => a.id),
+            });
+          return;
+        }
         // `isSubmittingRef` guards only the handshake (double Enter / double
         // click). `onSubmit` must resolve once the message is accepted — if a
         // host holds it open for the whole response, this latch becomes a lock
         // on every conversation the composer is reused for.
-        if (isSubmitDisabled || isAnyUploading || isSubmittingRef.current)
-          return;
+        if (isSubmitDisabled || isSubmittingRef.current) return;
         isSubmittingRef.current = true;
 
         const rawFiles = attachments
@@ -451,7 +607,15 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         try {
           const result =
             onUploadFile && uploadedIds.length > 0
-              ? await onSubmit(text, undefined, uploadedIds)
+              ? await onSubmit(
+                  text,
+                  undefined,
+                  uploadedIds,
+                  uploaded.map(({ file, attachmentId }) => ({
+                    file,
+                    attachmentId,
+                  })),
+                )
               : await onSubmit(
                   text,
                   rawFiles.length > 0 ? rawFiles : undefined,
@@ -460,6 +624,9 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
           // text and files were cleared for a message that never went.
           if (result && result.accepted === false) {
             restoreDraft();
+          } else {
+            // Sent: the host renders its own previews from the files.
+            revokePreviews(savedAttachments);
           }
         } catch {
           restoreDraft();
@@ -475,28 +642,48 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         sendBlockedByTurn,
         onSubmit,
         onUploadFile,
+        uploaded,
         uploadedIds,
       ],
     );
 
+    // The waiting send goes out once the last upload settles. If one it was
+    // waiting for failed, it stays a draft: the person pressed Send expecting
+    // that file to go, and sending without it would misreport what the
+    // assistant can see. A chip already red at Send was seen and sent past,
+    // as a send without a wait would.
+    useEffect(() => {
+      if (pendingSend === null || isAnyUploading) return;
+      setPendingSend(null);
+      const failed = attachments.some(
+        (a) => a.status === "error" && pendingSend.waitingOn.includes(a.id),
+      );
+      if (!failed) void submitWithText(pendingSend.text);
+    }, [pendingSend, isAnyUploading, attachments, submitWithText]);
+
     const handleSendButtonClick = useCallback(() => {
+      // While a send waits on an upload, the button calls it off.
+      if (isSendPending) {
+        setPendingSend(null);
+        return;
+      }
       inputRef.current?.submit();
-    }, []);
+    }, [isSendPending]);
 
     const handleFileSelect = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
-        if (!files || files.length === 0) return;
+        if (!files || files.length === 0 || isSendPending) return;
         processFiles(Array.from(files));
         // Reset so same file can be selected again
         e.target.value = "";
       },
-      [processFiles],
+      [processFiles, isSendPending],
     );
 
     const handlePaste = useCallback(
       (e: React.ClipboardEvent<HTMLDivElement>) => {
-        if (!supportsAttachments || isSubmitting) return;
+        if (!supportsAttachments || isSubmitting || isSendPending) return;
         const clipboardData = e.clipboardData;
         if (!clipboardData) return;
 
@@ -520,11 +707,17 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
           processFiles(files);
         }
       },
-      [supportsAttachments, isSubmitting, processFiles],
+      [supportsAttachments, isSubmitting, isSendPending, processFiles],
     );
 
     const handleRemoveAttachment = useCallback(
       (id: string) => {
+        uploadAbortersRef.current.get(id)?.abort();
+        // A waiting send that included this file is a new draft without it;
+        // removing a chip it was not waiting for changes nothing it carries.
+        setPendingSend((pending) =>
+          pending?.waitingOn.includes(id) ? null : pending,
+        );
         setAttachments((prev) => {
           const removed = prev.find((a) => a.id === id);
           if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
@@ -543,13 +736,13 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!supportsAttachments || isSubmitting) return;
+        if (!supportsAttachments || isSubmitting || isSendPending) return;
         dragCounterRef.current++;
         if (e.dataTransfer.types.includes("Files")) {
           setIsDragOver(true);
         }
       },
-      [supportsAttachments, isSubmitting],
+      [supportsAttachments, isSubmitting, isSendPending],
     );
 
     const handleDragLeave = useCallback((e: React.DragEvent) => {
@@ -573,24 +766,27 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
         dragCounterRef.current = 0;
         setIsDragOver(false);
 
-        if (!supportsAttachments || isSubmitting) return;
+        if (!supportsAttachments || isSubmitting || isSendPending) return;
 
         const files = Array.from(e.dataTransfer.files);
         if (files.length > 0) {
           processFiles(files);
         }
       },
-      [supportsAttachments, isSubmitting, processFiles],
+      [supportsAttachments, isSubmitting, isSendPending, processFiles],
     );
 
-    // Cleanup preview URLs on unmount
+    // On unmount, release the previews of whatever is attached THEN (not at
+    // the first render) and stop uploads in flight.
+    const attachmentsRef = useRef(attachments);
+    attachmentsRef.current = attachments;
     useEffect(() => {
+      const aborters = uploadAbortersRef.current;
       return () => {
-        attachments.forEach((a) => {
-          if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
-        });
+        revokePreviews(attachmentsRef.current);
+        aborters.forEach((controller) => controller.abort());
       };
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
       <div
@@ -657,7 +853,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
               ref={inputRef}
               placeholder={placeholder}
               placeholderClassName="!text-[var(--chat-placeholder)]"
-              disabled={isSubmitDisabled}
+              disabled={isSubmitDisabled || isSendPending}
               commandProvider={commandProvider ?? null}
               commandProviders={commandProviders}
               inputClassName={cn(
@@ -689,7 +885,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                 ? () => inputRef.current?.insertTrigger("/")
                 : undefined
             }
-            disabled={isSubmitDisabled}
+            disabled={isSubmitDisabled || isSendPending}
             endSlot={
               // With a queue, a draft during a turn shows Send (it queues);
               // Stop comes back once the draft is empty.
@@ -702,6 +898,28 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                 >
                   <Square size={14} fill="currentColor" />
                 </button>
+              ) : isSendPending ? (
+                <>
+                  <span
+                    className="text-xs text-gray-500 dark:text-zinc-400 whitespace-nowrap"
+                    aria-live="polite"
+                  >
+                    Sends when uploaded
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSendButtonClick}
+                    aria-label="Cancel send"
+                    title="Cancel send"
+                    className="chat-composer-action group/pending"
+                  >
+                    <Loader2
+                      size={16}
+                      className="animate-spin group-hover/pending:hidden"
+                    />
+                    <X size={16} className="hidden group-hover/pending:block" />
+                  </button>
+                </>
               ) : (
                 <button
                   type="button"
@@ -709,16 +927,12 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                   // `isStreaming` matters here only for hosts that pass it
                   // without `onStopStreaming` (no Stop button to swap in) —
                   // without it the button would look live but silently no-op.
-                  disabled={
-                    !hasContent ||
-                    isSubmitDisabled ||
-                    isAnyUploading ||
-                    sendBlockedByTurn
-                  }
+                  // An upload in progress does not disable it: the send waits.
+                  disabled={!hasContent || isSubmitDisabled || sendBlockedByTurn}
                   aria-label={isStreaming ? "Queue message" : "Send message"}
                   className="chat-composer-action"
                 >
-                  {isSubmitting || isAnyUploading ? (
+                  {isSubmitting ? (
                     <Loader2 size={16} className="animate-spin" />
                   ) : (
                     <ArrowUp size={16} />
