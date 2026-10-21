@@ -47,8 +47,9 @@ export function ComposerToolbar({
       {onContextClick && (
         <button
           type="button"
-          className="chat-composer-attach"
+          className="chat-composer-attach chat-composer-secondary"
           title="Add accounts or data tables (@)"
+          aria-label="Add context"
           onClick={onContextClick}
           disabled={disabled}
         >

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `ComposerToolbar`: Add context collapses to icon-only at the compact container breakpoint, matching Attach and Skills, while retaining its accessible name and tooltip.
 - `remarkEntityReferences` no longer links a registered id inside an `@<id>:<kind>` command token, so a sent message renders the token as its chip instead of `@`, a raw-id link and `:<kind>`.
 
 - `MessageComposer` refuses an empty (0-byte) file from paste, drop or the file picker: it shows a "File is empty" chip and is never passed to `onUploadFile` or `onSubmit`. A clipboard can hand the browser an empty image.
