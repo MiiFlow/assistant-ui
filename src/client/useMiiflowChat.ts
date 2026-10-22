@@ -115,6 +115,13 @@ function assistantErrorMessage(
   };
 }
 
+/** The stream endpoint's answer for a thread that no longer exists. */
+async function isThreadGone(response: Response): Promise<boolean> {
+  if (response.status !== 404) return false;
+  const body = await response.clone().json().catch(() => null);
+  return body?.error === "thread_not_found";
+}
+
 function buildWebSocketUrl(config: MiiflowChatConfig, session: EmbedSession): string {
   if (config.webSocketUrl) {
     const url = new URL(config.webSocketUrl);
@@ -1126,6 +1133,11 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   const ensureSessionRef = useRef<(() => Promise<EmbedSession | null>) | null>(
     null
   );
+  // Replaces a session whose thread the backend no longer has (see
+  // replaceGoneSession in the init effect).
+  const replaceGoneSessionRef = useRef<
+    (() => Promise<EmbedSession | null>) | null
+  >(null);
   // Why the last init failed, so a send that finds no session can say so.
   const initFailureRef = useRef<unknown>(null);
   // The ids of a turn still waiting for its session: shown, but not yet sent.
@@ -1252,12 +1264,47 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
       return run;
     }
 
+    // The session's thread is gone: the backend deleted it (an empty thread
+    // left idle is swept, and the session with it), so neither this session
+    // nor its cached token can post again. Init afresh, which opens a new
+    // thread, and re-register the tools added after mount, which init does
+    // not carry. Nothing is lost: only a thread with no messages is swept.
+    async function replaceGoneSession(): Promise<EmbedSession | null> {
+      if (cancelled) {
+        // The successor may already hold the same dead session: replace it
+        // there rather than hand it back.
+        const successor = replaceGoneSessionRef.current;
+        return successor && successor !== replaceGoneSession ? successor() : null;
+      }
+      resolved = null;
+      cachedToken = undefined;
+      clearCachedSession(configRef.current);
+      const sess = await ensureSession();
+      if (!sess) return null;
+      const acked = new Set([
+        ...(sess.registeredTools ?? []),
+        ...serializedConfigTools.map((tool) => tool.name),
+      ]);
+      const missing = Array.from(toolDefinitionsRef.current.values()).filter(
+        (tool) => !acked.has(tool.name)
+      );
+      if (missing.length > 0) {
+        try {
+          await registerToolsOnBackend(configRef.current, sess, missing);
+        } catch (err) {
+          console.warn("[Miiflow] Failed to re-register tools:", err);
+        }
+      }
+      return sess;
+    }
+
     // The OS knows before any backoff timer does.
     const onOnline = () => {
       void ensureSession();
     };
 
     ensureSessionRef.current = ensureSession;
+    replaceGoneSessionRef.current = replaceGoneSession;
     window.addEventListener("online", onOnline);
     void ensureSession();
     return () => {
@@ -1265,6 +1312,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
       if (retryTimer) clearTimeout(retryTimer);
       window.removeEventListener("online", onOnline);
       if (ensureSessionRef.current === ensureSession) ensureSessionRef.current = null;
+      if (replaceGoneSessionRef.current === replaceGoneSession) replaceGoneSessionRef.current = null;
     };
   }, [config.publicKey, config.assistantId]);
 
@@ -1671,17 +1719,16 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
 
         const backendBaseUrl = getBackendBaseUrl(configRef.current);
 
-        const response = await fetchOrNetworkError(
-          `${backendBaseUrl}/assistant/message/stream/`,
-          {
+        const postTurn = (sess: EmbedSession) =>
+          fetchOrNetworkError(`${backendBaseUrl}/assistant/message/stream/`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${currentSession.token}`,
+              Authorization: `Bearer ${sess.token}`,
               "x-mii-user-id": getOrCreateUserId(),
             },
             body: JSON.stringify({
-              thread_id: currentSession.config.thread_id,
+              thread_id: sess.config.thread_id,
               client_capabilities: configRef.current.nativeInteractions
                 ? { native_interactions: 1 }
                 : {},
@@ -1691,8 +1738,29 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
               attachment_ids: attachmentIds || [],
             }),
             signal: abortController.signal,
+          });
+
+        let response = await postTurn(currentSession);
+        // The thread this tab holds was deleted (an empty thread left idle is
+        // swept). The backend refused before persisting anything, so the turn
+        // is sent once more, on a new session, instead of failing every send
+        // until the page is reloaded.
+        if (await isThreadGone(response)) {
+          // Nothing was persisted: until the resend, a stop removes the turn.
+          unsentTurnRef.current = [optimisticId, placeholderAssistantId];
+          let replacement: EmbedSession | null;
+          try {
+            replacement = (await replaceGoneSessionRef.current?.()) ?? null;
+          } finally {
+            if (unsentTurnRef.current?.[0] === optimisticId) unsentTurnRef.current = null;
           }
-        );
+          if (abortController.signal.aborted) return;
+          if (replacement) {
+            sessionRef.current = replacement;
+            currentSession = replacement;
+            response = await postTurn(replacement);
+          }
+        }
 
         responseStarted = true;
         if (!response.ok) {
