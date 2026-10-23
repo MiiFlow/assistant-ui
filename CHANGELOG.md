@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `ToolApprovalSlots` accepts an optional `Header` and `actionsAfterDetails` presentation hook. Embedded defaults retain their existing header and action sequence.
+- `WorkItemHeader` accepts optional `titleId`, `headingLevel`, and `status` hooks for host-owned draft and decision surfaces.
+- Approval's Enter shortcut respects focused native and ARIA controls, so activating details, Decline, or a choice does not approve the proposal. Non-interactive Enter and Escape shortcuts remain available.
+
 - `ComposerToolbar`: Add context collapses to icon-only at the compact container breakpoint, matching Attach and Skills, while retaining its accessible name and tooltip.
 - `remarkEntityReferences` no longer links a registered id inside an `@<id>:<kind>` command token, so a sent message renders the token as its chip instead of `@`, a raw-id link and `:<kind>`.
 

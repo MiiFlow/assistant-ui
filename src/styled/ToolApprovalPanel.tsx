@@ -25,6 +25,10 @@ export interface ApprovalChatInputSlotProps {
 }
 
 export interface ToolApprovalSlots {
+	/** Opt in to footer placement; embedded hosts keep their existing sequence. */
+	actionsAfterDetails?: boolean;
+	/** Optional host header; default embeds retain their existing presentation. */
+	Header?: ComponentType<{ title: string; label: string }>;
 	AllowButton?: ComponentType<ApprovalButtonSlotProps>;
 	RejectButton?: ComponentType<ApprovalButtonSlotProps>;
 	ChatButton?: ComponentType<ApprovalButtonSlotProps>;
@@ -266,7 +270,10 @@ export function ToolApprovalPanel({
 				tag === "SELECT" ||
 				(target?.isContentEditable ?? false);
 			if (editable) return;
-			if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+			const activatesControl = target instanceof Element && target.closest(
+                "button, a[href], summary, [role='button'], [role='link'], [role='option'], [role='menuitem'], [role='radio'], [role='checkbox'], [role='tab'], [role='switch'], [role='combobox']",
+            );
+            if (e.key === "Enter" && !activatesControl && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
 				e.preventDefault();
 				handleAllow();
 			} else if (e.key === "Escape") {
@@ -286,18 +293,38 @@ export function ToolApprovalPanel({
 	);
 	const inlineChips = inputEntries.filter(([, v]) => isPrimitive(v)).slice(0, INLINE_CHIP_LIMIT);
 
+	const Header = slots?.Header;
 	const AllowButton = slots?.AllowButton ?? DefaultAllowButton;
 	const RejectButton = slots?.RejectButton ?? DefaultRejectButton;
 	const SendButton = slots?.SendButton ?? DefaultSendButton;
 	const CancelButton = slots?.CancelButton ?? DefaultGhostButton;
 	const ChatInput = slots?.ChatInput ?? DefaultChatInput;
 
+	const actions = (
+					<div className="tool-approval-actions mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+						<AllowButton onClick={handleAllow} disabled={disabled}>
+							Approve
+						</AllowButton>
+						<RejectButton onClick={handleReject} disabled={disabled}>
+							Decline
+						</RejectButton>
+						{!disabled && (
+							<span
+								aria-hidden
+								className="ml-auto text-[11px] opacity-50 select-none hidden sm:inline">
+								<kbd className="font-sans">⏎</kbd> approve ·{" "}
+								<kbd className="font-sans">Esc</kbd> decline
+							</span>
+						)}
+					</div>
+	);
+
 	return (
 		<div
 			role="group"
 			aria-label="Tool approval"
 			className={cn(
-				"mx-4 mb-4 font-sans",
+				"tool-approval-panel mx-4 mb-4 font-sans",
 				"px-4 py-3.5 rounded-2xl",
 				"bg-[var(--chat-approval-panel-bg,oklch(0.995_0.003_70))]",
 				"border-[1.5px] border-[var(--chat-approval-panel-border,oklch(0.86_0.005_70))]",
@@ -305,7 +332,7 @@ export function ToolApprovalPanel({
 				"text-[var(--chat-text,#1c1917)] dark:text-[var(--chat-text-dark,#fafaf9)]",
 				className,
 			)}>
-			{mode === "idle" && (
+			{mode === "idle" && (Header ? <Header title={toolIdentity} label="Approval" /> : (
 				<div className="flex items-center gap-2 mb-2 min-w-0">
 					<span
 						aria-hidden
@@ -325,12 +352,12 @@ export function ToolApprovalPanel({
 						</>
 					)}
 				</div>
-			)}
+			))}
 
 			{/* Tool description can be long when the LLM emits a verbose
 			    summary; cap with internal scroll so the action buttons below
 			    stay reachable. */}
-			<div className="max-h-[40vh] overflow-y-auto pr-1">
+			<div className="tool-approval-summary max-h-[40vh] overflow-y-auto pr-1">
 				<p className="text-base leading-relaxed">{summary}</p>
 			</div>
 
@@ -349,22 +376,7 @@ export function ToolApprovalPanel({
 						</div>
 					)}
 
-					<div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-						<AllowButton onClick={handleAllow} disabled={disabled}>
-							Approve
-						</AllowButton>
-						<RejectButton onClick={handleReject} disabled={disabled}>
-							Decline
-						</RejectButton>
-						{!disabled && (
-							<span
-								aria-hidden
-								className="ml-auto text-[11px] opacity-50 select-none hidden sm:inline">
-								<kbd className="font-sans">⏎</kbd> approve ·{" "}
-								<kbd className="font-sans">Esc</kbd> decline
-							</span>
-						)}
-					</div>
+					{!slots?.actionsAfterDetails && actions}
 
 					{inputEntries.length > 0 && (
 						<div className="mt-3">
@@ -388,6 +400,7 @@ export function ToolApprovalPanel({
 							)}
 						</div>
 					)}
+					{slots?.actionsAfterDetails && actions}
 				</>
 			) : (
 				<div className="mt-3 flex flex-col gap-3">

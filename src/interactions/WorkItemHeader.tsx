@@ -9,6 +9,9 @@ export function WorkItemHeader({
   expanded = false,
   onOpen,
   actionLabel,
+  titleId,
+  headingLevel: Heading = "h3",
+  status,
 }: {
   title: string;
   label: string;
@@ -16,14 +19,18 @@ export function WorkItemHeader({
   expanded?: boolean;
   onOpen?: () => void;
   actionLabel?: string;
+  titleId?: string;
+  headingLevel?: "h3" | "h5";
+  status?: ReactNode;
 }) {
   return (
     <header className="interaction-heading work-item-heading">
       <div className="work-item-identity">
         <span className="interaction-eyebrow">{label}</span>
-        <h3>{title}</h3>
+        <Heading id={titleId}>{title}</Heading>
         {summary && <p className="interaction-reference-summary">{summary}</p>}
       </div>
+      {status}
       {onOpen && (
         <button
           className={
