@@ -38,6 +38,9 @@
 	font-kerning: normal;
 	font-optical-sizing: auto;
 	color: var(--chat-text);
+	/* URLs and other unbroken text must fit even in a narrow flex item.
+	   Unlike break-word, anywhere also reduces the min-content width. */
+	overflow-wrap: anywhere;
 }
 
 .chat-prose.prose-invert {
@@ -209,6 +212,9 @@
 .chat-prose table {
 	min-width: 100%;
 	font-size: 0.925em;
+	/* Keep column min-content widths: wide tables scroll in their wrapper
+	   rather than splitting metric values into individual characters. */
+	overflow-wrap: normal;
 }
 
 .chat-prose thead {
