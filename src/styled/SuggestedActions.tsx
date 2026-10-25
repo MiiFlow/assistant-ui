@@ -21,8 +21,10 @@ export interface SuggestedActionsProps {
   onSelect?: (action: SuggestedAction) => void | Promise<void>;
   /** Additional CSS classes */
   className?: string;
-  /** Whether to show type-specific icons */
+  /** Whether to show a leading icon (per action type, unless `icon` is set) */
   showIcons?: boolean;
+  /** One icon for every action, in place of the type-specific ones */
+  icon?: ReactNode;
   /** Disable all action buttons */
   disabled?: boolean;
 }
@@ -46,7 +48,7 @@ function getActionIcon(type?: SuggestedActionType): ReactNode {
  * Styled SuggestedActions with type-specific icons, loading states, and staggered animation.
  */
 export const SuggestedActions = forwardRef<HTMLDivElement, SuggestedActionsProps>(
-  ({ actions, onSelect, className, showIcons = true, disabled = false }, ref) => {
+  ({ actions, onSelect, className, showIcons = true, icon, disabled = false }, ref) => {
     const [loadingIndex, setLoadingIndex] = useState<number | null>(null);
 
     if (actions.length === 0) return null;
@@ -97,7 +99,7 @@ export const SuggestedActions = forwardRef<HTMLDivElement, SuggestedActionsProps
                 {isLoading ? (
                   <Loader2 size={14} className="animate-spin" />
                 ) : (
-                  showIcons && <span className="text-gray-400 dark:text-gray-500">{getActionIcon(action.type)}</span>
+                  showIcons && <span className="text-gray-400 dark:text-gray-500">{icon ?? getActionIcon(action.type)}</span>
                 )}
                 {action.label}
               </motion.button>

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `SuggestedActions` accepts an optional `icon` that replaces the type-specific icon on every action.
 - `ToolApprovalSlots` accepts an optional `Header` and `actionsAfterDetails` presentation hook. Embedded defaults retain their existing header and action sequence.
 - `WorkItemHeader` accepts optional `titleId`, `headingLevel`, and `status` hooks for host-owned draft and decision surfaces.
 - Approval's Enter shortcut respects focused native and ARIA controls, so activating details, Decline, or a choice does not approve the proposal. Non-interactive Enter and Escape shortcuts remain available.
