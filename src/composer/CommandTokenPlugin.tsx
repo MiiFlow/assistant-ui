@@ -21,6 +21,7 @@ import {
 } from "./CommandTokenNode";
 import { DefaultCommandMenu } from "./DefaultCommandMenu";
 import type { ChatComposerCommand, CommandProvider } from "./types";
+import { useDetachIdleTypeaheadAnchor } from "./useDetachIdleTypeaheadAnchor";
 
 const DEFAULT_TRIGGER = "/";
 const QUERY_LENGTH_LIMIT = 75;
@@ -88,6 +89,9 @@ export function CommandTokenPlugin({
     onMenuStateChange?.(open, trigger);
     return () => onMenuStateChange?.(false, trigger);
   }, [open, trigger, onMenuStateChange]);
+
+  // No empty "Typeahead menu" listbox while the menu is closed (V3-BUG-014).
+  const anchorClassName = useDetachIdleTypeaheadAnchor(editor, open, Boolean(commandProvider));
 
   useEffect(() => {
     setResults([]);
@@ -234,6 +238,7 @@ export function CommandTokenPlugin({
       onSelectOption={onSelectOption}
       triggerFn={checkForMatch}
       options={options}
+      anchorClassName={anchorClassName}
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },

@@ -43,6 +43,10 @@ function scrollViewport(element: HTMLElement | null | undefined): HTMLElement | 
 	return viewport;
 }
 
+/** How long after an upward wheel, touch or key input a scroll still counts as the reader's. */
+const USER_SCROLL_WINDOW_MS = 1000;
+const UP_KEYS = new Set(["ArrowUp", "PageUp", "Home"]);
+
 const clockOf = (seconds: number) => {
 	const s = Math.floor(seconds);
 	return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -106,18 +110,71 @@ export function TranscriptFlow({
 		injectBeamerKeyframes(root.current);
 	}, []);
 	// Observe the actual chat viewport, not window scroll. Reading older content
-	// is a reason to preserve the layout even if no disclosure was opened.
+	// while the run works is a reason to preserve the layout at completion even
+	// if no disclosure was opened. Only an upward scroll the reader drove
+	// counts: a transcript rehydrated after a reload streams in under scroll
+	// clamps and re-anchoring that also move the viewport up, and those left the
+	// finished rail expanded (V3-BUG-057). A settled run never listens.
+	const running = status === "running";
 	useEffect(() => {
+		if (!running) return;
 		const viewport = scrollViewport(root.current);
 		if (!viewport) return;
 		let previous = viewport.scrollTop;
+		let intentUntil = 0;
+		let dragging = false;
+		let touchY: number | null = null;
+		const intendUp = () => {
+			intentUntil = Date.now() + USER_SCROLL_WINDOW_MS;
+		};
+		const onWheel = (event: WheelEvent) => {
+			if (event.deltaY < 0) intendUp();
+		};
+		const onKey = (event: KeyboardEvent) => {
+			if (UP_KEYS.has(event.key) || (event.key === " " && event.shiftKey)) intendUp();
+		};
+		const onTouchStart = (event: TouchEvent) => {
+			touchY = event.touches[0]?.clientY ?? null;
+		};
+		const onTouchMove = (event: TouchEvent) => {
+			const y = event.touches[0]?.clientY;
+			// A finger moving down drags the content down: an upward scroll.
+			if (y != null && touchY != null && y > touchY) intendUp();
+			touchY = y ?? touchY;
+		};
+		// A scrollbar drag: the press lands on the viewport itself, not on content.
+		const onPointerDown = (event: PointerEvent) => {
+			if (event.target === viewport) dragging = true;
+		};
+		const release = () => {
+			dragging = false;
+		};
 		const onScroll = () => {
-			if (viewport.scrollTop < previous - 1) setKeepOpen(true);
+			const byReader = dragging || Date.now() <= intentUntil;
+			if (byReader && viewport.scrollTop < previous - 1) setKeepOpen(true);
 			previous = viewport.scrollTop;
 		};
+		viewport.addEventListener("wheel", onWheel, { passive: true });
+		viewport.addEventListener("keydown", onKey);
+		viewport.addEventListener("touchstart", onTouchStart, { passive: true });
+		viewport.addEventListener("touchmove", onTouchMove, { passive: true });
+		viewport.addEventListener("pointerdown", onPointerDown, { passive: true });
+		window.addEventListener("pointerup", release);
+		window.addEventListener("pointercancel", release);
+		window.addEventListener("blur", release);
 		viewport.addEventListener("scroll", onScroll, { passive: true });
-		return () => viewport.removeEventListener("scroll", onScroll);
-	}, []);
+		return () => {
+			viewport.removeEventListener("wheel", onWheel);
+			viewport.removeEventListener("keydown", onKey);
+			viewport.removeEventListener("touchstart", onTouchStart);
+			viewport.removeEventListener("touchmove", onTouchMove);
+			viewport.removeEventListener("pointerdown", onPointerDown);
+			window.removeEventListener("pointerup", release);
+			window.removeEventListener("pointercancel", release);
+			window.removeEventListener("blur", release);
+			viewport.removeEventListener("scroll", onScroll);
+		};
+	}, [running]);
 
 	// New snapshots identify the final answer explicitly. Older v1 snapshots
 	// retain their last uninterrupted speech block as the answer.
@@ -164,7 +221,6 @@ export function TranscriptFlow({
 			calls += specialistCalls(unit.data).length;
 		}
 	}
-	const running = status === "running";
 	const label = backgroundActive ? "Background work" : backgroundNeedsAttention ? "Needs attention" : status === "completed" ? labels.worked(duration) : labels[STATE_LABEL[status]];
 	const stats = [
 		agents ? labels.agents(agents, running ? liveAgents : 0) : "",

@@ -18,6 +18,8 @@ export {
 
 export { CommandTokenPlugin, type CommandTokenPluginProps } from "./CommandTokenPlugin";
 
+export { useDetachIdleTypeaheadAnchor } from "./useDetachIdleTypeaheadAnchor";
+
 export { CommandTokenView, type CommandTokenViewProps } from "./CommandTokenView";
 
 export { $hydrateFromEncodedText, type ResolveTokenLabel } from "./hydrate";
