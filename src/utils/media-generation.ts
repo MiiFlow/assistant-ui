@@ -15,7 +15,7 @@ function mediaKind(name: string): "image" | "video" | undefined {
   if (/(^|_)(generate_ad_video|generate_seedance_video)$/.test(key) || key === "video_generate")
     return "video";
   if (
-    /(^|_)(generate_ad_image|edit_ad_image|generate_gpt_image_2|edit_gpt_image_2|generate_nano_banana_(2|pro)|edit_nano_banana_(2|pro))$/.test(
+    /(^|_)(generate_ad_image|edit_ad_image|generate_gpt_image_(2|sunburst)|edit_gpt_image_(2|sunburst)|generate_nano_banana_(2|2_1|2_lite|pro)|edit_nano_banana_(2|2_1|2_lite|pro))$/.test(
       key,
     ) ||
     key === "image_generate" ||
