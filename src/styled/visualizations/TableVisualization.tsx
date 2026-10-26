@@ -236,6 +236,48 @@ const badgeColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-700",
 };
 
+const LINK_PROTOCOLS = new Set(["https:", "http:", "mailto:", "tel:"]);
+// File names look like bare domains ("report.pdf"); they stay text. Same
+// list as the web table's safeExternalHref.
+const FILE_EXTENSIONS = new Set([
+  "pdf", "txt", "csv", "json", "xml", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+  "png", "jpg", "jpeg", "gif", "svg", "webp", "mp4", "mov", "zip", "md",
+]);
+
+function looksLikeBareDomain(text: string): boolean {
+  const match = text.match(/^([a-z0-9-]+(?:\.[a-z0-9-]+)+)(?::\d{1,5})?(?:[/?#].*)?$/i);
+  if (!match) return false;
+  const tld = match[1].split(".").pop()!.toLowerCase();
+  return /^[a-z]{2,24}$/.test(tld) && !FILE_EXTENSIONS.has(tld);
+}
+
+/**
+ * The href a "link" column value opens, or null when it must stay plain
+ * text. Links are absolute http(s), mailto and tel URLs, in-app paths
+ * starting with a single "/", and bare domains ("www.facebook.com/x", upgraded
+ * to https). Anything else, such as a bare word the model wrote
+ * ("unavailable"), would resolve against the current page and open a dead
+ * route (V3-BUG-070). Executable schemes such as javascript: are rejected.
+ */
+export function tableLinkHref(url: unknown): string | null {
+  if (typeof url !== "string") return null;
+  const text = url.trim();
+  if (!text) return null;
+  if (text.startsWith("/")) {
+    // "//host" and "/\host" leave the app.
+    return /^\/[/\\]/.test(text) ? null : text;
+  }
+  const candidate = !/\s/.test(text) && looksLikeBareDomain(text) ? `https://${text}` : text;
+  try {
+    const parsed = new URL(candidate);
+    if (!LINK_PROTOCOLS.has(parsed.protocol)) return null;
+    if ((parsed.protocol === "mailto:" || parsed.protocol === "tel:") && !parsed.pathname) return null;
+    return candidate === text ? text : parsed.href;
+  } catch {
+    return null;
+  }
+}
+
 function formatCellValue(value: unknown, column: TableColumn): React.ReactNode {
   if (value === null || value === undefined)
     return <span className="text-gray-400">-</span>;
@@ -284,26 +326,14 @@ function formatCellValue(value: unknown, column: TableColumn): React.ReactNode {
           : typeof url === "string"
             ? url
             : "Link unavailable";
-      try {
-        // Preserve relative and email links while rejecting executable schemes.
-        if (
-          typeof url !== "string" ||
-          !url.trim() ||
-          !["https:", "http:", "mailto:", "tel:"].includes(
-            new URL(url, "https://local.invalid").protocol,
-          )
-        ) {
-          return <span>{label}</span>;
-        }
-      } catch {
-        return <span>{label}</span>;
-      }
+      const href = tableLinkHref(url);
+      if (!href) return <span>{label}</span>;
       return (
         <a
-          href={url}
+          href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-500 hover:underline"
+          className="text-blue-500 dark:text-blue-400 hover:underline"
         >
           {label}
         </a>
@@ -576,7 +606,7 @@ export function TableVisualization({
                           {parsed.previewUrl &&
                             /^https?:\/\//.test(parsed.previewUrl) && (
                               <a
-                                className="text-xs text-blue-600 hover:underline"
+                                className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                                 href={parsed.previewUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
