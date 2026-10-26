@@ -15,6 +15,7 @@ import {
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useThreadLayout } from "../layout/ThreadLayoutProvider";
+import { THREAD_LAYOUT } from "../layout/layout-tiers";
 import { trapTabKey } from "./focus-trap";
 import { WorkPanelHeader } from "./WorkPanelHeader";
 import { InlineWorkPanelFrame, WorkPanelModal } from "./WorkPanelInline";
@@ -54,6 +55,23 @@ export function WorkPanelActions({ children }: { children: ReactNode }) {
   return container ? createPortal(children, container) : <>{children}</>;
 }
 
+/**
+ * The widest the result column can actually render: PANEL_MAX, or the
+ * PANEL_MAX_SHARE of the measured layout (also the column's inline max-width)
+ * when that is smaller. Not floored at PANEL_MIN, because the CSS cap is not either, so
+ * the separator never reports a width the panel does not render. An unmeasured
+ * layout (0) falls back to PANEL_MAX.
+ */
+function workPanelMaxWidth(layoutWidth: number): number {
+  if (!Number.isFinite(layoutWidth) || layoutWidth <= 0) {
+    return THREAD_LAYOUT.PANEL_MAX;
+  }
+  return Math.min(
+    THREAD_LAYOUT.PANEL_MAX,
+    Math.floor(layoutWidth * THREAD_LAYOUT.PANEL_MAX_SHARE),
+  );
+}
+
 /** A stable conversation column and a resizable result column; no transcript remount. */
 export function WorkPanelLayout({ children }: { children: ReactNode }) {
   const { tier, hostWidth } = useThreadLayout();
@@ -70,6 +88,43 @@ export function WorkPanelLayout({ children }: { children: ReactNode }) {
   const returnFocus = useRef<HTMLElement | null>(null);
   const activeFrame = useRef<HTMLElement | null>(null);
   const [layoutRoot, setLayoutRoot] = useState<HTMLDivElement | null>(null);
+  // max-width caps the column at a share of the layout; measure the layout so the
+  // separator's value, range and keyboard steps follow the width that renders.
+  // Only the derived cap is stored, so a resize that keeps the cap re-renders
+  // nothing.
+  const [maxWidth, setMaxWidth] = useState<number>(THREAD_LAYOUT.PANEL_MAX);
+  useLayoutEffect(() => {
+    if (!layoutRoot) return;
+    // Content box, the base the CSS percentage resolves against.
+    const contentWidth = () => {
+      const style = getComputedStyle(layoutRoot);
+      return (
+        layoutRoot.clientWidth -
+        (parseFloat(style.paddingLeft) || 0) -
+        (parseFloat(style.paddingRight) || 0)
+      );
+    };
+    // Zero-width reports (host temporarily hidden) keep the last measurement.
+    const update = (next: number) => {
+      if (next > 0) setMaxWidth(workPanelMaxWidth(next));
+    };
+    update(contentWidth());
+    if (typeof ResizeObserver === "undefined") {
+      const onResize = () => update(contentWidth());
+      window.addEventListener("resize", onResize);
+      return () => window.removeEventListener("resize", onResize);
+    }
+    const observer = new ResizeObserver((entries) => {
+      update(entries[0]?.contentRect.width ?? 0);
+    });
+    observer.observe(layoutRoot);
+    return () => observer.disconnect();
+  }, [layoutRoot]);
+  const minWidth = Math.min(THREAD_LAYOUT.PANEL_MIN, maxWidth);
+  const clampWidth = (w: number) => Math.max(minWidth, Math.min(maxWidth, w));
+  // The stored preference survives a narrower layout until the next resize;
+  // what renders and what the separator announces is always the clamped width.
+  const renderedWidth = clampWidth(width);
   const activeRef = useRef(active);
   activeRef.current = active;
   const open = useCallback(
@@ -165,7 +220,12 @@ export function WorkPanelLayout({ children }: { children: ReactNode }) {
           <div className="interaction-conversation">{children}</div>
           <aside
             className="interaction-workspace"
-            style={{ width }}
+            style={{
+              width: renderedWidth,
+              // One source for the cap: the CSS bound and the resizer clamp
+              // both come from PANEL_MAX_SHARE.
+              maxWidth: `${THREAD_LAYOUT.PANEL_MAX_SHARE * 100}%`,
+            }}
             hidden={!activeId || tier === "narrow"}
             aria-label="Result panel"
           >
@@ -173,18 +233,19 @@ export function WorkPanelLayout({ children }: { children: ReactNode }) {
               role="separator"
               aria-label="Resize result panel"
               aria-orientation="vertical"
-              aria-valuenow={width}
-              aria-valuemin={360}
-              aria-valuemax={800}
+              aria-valuenow={renderedWidth}
+              aria-valuemin={minWidth}
+              aria-valuemax={maxWidth}
               tabIndex={0}
               className="interaction-resizer"
               onKeyDown={(event) => {
                 if (["ArrowLeft", "ArrowRight"].includes(event.key)) {
                   event.preventDefault();
+                  // Step from the rendered width, so there is no dead zone
+                  // after the stored preference outgrew the layout cap.
                   setWidth((w) =>
-                    Math.max(
-                      360,
-                      Math.min(800, w + (event.key === "ArrowLeft" ? 32 : -32)),
+                    clampWidth(
+                      clampWidth(w) + (event.key === "ArrowLeft" ? 32 : -32),
                     ),
                   );
                 }
@@ -197,7 +258,7 @@ export function WorkPanelLayout({ children }: { children: ReactNode }) {
                   const right =
                     event.currentTarget.parentElement!.getBoundingClientRect()
                       .right;
-                  setWidth(Math.max(360, Math.min(800, right - event.clientX)));
+                  setWidth(clampWidth(right - event.clientX));
                 }
               }}
             />

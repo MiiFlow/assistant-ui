@@ -17,7 +17,7 @@
 .interaction-workspace {
   position: relative;
   flex: none;
-  max-width: 60%;
+  /* max-width is set inline from THREAD_LAYOUT.PANEL_MAX_SHARE, the share the resizer clamps to. */
   border-left: 1px solid var(--chat-border, #dbd9d3);
   background: var(--chat-surface, #fff);
 }

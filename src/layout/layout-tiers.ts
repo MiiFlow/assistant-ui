@@ -3,6 +3,8 @@ export const THREAD_LAYOUT = {
 	WIDE_MIN: 700,
 	PANEL_MIN: 360,
 	PANEL_MAX: 800,
+	/** Share of the layout the result panel may take: the inline `max-width` and the resizer cap both read it. */
+	PANEL_MAX_SHARE: 0.6,
 	DRAWER_MIN: 380,
 	DRAWER_MAX: 720,
 	DRAWER_DEFAULT: 500,

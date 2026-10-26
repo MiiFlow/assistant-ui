@@ -20,6 +20,8 @@
 
 - `StreamingChunk.backgroundWaitId` lets hosts bind each tool card to its own durable wait across resumed and merged messages.
 
+- `WorkPanelLayout`: the result panel's resize separator follows the width that actually renders. `aria-valuemax` and `aria-valuenow` are capped at 60% of the measured layout (never above 800), and keyboard and pointer resizing clamp to the same cap, so widening past it no longer leaves a dead zone before ArrowRight narrows the panel.
+
 ### Features
 
 - **Queued messages and Steer.** `MessageComposer` takes a `queue` prop
