@@ -25,6 +25,7 @@ import {
 } from "../composer";
 import { ComposerToolbar } from "./ComposerToolbar";
 import { QueuedMessages, type QueuedComposerMessage } from "./QueuedMessages";
+import { FollowUpSuggestionsPlugin, type FollowUpSuggestion } from "../composer/FollowUpSuggestionsPlugin";
 
 // ============================================================================
 // File upload constants (matching in-house backend)
@@ -310,6 +311,8 @@ export interface MessageComposerQueue {
 }
 
 export interface MessageComposerProps {
+  /** Next-message drafts for the latest answer, filtered by text in the focused editor. */
+  followUpSuggestions?: readonly FollowUpSuggestion[];
   /** Draft actions for host starter cards; the forwarded ref remains the root DOM element. */
   composerRef?: Ref<MessageComposerHandle>;
   /** Callback when message is submitted */
@@ -391,6 +394,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       commandProvider,
       commandProviders,
       composerRef,
+      followUpSuggestions = [],
     },
     ref,
   ) => {
@@ -407,6 +411,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     const isSendPending = pendingSend !== null;
     const fileInputRef = useRef<HTMLInputElement>(null);
     const inputRef = useRef<LexicalChatInputHandle>(null);
+    const [suggestionsAnchor, setSuggestionsAnchor] = useState<HTMLDivElement | null>(null);
     const tokenLabels = useRef(new Map<string, string>());
     const resolveTokenLabel = useCallback(
       (id: string, kind: string) => tokenLabels.current.get(`${kind}:${id}`),
@@ -818,6 +823,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
             />
           </div>
         )}
+        <div ref={setSuggestionsAnchor} className="chat-follow-up-anchor mx-auto max-w-[900px]" />
         <div
           className={cn(
             "mx-auto max-w-[900px]",
@@ -864,7 +870,16 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
               onChange={handleChange}
               resolveTokenLabel={resolveTokenLabel}
               onSubmit={({ text }) => submitWithText(text)}
-            />
+            >
+              {followUpSuggestions.length > 0 && (
+                <FollowUpSuggestionsPlugin
+                  key={followUpSuggestions.map((suggestion) => suggestion.id).join(":")}
+                  suggestions={followUpSuggestions}
+                  anchorElement={suggestionsAnchor}
+                  disabled={isSubmitDisabled || isSendPending || isStreaming}
+                />
+              )}
+            </LexicalChatInput>
           </div>
 
           {/* Toolbar row */}

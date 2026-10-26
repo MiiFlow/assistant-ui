@@ -1,6 +1,7 @@
 // @miiflow/assistant-ui - Headless chat UI primitives with TailwindCSS styling
 
 // Types
+export type { FollowUpSuggestion } from "./composer/FollowUpSuggestionsPlugin";
 export type {
   ParticipantRole,
   Participant,

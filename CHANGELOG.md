@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `MessageComposer` accepts `followUpSuggestions` and shows an accessible picker above a focused composer, filtering options by case-insensitive substring matches against the draft. The compact list has a leading Enter icon on each option. Arrow keys highlight and Enter or a click replaces the text with an undoable draft for editing before sending; Escape dismisses it. Skill and mention menus take precedence.
+- Export `FollowUpSuggestion` from the root, styled and composer entry points, and `FollowUpSuggestionsPlugin` from the composer entry point for custom Lexical composers.
+- `LexicalChatInput` leaves IME Enter to composition and ignores repeated Enter keydown events, so holding Enter after inserting a suggestion cannot send the draft.
+
 - `SuggestedActions` accepts an optional `icon` that replaces the type-specific icon on every action.
 - `ToolApprovalSlots` accepts an optional `Header` and `actionsAfterDetails` presentation hook. Embedded defaults retain their existing header and action sequence.
 - `WorkItemHeader` accepts optional `titleId`, `headingLevel`, and `status` hooks for host-owned draft and decision surfaces.

@@ -29,12 +29,14 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 
 import { cn } from "../utils/cn";
 import { CommandTokenNode, $isCommandTokenNode } from "./CommandTokenNode";
 import { CommandTokenPlugin } from "./CommandTokenPlugin";
+import { CommandMenuContext } from "./CommandMenuContext";
 import { $hydrateFromEncodedText, type ResolveTokenLabel } from "./hydrate";
 import type {
   ChatComposerSubmitPayload,
@@ -232,6 +234,11 @@ function ChatInputBody({
   const onSubmitRef = useRef(onSubmit);
   onSubmitRef.current = onSubmit;
   const openCommandMenus = useRef(new Set<string>());
+  const [commandMenuOpen, setCommandMenuOpen] = useState(false);
+  const commandMenuState = useMemo(() => ({
+    isOpen: commandMenuOpen,
+    isOpenNow: () => openCommandMenus.current.size > 0,
+  }), [commandMenuOpen]);
 
   useEffect(() => {
     editor.setEditable(!disabled);
@@ -322,8 +329,11 @@ function ChatInputBody({
       (event) => {
         if (openCommandMenus.current.size > 0) return false;
         const keyboard = event as KeyboardEvent | null;
+        if (keyboard?.isComposing || editor.isComposing() || keyboard?.keyCode === 229) return false;
         if (keyboard?.shiftKey) return false;
         keyboard?.preventDefault();
+        // Holding Enter after accepting a suggestion must not send its draft.
+        if (keyboard?.repeat) return true;
         submit();
         return true;
       },
@@ -335,6 +345,7 @@ function ChatInputBody({
     (isOpen: boolean, trigger: string) => {
       if (isOpen) openCommandMenus.current.add(trigger);
       else openCommandMenus.current.delete(trigger);
+      setCommandMenuOpen(openCommandMenus.current.size > 0);
     },
     [],
   );
@@ -419,7 +430,9 @@ function ChatInputBody({
           />
         ));
       })()}
-      {children}
+      <CommandMenuContext.Provider value={commandMenuState}>
+        {children}
+      </CommandMenuContext.Provider>
     </div>
   );
 }

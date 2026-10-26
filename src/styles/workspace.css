@@ -423,6 +423,63 @@
   }
 }
 
+.chat-follow-up-anchor {
+  position: relative;
+}
+.chat-follow-up-menu {
+  position: absolute;
+  bottom: 8px;
+  inset-inline: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  max-height: min(280px, 40dvh);
+  padding: 6px;
+  border: 1px solid var(--chat-border);
+  border-radius: 12px;
+  color: var(--chat-text);
+  background: var(--chat-surface-raised, var(--chat-surface));
+  box-shadow: var(--adlyse-floating-shadow, 0 8px 28px rgb(0 0 0 / 16%));
+  font-size: 13px;
+  line-height: 1.5;
+}
+.chat-follow-up-options {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: auto;
+}
+.chat-follow-up-options [role="option"] {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.chat-follow-up-icon {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--chat-text-subtle);
+}
+.chat-follow-up-options [aria-selected="true"],
+.chat-follow-up-options [role="option"]:hover {
+  background: var(--chat-panel-bg);
+}
+@media (pointer: coarse) {
+  .chat-follow-up-options [role="option"] {
+    min-height: 44px;
+  }
+}
+
 /* The command menu portals beside Lexical's caret anchor, outside the shell. */
 .chat-command-menu {
   z-index: 1401;

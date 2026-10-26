@@ -22,6 +22,8 @@ export { CommandTokenView, type CommandTokenViewProps } from "./CommandTokenView
 
 export { $hydrateFromEncodedText, type ResolveTokenLabel } from "./hydrate";
 
+export { FollowUpSuggestionsPlugin, type FollowUpSuggestion } from "./FollowUpSuggestionsPlugin";
+
 export {
   LexicalChatInput,
   type LexicalChatInputHandle,

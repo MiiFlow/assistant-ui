@@ -3,6 +3,7 @@ export { AttachmentPreview, type AttachmentPreviewProps } from "./AttachmentPrev
 export { Avatar, type AvatarProps } from "./Avatar";
 export { ChatContainer, type ChatContainerProps } from "./ChatContainer";
 export { ComposerToolbar } from "./ComposerToolbar";
+export type { FollowUpSuggestion } from "../composer/FollowUpSuggestionsPlugin";
 export { LoadingDots, type LoadingDotsProps } from "./LoadingDots";
 export { MarkdownContent, type MarkdownContentProps } from "./MarkdownContent";
 export { Message, useMessage, type MessageProps } from "./Message";
