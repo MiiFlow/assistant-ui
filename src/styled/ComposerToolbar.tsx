@@ -11,6 +11,7 @@ export function ComposerToolbar({
   onAttachClick,
   onContextClick,
   onSkillsClick,
+  startSlot,
   disabled,
   hint = "Enter to send · Shift + Enter for a new line",
   showHint = true,
@@ -21,6 +22,8 @@ export function ComposerToolbar({
   onAttachClick?: () => void;
   onContextClick?: () => void;
   onSkillsClick?: () => void;
+  /** Host controls after the built-in buttons (e.g. a mode switch). */
+  startSlot?: ReactNode;
   disabled?: boolean;
   /** Keyboard hint shown while focused. Pass showHint={false} to hide. */
   hint?: string;
@@ -70,6 +73,8 @@ export function ComposerToolbar({
           <span>Skills</span>
         </button>
       )}
+
+      {startSlot}
 
       <div className="flex-1 min-w-0" />
 

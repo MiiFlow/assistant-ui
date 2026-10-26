@@ -53,6 +53,8 @@ export interface WelcomeScreenProps {
   disabled?: boolean;
   /** Override the shared message composer with a host-owned composer */
   composerSlot?: ReactNode;
+  /** Host controls for the built-in composer's toolbar (`MessageComposer.toolbarSlot`). */
+  composerToolbarSlot?: ReactNode;
   /** Optional slash-command typeahead provider (e.g. for skill picker). */
   commandProvider?: CommandProvider | null;
   /** Multiple typeahead providers for distinct triggers (e.g. `/` skills +
@@ -120,6 +122,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
       supportsAttachments = false,
       disabled,
       composerSlot,
+      composerToolbarSlot,
       commandProvider,
       commandProviders,
       className,
@@ -168,6 +171,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
                   disabled={disabled || !onSubmit}
                   commandProvider={commandProvider ?? null}
                   commandProviders={commandProviders}
+                  toolbarSlot={composerToolbarSlot}
                 />
               )}
             </div>

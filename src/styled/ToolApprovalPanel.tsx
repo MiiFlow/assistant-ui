@@ -30,6 +30,8 @@ export interface ToolApprovalSlots {
 	/** Optional host header; default embeds retain their existing presentation. */
 	Header?: ComponentType<{ title: string; label: string }>;
 	AllowButton?: ComponentType<ApprovalButtonSlotProps>;
+	/** The optional standing-approval action (`onApproveStanding`); a text button by default. */
+	StandingApprovalButton?: ComponentType<ApprovalButtonSlotProps>;
 	RejectButton?: ComponentType<ApprovalButtonSlotProps>;
 	ChatButton?: ComponentType<ApprovalButtonSlotProps>;
 	SendButton?: ComponentType<ApprovalButtonSlotProps>;
@@ -41,6 +43,14 @@ export interface ToolApprovalPanelProps {
 	approval: ToolApprovalData;
 	onApprove: (modifiedInputs: Record<string, unknown>) => void;
 	onReject: (reason?: string) => void;
+	/**
+	 * Approve this call AND every later call of the same tool for a scope the
+	 * host decides (e.g. "for this conversation"). Rendered between Approve and
+	 * Decline only when provided; the host decides which tools may offer it.
+	 */
+	onApproveStanding?: () => void;
+	/** Label for the standing-approval action. Required to show it. */
+	standingApprovalLabel?: ReactNode;
 	disabled?: boolean;
 	className?: string;
 	/**
@@ -223,6 +233,9 @@ function formatChipValue(value: unknown): string {
  *   │  Show all details                                       │
  *   └─────────────────────────────────────────────────────────┘
  *
+ * With `onApproveStanding`, a third action ("approve and stop asking", in the
+ * host's words) sits between Approve and Decline.
+ *
  * Buttons and the chat input are slottable via the `slots` prop so host apps
  * can swap in their own brand-aligned components.
  */
@@ -230,6 +243,8 @@ export function ToolApprovalPanel({
 	approval,
 	onApprove,
 	onReject,
+	onApproveStanding,
+	standingApprovalLabel,
 	disabled = false,
 	className,
 	slots,
@@ -296,6 +311,7 @@ export function ToolApprovalPanel({
 	const Header = slots?.Header;
 	const AllowButton = slots?.AllowButton ?? DefaultAllowButton;
 	const RejectButton = slots?.RejectButton ?? DefaultRejectButton;
+	const StandingApprovalButton = slots?.StandingApprovalButton ?? DefaultGhostButton;
 	const SendButton = slots?.SendButton ?? DefaultSendButton;
 	const CancelButton = slots?.CancelButton ?? DefaultGhostButton;
 	const ChatInput = slots?.ChatInput ?? DefaultChatInput;
@@ -305,6 +321,11 @@ export function ToolApprovalPanel({
 						<AllowButton onClick={handleAllow} disabled={disabled}>
 							Approve
 						</AllowButton>
+						{onApproveStanding && standingApprovalLabel && (
+							<StandingApprovalButton onClick={onApproveStanding} disabled={disabled}>
+								{standingApprovalLabel}
+							</StandingApprovalButton>
+						)}
 						<RejectButton onClick={handleReject} disabled={disabled}>
 							Decline
 						</RejectButton>

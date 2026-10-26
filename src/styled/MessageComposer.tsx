@@ -5,6 +5,7 @@ import {
   useState,
   useEffect,
   useImperativeHandle,
+  type ReactNode,
   type Ref,
 } from "react";
 import {
@@ -367,6 +368,8 @@ export interface MessageComposerProps {
   /** Multiple typeahead providers for distinct triggers (e.g. `/` skills +
    *  modes plus `@` ad accounts). Takes precedence over `commandProvider`. */
   commandProviders?: CommandProvider[];
+  /** Host controls in the toolbar row, after Attach / Add context / Skills. */
+  toolbarSlot?: ReactNode;
 }
 
 /**
@@ -395,6 +398,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       commandProviders,
       composerRef,
       followUpSuggestions = [],
+      toolbarSlot,
     },
     ref,
   ) => {
@@ -901,6 +905,7 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                 : undefined
             }
             disabled={isSubmitDisabled || isSendPending}
+            startSlot={toolbarSlot}
             endSlot={
               // With a queue, a draft during a turn shows Send (it queues);
               // Stop comes back once the draft is empty.
