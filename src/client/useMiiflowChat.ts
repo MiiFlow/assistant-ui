@@ -579,6 +579,8 @@ export async function parseSSEStream(
                   // Keep the earlier start from the is_tool_streaming frame.
                   startedAt: chunks[plannedIdx].startedAt ?? frameTimeMs,
                   toolWrites: chunks[plannedIdx].toolWrites ?? parsed.tool_writes,
+                  // The media card sizes its working frame from these.
+                  toolArgs: parsed.tool_args ?? chunks[plannedIdx].toolArgs,
                 };
               } else {
                 chunks.push({
@@ -587,6 +589,7 @@ export async function parseSSEStream(
                   toolName: parsed.tool_name,
                   toolCallId: parsed.tool_call_id,
                   toolDescription: parsed.tool_description,
+                  toolArgs: parsed.tool_args,
                   status: "planned",
                   subtaskId: parsed.subtask_id,
                   toolWrites: parsed.tool_writes,
@@ -604,6 +607,8 @@ export async function parseSSEStream(
                 chunks[idx].status = "executing";
                 chunks[idx].startedAt ??= frameTimeMs;
                 chunks[idx].toolWrites ??= parsed.tool_writes;
+                // Newer frame wins, as in the web app's parser.
+                chunks[idx].toolArgs = parsed.tool_args ?? chunks[idx].toolArgs;
               }
               updateStreamingMessage();
               continue;

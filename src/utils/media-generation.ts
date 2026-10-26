@@ -107,7 +107,7 @@ export function mediaGenerations(
         !!args.reference_asset_id ||
         !!args.reference_media_ref ||
         !!args.source,
-      aspectRatio: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"].includes(ratio)
+      aspectRatio: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9", "4:5", "5:4", "3:2", "2:3"].includes(ratio)
         ? ratio.replace(":", " / ")
         : kind === "video"
           ? "16 / 9"
