@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
+  ListChecks,
   Send,
 } from "lucide-react";
 import { WorkPanel, useWorkPanel } from "../interactions/WorkPanel";
@@ -586,6 +587,7 @@ export function ClarificationPanel({
         id={panelId}
         title="Your input"
         label="Clarification"
+        icon={<ListChecks size={16} />}
         inlineSummary="Needs your input"
         footer={actions}
       >

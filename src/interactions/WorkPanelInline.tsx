@@ -7,7 +7,15 @@ import {
   type UIEventHandler,
 } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronUp, Maximize2, Minimize2, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Maximize2,
+  Minimize2,
+  FileText,
+  X,
+} from "lucide-react";
+import { WorkPanelHeader } from "./WorkPanelHeader";
 import { trapTabKey } from "./focus-trap";
 
 export interface InlineWorkPanelFrameProps {
@@ -15,6 +23,7 @@ export interface InlineWorkPanelFrameProps {
   /** Collapsed-card title; defaults handled by the caller (`summary = inlineSummary ?? title`). */
   summary: string;
   label: string;
+  icon?: ReactNode;
   expanded: boolean;
   onExpand(): void;
   onCollapse(): void;
@@ -36,6 +45,7 @@ export const InlineWorkPanelFrame = forwardRef<
     title,
     summary,
     label,
+    icon,
     expanded,
     onExpand,
     onCollapse,
@@ -52,7 +62,10 @@ export const InlineWorkPanelFrame = forwardRef<
     return (
       <div ref={ref} className="interaction-inline-panel" aria-label={title}>
         <div className="interaction-inline-panel-summary">
-          <span className="interaction-inline-panel-title">{summary}</span>
+          <span className="interaction-panel-resource-icon" title={label} aria-hidden="true">{icon ?? <FileText size={16} />}</span>
+          <span className="interaction-inline-panel-title" title={summary}>
+            {summary}
+          </span>
           <button
             type="button"
             className="interaction-icon"
@@ -86,39 +99,33 @@ export const InlineWorkPanelFrame = forwardRef<
         }
       }}
     >
-      <header className="interaction-panel-header">
-        <div>
-          <span>{label}</span>
-          <h2>{title}</h2>
-        </div>
-        <div className="interaction-inline-panel-actions">
-          <button
-            type="button"
-            className="interaction-icon"
-            onClick={onCollapse}
-            aria-label="Collapse panel"
-          >
-            <ChevronUp size={18} />
-          </button>
-          <button
-            type="button"
-            className="interaction-icon"
-            onClick={onOpenFull}
-            aria-label="Open full"
-          >
-            <Maximize2 size={18} />
-          </button>
-          <button
-            type="button"
-            className="interaction-icon"
-            data-panel-close
-            onClick={onClose}
-            aria-label="Close panel"
-          >
-            <X size={18} />
-          </button>
-        </div>
-      </header>
+      <WorkPanelHeader title={title} label={label} icon={icon}>
+        <button
+          type="button"
+          className="interaction-icon"
+          onClick={onCollapse}
+          aria-label="Collapse panel"
+        >
+          <ChevronUp size={18} />
+        </button>
+        <button
+          type="button"
+          className="interaction-icon"
+          onClick={onOpenFull}
+          aria-label="Open full"
+        >
+          <Maximize2 size={18} />
+        </button>
+        <button
+          type="button"
+          className="interaction-icon"
+          data-panel-close
+          onClick={onClose}
+          aria-label="Close panel"
+        >
+          <X size={18} />
+        </button>
+      </WorkPanelHeader>
       <div
         className="interaction-panel-content"
         ref={contentSlotRef}
@@ -134,6 +141,7 @@ export const InlineWorkPanelFrame = forwardRef<
 export interface WorkPanelModalProps {
   title: string;
   label: string;
+  icon?: ReactNode;
   /** Close the panel entirely (the sheet's X). */
   onClose(): void;
   /** Leave full screen, back to the expanded inline frame (Escape/backdrop). */
@@ -152,6 +160,7 @@ export const WorkPanelModal = forwardRef<HTMLDivElement, WorkPanelModalProps>(
     {
       title,
       label,
+      icon,
       onClose,
       onExitFull,
       contentSlotRef,
@@ -169,9 +178,7 @@ export const WorkPanelModal = forwardRef<HTMLDivElement, WorkPanelModalProps>(
       else if (ref) ref.current = node;
     };
     useEffect(() => {
-      sheet.current
-        ?.querySelector<HTMLElement>("[data-panel-close]")
-        ?.focus();
+      sheet.current?.querySelector<HTMLElement>("[data-panel-close]")?.focus();
     }, []);
     useEffect(() => {
       if (!inertRoot) return;
@@ -201,31 +208,25 @@ export const WorkPanelModal = forwardRef<HTMLDivElement, WorkPanelModalProps>(
             trapTabKey(event.currentTarget, event);
           }}
         >
-          <header className="interaction-panel-header">
-            <div>
-              <span>{label}</span>
-              <h2>{title}</h2>
-            </div>
-            <div className="interaction-inline-panel-actions">
-              <button
-                type="button"
-                className="interaction-icon"
-                onClick={onExitFull}
-                aria-label="Back to inline view"
-              >
-                <Minimize2 size={18} />
-              </button>
-              <button
-                type="button"
-                className="interaction-icon"
-                data-panel-close
-                onClick={onClose}
-                aria-label="Close panel"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </header>
+          <WorkPanelHeader title={title} label={label} icon={icon}>
+            <button
+              type="button"
+              className="interaction-icon"
+              onClick={onExitFull}
+              aria-label="Back to inline view"
+            >
+              <Minimize2 size={18} />
+            </button>
+            <button
+              type="button"
+              className="interaction-icon"
+              data-panel-close
+              onClick={onClose}
+              aria-label="Close panel"
+            >
+              <X size={18} />
+            </button>
+          </WorkPanelHeader>
           <div
             className="interaction-panel-content"
             ref={contentSlotRef}
@@ -236,7 +237,8 @@ export const WorkPanelModal = forwardRef<HTMLDivElement, WorkPanelModalProps>(
           </div>
         </div>
       </div>,
-      document.body,
+      // A sibling of the inert conversation retains the chat host's theme.
+      inertRoot?.parentElement ?? document.body,
     );
   },
 );

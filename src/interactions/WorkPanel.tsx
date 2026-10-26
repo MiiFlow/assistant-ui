@@ -16,6 +16,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useThreadLayout } from "../layout/ThreadLayoutProvider";
 import { trapTabKey } from "./focus-trap";
+import { WorkPanelHeader } from "./WorkPanelHeader";
 import { InlineWorkPanelFrame, WorkPanelModal } from "./WorkPanelInline";
 
 interface PanelContext {
@@ -32,6 +33,9 @@ interface PanelContext {
 const Context = createContext<PanelContext | null>(null);
 export const useWorkPanel = () => useContext(Context);
 const FooterContext = createContext<HTMLDivElement | null>(null);
+const TitleContext = createContext<string | null>(null);
+/** The rendered document title, so embedded content can avoid repeating it safely. */
+export const useWorkPanelTitle = () => useContext(TitleContext);
 
 interface FrameRegistry {
   /** The frame (side section, inline card, or modal) of the active panel. */
@@ -133,8 +137,26 @@ export function WorkPanelLayout({ children }: { children: ReactNode }) {
     [setActiveFrame, layoutRoot],
   );
   const value = useMemo(
-    () => ({ activeId, activeResourceId, activeCollapsed, setActiveCollapsed, open, close, focus, container }),
-    [activeId, activeResourceId, activeCollapsed, setActiveCollapsed, open, close, focus, container],
+    () => ({
+      activeId,
+      activeResourceId,
+      activeCollapsed,
+      setActiveCollapsed,
+      open,
+      close,
+      focus,
+      container,
+    }),
+    [
+      activeId,
+      activeResourceId,
+      activeCollapsed,
+      setActiveCollapsed,
+      open,
+      close,
+      focus,
+      container,
+    ],
   );
   return (
     <Context.Provider value={value}>
@@ -203,6 +225,7 @@ export function WorkPanel({
   contentRef,
   onContentScroll,
   label = "Result",
+  icon,
   keepMounted = false,
 }: {
   id: string;
@@ -216,6 +239,8 @@ export function WorkPanel({
   contentRef?: Ref<HTMLDivElement>;
   onContentScroll?: UIEventHandler<HTMLDivElement>;
   label?: string;
+  /** Resource identity shared by side, inline and full-screen toolbars. */
+  icon?: ReactNode;
   /** Retain an editor's local draft after its first open, scoped to this work item. */
   keepMounted?: boolean;
 }) {
@@ -232,7 +257,11 @@ export function WorkPanel({
   // One stable host for the content portal, created once per work item; frames
   // physically adopt it, so swapping frames never remounts the content.
   const [contentEl] = useState<HTMLDivElement | null>(() =>
-    typeof document === "undefined" ? null : document.createElement("div"),
+    typeof document === "undefined"
+      ? null
+      : Object.assign(document.createElement("div"), {
+          className: "interaction-panel-body",
+        }),
   );
   const mounted = visible || (keepMounted && opened);
   // The scrolling slot must die whole on close: sibling commit order unmounts
@@ -334,12 +363,11 @@ export function WorkPanel({
       {contentMounted && contentEl
         ? createPortal(
             <FooterContext.Provider value={footerContainer}>
-              <div
-                style={{ display: "contents" }}
-                onKeyDown={onContentKeyDown}
-              >
-                {children}
-              </div>
+              <TitleContext.Provider value={title}>
+                <div style={{ display: "contents" }} onKeyDown={onContentKeyDown}>
+                  {children}
+                </div>
+              </TitleContext.Provider>
             </FooterContext.Provider>,
             contentEl,
           )
@@ -359,11 +387,7 @@ export function WorkPanel({
                 }
               }}
             >
-              <header className="interaction-panel-header">
-                <div>
-                  <span>{label}</span>
-                  <h2>{title}</h2>
-                </div>
+              <WorkPanelHeader title={title} label={label} icon={icon}>
                 <button
                   data-panel-close
                   type="button"
@@ -372,13 +396,16 @@ export function WorkPanel({
                 >
                   <X size={18} />
                 </button>
-              </header>
+              </WorkPanelHeader>
               <div
                 className="interaction-panel-content"
                 ref={hostContent}
                 onScroll={onContentScroll}
               />
-              <div className="interaction-panel-footer" ref={setFooterContainer}>
+              <div
+                className="interaction-panel-footer"
+                ref={setFooterContainer}
+              >
                 {footer}
               </div>
             </section>,
@@ -391,6 +418,7 @@ export function WorkPanel({
           title={title}
           summary={inlineSummary ?? title}
           label={label}
+          icon={icon}
           expanded={expanded}
           onExpand={() => panel?.setActiveCollapsed(false)}
           onCollapse={() => panel?.setActiveCollapsed(true)}
@@ -407,6 +435,7 @@ export function WorkPanel({
           ref={setFrameEl}
           title={title}
           label={label}
+          icon={icon}
           onClose={close}
           onExitFull={() => setFullOpen(false)}
           contentSlotRef={hostContent}

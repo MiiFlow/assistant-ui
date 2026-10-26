@@ -9,7 +9,7 @@ import {
   type Ref,
   type SetStateAction,
 } from "react";
-import { ArrowUpRight, Check, MapPin } from "lucide-react";
+import { ArrowUpRight, Check, MapPin, Package, Link2 } from "lucide-react";
 import {
   interactionSchema,
   useInteraction,
@@ -158,7 +158,9 @@ function Surface({ initial }: { initial: InteractionSurface }) {
           )}
           <WorkPanel
             id={panelId}
+            label={products ? "Products" : surface.component === "place_map" ? "Places" : "Sources"}
             title={surface.title}
+            icon={products ? <Package size={16} /> : surface.component === "place_map" ? <MapPin size={16} /> : <Link2 size={16} />}
             contentRef={contentRef}
             onContentScroll={(event) => {
               scrollTop.current = event.currentTarget.scrollTop;

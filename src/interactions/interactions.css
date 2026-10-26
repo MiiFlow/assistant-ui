@@ -50,11 +50,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px 20px;
+  gap: 8px;
+  padding: 4px 12px;
+  min-height: 40px;
   border-bottom: 1px solid var(--chat-border, #dbd9d3);
 }
-.interaction-panel-header span,
 .interaction-eyebrow {
   font-size: 12px;
   color: color-mix(
@@ -64,11 +64,34 @@
   );
   font-weight: 700;
 }
+/* The resource icon carries type; the title owns the toolbar's single text line. */
+.interaction-panel-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+.interaction-panel-resource-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--chat-text-subtle, currentColor);
+}
+.interaction-panel-resource-icon > svg {
+  width: 16px;
+  height: 16px;
+}
 .interaction-panel-header h2 {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--chat-font-display, inherit);
-  font-size: 18px;
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 600;
-  margin: 4px 0 0;
+  margin: 0;
 }
 .interaction-panel-header button,
 .interaction-icon {
@@ -81,6 +104,19 @@
   place-items: center;
   cursor: pointer;
 }
+.interaction-panel-header button {
+  flex: none;
+  min-width: 28px;
+  min-height: 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+  color: inherit;
+}
+.interaction-panel-header button:hover {
+  background: color-mix(in srgb, var(--chat-text, #242320) 6%, transparent);
+}
 .interaction-panel-content {
   display: flex;
   flex-direction: column;
@@ -88,6 +124,10 @@
   flex: 1;
   overflow: auto;
   padding: 20px;
+}
+/* Preserve the stable portal host without breaking the frame's flex layout. */
+.interaction-panel-body {
+  display: contents;
 }
 .interaction-panel-footer {
   position: relative;
@@ -596,9 +636,10 @@
   white-space: nowrap;
 }
 .interaction-inline-panel-actions {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 .interaction-inline-panel.is-expanded .interaction-panel-content {
   max-height: 70vh;
@@ -621,6 +662,7 @@
 }
 .interaction-inline-modal-sheet {
   position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   min-height: 0;

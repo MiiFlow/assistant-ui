@@ -205,7 +205,7 @@ export { InteractionProvider, InteractionFailure, interactionSchema } from "../i
 export type { InteractionSurface, InteractionRequest, InteractionTransport } from "../interactions/runtime";
 export type { InteractionActionRequest, InteractionActionOutcome } from "../interactions/action-request";
 export { ActionSubmission } from "../interactions/action-submission";
-export { WorkPanel, WorkPanelActions, WorkPanelLayout, useWorkPanel } from "../interactions/WorkPanel";
+export { WorkPanel, WorkPanelActions, WorkPanelLayout, useWorkPanel, useWorkPanelTitle } from "../interactions/WorkPanel";
 export { WorkItemHeader } from "../interactions/WorkItemHeader";
 
 export { submitVisualizationAction } from "../interactions/submit-action";
