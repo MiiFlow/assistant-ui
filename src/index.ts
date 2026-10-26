@@ -101,10 +101,20 @@ export {
 // Utilities
 export { cn } from "./utils/cn";
 export { normalizeArtifact } from "./utils/artifacts";
-export { withReferencedMedia, normalizeMedia, upsertMedia, toChatMediaProxyUrl, replaceMediaUrls } from "./utils/media";
+export {
+  withReferencedMedia,
+  normalizeMedia,
+  upsertMedia,
+  toChatMediaProxyUrl,
+  replaceMediaUrls,
+} from "./utils/media";
 export { formatMessageTime, formatRelativeTime } from "./utils/format-date";
 export { getContrastTextColor } from "./utils/color-contrast";
-export { parseContentWithInlineMarkers, stripInlineMarkers, type ContentPart } from "./utils/inline-markers";
+export {
+  parseContentWithInlineMarkers,
+  stripInlineMarkers,
+  type ContentPart,
+} from "./utils/inline-markers";
 export {
   ENTITY_HREF_SCHEME,
   EntityReference,
@@ -128,10 +138,21 @@ export type {
   ActivityState,
 } from "./styled/transcript/labels";
 
-export { ToolActivityProvider, useToolActivity } from "./styled/transcript/ToolActivity";
-export type { ToolActivity, ToolActivityResolver } from "./styled/transcript/ToolActivity";
+export {
+  ToolActivityProvider,
+  useToolActivity,
+} from "./styled/transcript/ToolActivity";
+export type {
+  ToolActivity,
+  ToolActivityResolver,
+} from "./styled/transcript/ToolActivity";
 
 export type { StreamingChunk } from "./types/streaming";
 
-export { readBackgroundWait, isBackgroundWaitOpen } from "./utils/background-wait";
+export {
+  readBackgroundWait,
+  isBackgroundWaitOpen,
+} from "./utils/background-wait";
 export type { BackgroundWait } from "./utils/background-wait";
+
+export { compareTableValues } from "./utils/table-ordering";

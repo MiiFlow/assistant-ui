@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Copy as CopyIcon,
 } from "lucide-react";
+import { compareTableValues } from "../../utils/table-ordering";
 import { cn } from "../../utils/cn";
 import { EntityText } from "../markdown/entity-references";
 import type {
@@ -240,12 +241,33 @@ const LINK_PROTOCOLS = new Set(["https:", "http:", "mailto:", "tel:"]);
 // File names look like bare domains ("report.pdf"); they stay text. Same
 // list as the web table's safeExternalHref.
 const FILE_EXTENSIONS = new Set([
-  "pdf", "txt", "csv", "json", "xml", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
-  "png", "jpg", "jpeg", "gif", "svg", "webp", "mp4", "mov", "zip", "md",
+  "pdf",
+  "txt",
+  "csv",
+  "json",
+  "xml",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "ppt",
+  "pptx",
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "svg",
+  "webp",
+  "mp4",
+  "mov",
+  "zip",
+  "md",
 ]);
 
 function looksLikeBareDomain(text: string): boolean {
-  const match = text.match(/^([a-z0-9-]+(?:\.[a-z0-9-]+)+)(?::\d{1,5})?(?:[/?#].*)?$/i);
+  const match = text.match(
+    /^([a-z0-9-]+(?:\.[a-z0-9-]+)+)(?::\d{1,5})?(?:[/?#].*)?$/i,
+  );
   if (!match) return false;
   const tld = match[1].split(".").pop()!.toLowerCase();
   return /^[a-z]{2,24}$/.test(tld) && !FILE_EXTENSIONS.has(tld);
@@ -267,11 +289,16 @@ export function tableLinkHref(url: unknown): string | null {
     // "//host" and "/\host" leave the app.
     return /^\/[/\\]/.test(text) ? null : text;
   }
-  const candidate = !/\s/.test(text) && looksLikeBareDomain(text) ? `https://${text}` : text;
+  const candidate =
+    !/\s/.test(text) && looksLikeBareDomain(text) ? `https://${text}` : text;
   try {
     const parsed = new URL(candidate);
     if (!LINK_PROTOCOLS.has(parsed.protocol)) return null;
-    if ((parsed.protocol === "mailto:" || parsed.protocol === "tel:") && !parsed.pathname) return null;
+    if (
+      (parsed.protocol === "mailto:" || parsed.protocol === "tel:") &&
+      !parsed.pathname
+    )
+      return null;
     return candidate === text ? text : parsed.href;
   } catch {
     return null;
@@ -371,20 +398,6 @@ function formatCellValue(value: unknown, column: TableColumn): React.ReactNode {
   }
 }
 
-function descendingComparator(
-  a: Record<string, unknown>,
-  b: Record<string, unknown>,
-  orderBy: string,
-): number {
-  const aValue = a[orderBy];
-  const bValue = b[orderBy];
-  if (aValue == null) return 1;
-  if (bValue == null) return -1;
-  if (typeof aValue === "number" && typeof bValue === "number")
-    return bValue - aValue;
-  return String(bValue).localeCompare(String(aValue));
-}
-
 export function TableVisualization({
   data,
   config,
@@ -397,27 +410,34 @@ export function TableVisualization({
   const pageSize = config?.pageSize || 10;
 
   const [order, setOrder] = useState<Order>("asc");
-  const [orderBy, setOrderBy] = useState<string>(columns[0]?.key || "");
+  const [orderBy, setOrderBy] = useState<string>("");
   const [page, setPage] = useState(0);
 
   const handleRequestSort = (key: string) => {
-    setOrder(orderBy === key && order === "asc" ? "desc" : "asc");
-    setOrderBy(key);
+    if (orderBy === key && order === "desc") setOrderBy("");
+    else {
+      setOrder(orderBy === key ? "desc" : "asc");
+      setOrderBy(key);
+    }
+    setPage(0);
   };
 
   const processedRows = useMemo(() => {
     let sorted = [...rows];
     if (sortable && orderBy) {
       sorted.sort((a, b) =>
-        order === "desc"
-          ? descendingComparator(a, b, orderBy)
-          : -descendingComparator(a, b, orderBy),
+        compareTableValues(
+          a[orderBy],
+          b[orderBy],
+          order,
+          columns.find((column) => column.key === orderBy)?.type,
+        ),
       );
     }
     if (paginated)
       sorted = sorted.slice(page * pageSize, (page + 1) * pageSize);
     return sorted;
-  }, [rows, order, orderBy, page, pageSize, sortable, paginated]);
+  }, [rows, columns, order, orderBy, page, pageSize, sortable, paginated]);
 
   const totalPages = Math.ceil(rows.length / pageSize);
 
@@ -554,12 +574,29 @@ export function TableVisualization({
                     col.type !== "media" &&
                     "cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700",
                 )}
-                style={{ width: col.width, textAlign: col.align || "left" }}
-                onClick={() =>
-                  sortable && col.type !== "media" && handleRequestSort(col.key)
+                style={{
+                  width: col.width,
+                  textAlign:
+                    col.align ||
+                    (["number", "currency", "progress"].includes(col.type || "")
+                      ? "right"
+                      : "left"),
+                }}
+                aria-sort={
+                  orderBy === col.key
+                    ? order === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : undefined
                 }
               >
-                <span className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={!sortable || col.type === "media"}
+                  onClick={() => handleRequestSort(col.key)}
+                  aria-label={`${col.label}: ${orderBy === col.key ? (order === "asc" ? "sort descending" : "clear sort") : "sort ascending"}`}
+                  className="inline-flex items-center gap-1 rounded border-0 bg-transparent p-0 text-inherit [font:inherit] focus-visible:outline focus-visible:outline-2 disabled:cursor-default"
+                >
                   {col.label}
                   {sortable &&
                     col.type !== "media" &&
@@ -569,7 +606,7 @@ export function TableVisualization({
                     ) : (
                       <ChevronDown size={14} />
                     ))}
-                </span>
+                </button>
               </th>
             ))}
           </tr>
@@ -640,7 +677,39 @@ export function TableVisualization({
                       "px-3 py-2 align-top",
                       nowrap ? "max-w-[300px]" : "max-w-[320px]",
                     )}
-                    style={{ textAlign: col.align || "left" }}
+                    style={{
+                      textAlign:
+                        col.align ||
+                        (["number", "currency", "progress"].includes(
+                          col.type || "",
+                        )
+                          ? "right"
+                          : "left"),
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                    tabIndex={0}
+                    onFocus={(e) => {
+                      if (cellText)
+                        scheduleShow(
+                          rowIdx,
+                          col.key,
+                          e.currentTarget.getBoundingClientRect(),
+                        );
+                    }}
+                    onBlur={() => scheduleHide()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") scheduleHide();
+                      if (
+                        (e.ctrlKey || e.metaKey) &&
+                        e.key === "c" &&
+                        !window.getSelection()?.toString()
+                      ) {
+                        e.preventDefault();
+                        void navigator.clipboard
+                          .writeText(cellText)
+                          .catch(() => {});
+                      }
+                    }}
                     onMouseEnter={(e) => {
                       if (!cellText) return;
                       const rect = e.currentTarget.getBoundingClientRect();
@@ -696,6 +765,9 @@ export function TableVisualization({
         />
       )}
 
+      <div className="px-3 py-1 text-xs text-gray-500">
+        Sorting applies to the rows in this response.
+      </div>
       {paginated && rows.length > pageSize && (
         <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 dark:border-gray-700 text-sm">
           <span className="text-gray-500">
