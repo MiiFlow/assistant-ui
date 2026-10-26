@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `ScrollToBottomButton` is `inert` with `tabIndex={-1}` while hidden at the bottom, so the faded-out "Jump to latest" or icon button is no longer a Tab stop or an accessibility-tree node. It stays mounted for the fade, and its look is unchanged.
+
 - `MessageComposer` accepts `followUpSuggestions` and shows an accessible picker above a focused composer, filtering options by case-insensitive substring matches against the draft. The compact list has a leading Enter icon on each option. Arrow keys highlight and Enter or a click replaces the text with an undoable draft for editing before sending; Escape dismisses it. Skill and mention menus take precedence.
 - Export `FollowUpSuggestion` from the root, styled and composer entry points, and `FollowUpSuggestionsPlugin` from the composer entry point for custom Lexical composers.
 - `LexicalChatInput` leaves IME Enter to composition and ignores repeated Enter keydown events, so holding Enter after inserting a suggestion cannot send the draft.

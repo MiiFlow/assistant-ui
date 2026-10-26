@@ -16,6 +16,10 @@ export interface ScrollToBottomButtonProps {
  * A floating button that appears when the user has scrolled up,
  * allowing them to quickly jump back to the latest messages.
  * Fades in/out based on scroll position.
+ *
+ * While hidden (at the bottom) the button stays mounted for the fade, so it is
+ * made `inert` with tabIndex -1: an invisible control must not be a Tab stop
+ * or appear in the accessibility tree (V3-BUG-271).
  */
 export function ScrollToBottomButton({
   isAtBottom,
@@ -27,6 +31,8 @@ export function ScrollToBottomButton({
     <button
       type="button"
       onClick={onScrollToBottom}
+      inert={isAtBottom}
+      tabIndex={isAtBottom ? -1 : undefined}
       aria-label={label ? undefined : "Scroll to bottom"}
       className={cn(
         "absolute bottom-4 left-1/2 -translate-x-1/2 z-10",
