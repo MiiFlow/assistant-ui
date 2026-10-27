@@ -15,6 +15,27 @@ export type ResolveMediaGeneration = (
   signal: AbortSignal,
 ) => Promise<GenerationStatus>;
 
+/** The longest side of a generation frame, in CSS pixels. */
+export const MEDIA_FRAME_MAX = 440;
+
+/** Size a frame to its requested ratio within a MEDIA_FRAME_MAX box. The width
+ * carries both caps (a portrait frame gets narrower instead of being clipped by
+ * a height cap), so the box always keeps the ratio and never squashes. Accepts
+ * "w / h" or a single number, like CSS aspect-ratio. */
+export function mediaFrame(aspectRatio: string, kind: "image" | "video" = "video") {
+  const parts = aspectRatio.split("/").map((part) => Number(part.trim() || NaN));
+  const [w, h = 1] = parts;
+  const valid =
+    parts.length <= 2 && Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0;
+  const fallback = kind === "image" ? 1 : 16 / 9;
+  const ratio = valid ? w / h : fallback;
+  const widthCap = Math.min(MEDIA_FRAME_MAX, MEDIA_FRAME_MAX * ratio);
+  return {
+    width: `min(100%, ${Number(widthCap.toFixed(2))}px)`,
+    aspectRatio: valid ? `${w} / ${h}` : kind === "image" ? "1 / 1" : "16 / 9",
+  };
+}
+
 /** One stable slot while a paid background job runs. Polling only reads our
  * status endpoint; it never calls a generation tool or the provider. */
 export function MediaGenerationCard({
@@ -66,11 +87,7 @@ export function MediaGenerationCard({
     };
   }, [generation.jobId, resolve, attempt]);
 
-  const frame = {
-    width: "min(100%, 440px)",
-    aspectRatio: generation.aspectRatio,
-    maxHeight: 440,
-  };
+  const frame = mediaFrame(generation.aspectRatio, generation.kind);
   if (snapshot?.status === "completed" && snapshot.url && !playbackFailed) {
     return (
       <div className="my-4">
@@ -128,7 +145,7 @@ export function MediaGenerationCard({
           : `${generation.editing ? "Editing" : "Creating"} your ${noun}`;
   return (
     <div
-      className="relative my-4 overflow-hidden rounded-2xl border"
+      className="relative my-4 rounded-2xl border"
       style={{
         ...frame,
         borderColor: "var(--chat-border, #ddd)",
@@ -136,21 +153,29 @@ export function MediaGenerationCard({
       }}
     >
       <style>{`@keyframes media-generation-drift { 0%,100% { transform: translate(-8%, -5%) scale(1); opacity: .35; } 50% { transform: translate(8%, 6%) scale(1.15); opacity: .65; } }`}</style>
+      {/* The drift is clipped here, not on the frame: a frame that clips its
+        own overflow loses the aspect-ratio content minimum, so a wide frame
+        in a narrow chat would cut off the status text. */}
       <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: "-25%",
-          background:
-            "radial-gradient(ellipse at 30% 35%, #a998e7 0%, transparent 50%), radial-gradient(ellipse at 75% 65%, #8cb8d3 0%, transparent 48%)",
-          filter: "blur(28px)",
-          opacity: 0.35,
-          animation:
-            working && !reduced
-              ? "media-generation-drift 6s ease-in-out infinite"
-              : "none",
-        }}
-      />
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+        style={{ borderRadius: "inherit" }}
+      >
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: "-25%",
+            background:
+              "radial-gradient(ellipse at 30% 35%, #a998e7 0%, transparent 50%), radial-gradient(ellipse at 75% 65%, #8cb8d3 0%, transparent 48%)",
+            filter: "blur(28px)",
+            opacity: 0.35,
+            animation:
+              working && !reduced
+                ? "media-generation-drift 6s ease-in-out infinite"
+                : "none",
+          }}
+        />
+      </div>
       <div
         role="status"
         aria-live="polite"
