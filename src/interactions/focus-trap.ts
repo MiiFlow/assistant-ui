@@ -1,7 +1,7 @@
 import type { KeyboardEvent } from "react";
 
 const FOCUSABLE_SELECTOR =
-  'button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), iframe, [tabindex="0"]';
+  'button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), iframe, video[controls], audio[controls], [tabindex="0"]';
 
 export function getFocusableElements(root: HTMLElement): HTMLElement[] {
   return [...root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(

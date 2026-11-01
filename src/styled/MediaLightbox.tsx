@@ -1,6 +1,16 @@
-import { useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+	useCallback,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+	type CSSProperties,
+	type KeyboardEvent as ReactKeyboardEvent,
+	type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { ChatRenderContext } from "../context/ChatProvider";
+import { getFocusableElements } from "../interactions/focus-trap";
 import { cn } from "../utils/cn";
 import type { MediaChunkData, VisualizationChunkData, TableVisualizationData } from "../types";
 
@@ -243,6 +253,15 @@ export const PlayOverlay = ({ label, caption }: { label: string; caption?: strin
 
 // ── Lightbox ──────────────────────────────────────────────────────────
 
+const focusGuardStyle: CSSProperties = {
+	position: "fixed",
+	width: 1,
+	height: 1,
+	opacity: 0,
+	pointerEvents: "none",
+	outline: "none",
+};
+
 export interface MediaLightboxProps {
 	items: MediaItem[];
 	index: number;
@@ -261,6 +280,8 @@ export interface MediaLightboxProps {
  * containers) and anchors to the real viewport.
  *
  * Keyboard: Esc closes, ArrowLeft/ArrowRight navigate between items.
+ * Focus moves to the Close button on open, Tab stays inside the viewer while
+ * it is open, and focus returns to the element that opened it on close.
  * Click outside the media closes; clicks on the media itself do not.
  * Body scroll is locked while open.
  */
@@ -275,12 +296,40 @@ export function MediaLightbox({
 	const active = items[index];
 	const [failedUrl, setFailedUrl] = useState<string | null>(null);
 	const providerActions = useContext(ChatRenderContext)?.renderMediaActions;
+	const closeRef = useRef<HTMLButtonElement>(null);
+	const overlayRef = useRef<HTMLDivElement>(null);
+	const hasActive = Boolean(active);
+
+	// aria-modal promises the page behind is out of reach. On close, hand focus
+	// back to the element that opened the viewer (usually the tile). Mount-only:
+	// this runs before the effect below moves focus in, so it sees the opener.
+	useEffect(() => {
+		if (typeof document === "undefined") return;
+		const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		return () => {
+			if (opener?.isConnected) opener.focus();
+		};
+	}, []);
+
+	// Take focus when there is an item to show. Paging between items keeps
+	// focus where the user left it, since it is already inside.
+	useEffect(() => {
+		if (!hasActive || typeof document === "undefined") return;
+		if (!overlayRef.current?.contains(document.activeElement)) closeRef.current?.focus();
+	}, [hasActive]);
 
 	useEffect(() => {
 		const handleKey = (e: KeyboardEvent) => {
 			// Keys pressed inside a host action (a menu, a text field) are the
 			// action's own, not the viewer's navigation.
 			if (e.target instanceof Element && e.target.closest("[data-media-actions]")) return;
+			// Focus dropped to the page (its element was removed): Tab re-enters
+			// the viewer instead of walking the page behind it.
+			if (e.key === "Tab" && (document.activeElement === document.body || !document.activeElement)) {
+				e.preventDefault();
+				closeRef.current?.focus();
+				return;
+			}
 			if (e.key === "Escape") onClose();
 			else if (e.key === "ArrowLeft") onNavigate(-1);
 			else if (e.key === "ArrowRight") onNavigate(1);
@@ -308,18 +357,56 @@ export function MediaLightbox({
 	const hasMany = items.length > 1;
 	const actions = (renderActions ?? providerActions)?.(active, { surface: "lightbox", origin, close: onClose });
 
+	const viewerControls = (root: HTMLElement) =>
+		getFocusableElements(root).filter((element) => !element.hasAttribute("data-focus-guard"));
+
+	const focusEdge = (edge: "first" | "last") => {
+		const root = overlayRef.current;
+		if (!root) return;
+		const controls = viewerControls(root);
+		(edge === "first" ? controls[0] : controls[controls.length - 1])?.focus();
+	};
+
+	// Tab and Shift+Tab cycle through the viewer's controls. stopPropagation:
+	// React bubbles portal events up the component tree, so the chat's own key
+	// handlers would otherwise see the Tab too. A host action may own a portaled
+	// menu with its own trap; keys from outside the viewer's DOM are left alone.
+	const handleTabKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+		if (event.key !== "Tab") return;
+		const root = event.currentTarget;
+		if (!root.contains(event.target as Node)) return;
+		event.stopPropagation();
+		const controls = viewerControls(root);
+		const at = controls.indexOf(document.activeElement as HTMLElement);
+		const atEdge = event.shiftKey ? at === 0 : at === controls.length - 1;
+		if (at === -1 || atEdge) {
+			event.preventDefault();
+			focusEdge(event.shiftKey ? "last" : "first");
+		}
+	};
+
 	const overlay = (
 		<div
 			className={cn(
-				"fixed inset-0 z-[9999] flex items-center justify-center",
+				"fixed inset-0 z-[9999] flex items-center justify-center outline-none",
 				"bg-black/85 backdrop-blur-sm",
 			)}
 			role="dialog"
 			aria-modal="true"
 			aria-label="Media viewer"
 			onClick={onClose}
+			// Focusable itself, so clicking the media or a caption keeps focus
+			// in the viewer (and Tab trapped) rather than dropping it to the page.
+			ref={overlayRef}
+			tabIndex={-1}
+			onKeyDown={handleTabKey}
 		>
+			{/* Focus guards: Tab out of the end (or Shift+Tab out of the start) of
+			    an embedded player cannot be caught as a key event, because the
+			    iframe owns it. Landing on a guard wraps focus around instead. */}
+			<span data-focus-guard tabIndex={0} style={focusGuardStyle} onFocus={() => focusEdge("last")} />
 			<button
+				ref={closeRef}
 				type="button"
 				onClick={(e) => {
 					e.stopPropagation();
@@ -434,6 +521,7 @@ export function MediaLightbox({
 					</div>
 				)}
 			</div>
+			<span data-focus-guard tabIndex={0} style={focusGuardStyle} onFocus={() => focusEdge("first")} />
 		</div>
 	);
 

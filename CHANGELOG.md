@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `MediaLightbox` manages focus like the modal it announces: opening it moves focus to its Close button, Tab and Shift+Tab stay inside the viewer (also after a click on the media, and when Tab leaves an embedded YouTube player), and closing it (Escape, Close or a click outside) returns focus to the element that opened it, usually the tile. Paging with the arrow keys does not move focus.
+- The overlay focus trap (`WorkPanel`, `SourceDetailModal`, `MediaLightbox`) counts `video[controls]` and `audio[controls]` as focusable, so Tab reaches native media controls instead of wrapping past them.
 - Video placeholders with no poster no longer hide their text under the play circle: the inline chat video shows "Click to load video" under the circle (and leads its accessible name with it), the media grid tile shows "Video" under it, and the 72px table thumbnail drops the label it had no room for.
 - `useMiiflowChat` copies `tool_args` from the planned and executing tool frames onto the live tool chunk (`toolArgs`), so a running media card sizes its placeholder from the requested aspect ratio (a 9:16 video no longer shows a 16:9 frame).
 - `mediaGenerations` also maps the image aspect ratios 4:5, 5:4, 3:2 and 2:3 to the working card's frame instead of falling back to 1 / 1.
