@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Video placeholders with no poster no longer hide their text under the play circle: the inline chat video shows "Click to load video" under the circle (and leads its accessible name with it), the media grid tile shows "Video" under it, and the 72px table thumbnail drops the label it had no room for.
 - `useMiiflowChat` copies `tool_args` from the planned and executing tool frames onto the live tool chunk (`toolArgs`), so a running media card sizes its placeholder from the requested aspect ratio (a 9:16 video no longer shows a 16:9 frame).
 - `mediaGenerations` also maps the image aspect ratios 4:5, 5:4, 3:2 and 2:3 to the working card's frame instead of falling back to 1 / 1.
 - `ScrollToBottomButton` is `inert` with `tabIndex={-1}` while hidden at the bottom, so the faded-out "Jump to latest" or icon button is no longer a Tab stop or an accessibility-tree node. It stays mounted for the fade, and its look is unchanged.

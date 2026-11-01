@@ -222,10 +222,12 @@ export function parseMediaValue(
 
 // ── Play overlay shared by grid tile + inline video preview ──────────
 
-export const PlayOverlay = ({ label }: { label: string }) => (
+// `caption` stacks under the circle in the same centred column, so a
+// placeholder's text is never covered by the play button.
+export const PlayOverlay = ({ label, caption }: { label: string; caption?: string }) => (
 	<div
 		className={cn(
-			"absolute inset-0 flex cursor-pointer items-center justify-center",
+			"absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-2",
 			"bg-black/20 transition-colors hover:bg-black/35",
 		)}
 		aria-label={label}
@@ -235,6 +237,7 @@ export const PlayOverlay = ({ label }: { label: string }) => (
 				<path d="M8 5v14l11-7z" />
 			</svg>
 		</div>
+		{caption && <span className="text-sm text-gray-400">{caption}</span>}
 	</div>
 );
 

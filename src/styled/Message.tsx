@@ -152,7 +152,8 @@ const LazyHtmlVideo = ({ url, posterUrl, altText, previewUrl }: LazyVideoProps) 
 						type="button"
 						onClick={() => setLoaded(true)}
 						className="block w-full border-0 bg-transparent p-0"
-						aria-label={altText || "Play video"}
+						// The visible caption leads the name (WCAG 2.5.3 label in name).
+						aria-label={posterUrl ? altText || "Play video" : altText ? `Click to load video: ${altText}` : "Click to load video"}
 					>
 						{posterUrl ? (
 							<img
@@ -162,14 +163,12 @@ const LazyHtmlVideo = ({ url, posterUrl, altText, previewUrl }: LazyVideoProps) 
 								loading="lazy"
 							/>
 						) : (
-							<div
-								className="flex w-full items-center justify-center bg-gray-900 text-gray-400"
-								style={{ aspectRatio: "16 / 9" }}
-							>
-								<span className="text-sm">Click to load video</span>
-							</div>
+							<div className="w-full bg-gray-900" style={{ aspectRatio: "16 / 9" }} />
 						)}
-						<PlayOverlay label={altText || "Play video"} />
+						<PlayOverlay
+							label={altText || "Play video"}
+							caption={posterUrl ? undefined : "Click to load video"}
+						/>
 					</button>
 				)}
 			</div>
@@ -217,11 +216,9 @@ const MediaGridTile = ({
 						loading="lazy"
 					/>
 				) : (
-					<div className="flex h-full w-full items-center justify-center bg-gray-900 text-xs text-gray-400">
-						Video
-					</div>
+					<div className="h-full w-full bg-gray-900" />
 				)}
-				<PlayOverlay label={media.altText || "Open video"} />
+				<PlayOverlay label={media.altText || "Open video"} caption={posterSrc ? undefined : "Video"} />
 			</button>
 		);
 	}

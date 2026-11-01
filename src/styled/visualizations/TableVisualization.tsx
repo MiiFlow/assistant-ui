@@ -196,9 +196,9 @@ function MediaCell({ item, onOpen }: { item: MediaItem; onOpen: () => void }) {
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gray-900 text-[10px] text-gray-400">
-            Video
-          </div>
+          // No text: a 72px tile has no room beside the 56px play circle,
+          // which would cover it. The circle and the button's name say "video".
+          <div className="h-full w-full bg-gray-900" />
         )}
         <PlayOverlay label={item.altText || "Open video"} />
       </button>
