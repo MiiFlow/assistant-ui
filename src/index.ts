@@ -156,3 +156,4 @@ export {
 export type { BackgroundWait } from "./utils/background-wait";
 
 export { compareTableValues } from "./utils/table-ordering";
+export { TableCellText } from "./styled/visualizations/TableCellText";

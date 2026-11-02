@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { compareTableValues } from "../../utils/table-ordering";
 import { cn } from "../../utils/cn";
-import { EntityText } from "../markdown/entity-references";
+import { TableCellText } from "./TableCellText";
 import type {
   MediaChunkData,
   TableVisualizationData,
@@ -390,8 +390,9 @@ function formatCellValue(value: unknown, column: TableColumn): React.ReactNode {
     default:
       // A string cell may name host objects by id (a table of schedules
       // carries `sched_…` in its rows); those render as entity chips.
+      // Markdown links to http(s) URLs render as anchors (V3-BUG-320).
       return typeof value === "string" ? (
-        <EntityText>{value}</EntityText>
+        <TableCellText>{value}</TableCellText>
       ) : (
         String(value)
       );

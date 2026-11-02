@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `TableVisualization` string cells render markdown links to http(s) URLs (`[Open in Meta](https://...)`) as links that open in a new tab, instead of the raw markdown; other schemes such as `javascript:` stay plain text. The new `TableCellText` export does the same for host tables.
 - Stable history scrolling shows the "Jump to latest" pill only more than 800px from the bottom; within that distance it stays hidden and outside keyboard navigation.
 
 - `MessageActionBar` and `Message` accept `confirmedCorrect`: when the host knows the viewer already confirmed the answer, the thumbs up and thumbs down stay hidden and "Thanks!" shows, also after a reload or when the flag arrives after mount.
