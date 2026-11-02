@@ -32,6 +32,7 @@ const SCROLL_KEYS: Record<string, "up" | "down"> = {
 // The first frame can take longer to arrive.
 const GLIDE_SETTLE_MS = 150;
 const GLIDE_START_MS = 300;
+const JUMP_TO_LATEST_THRESHOLD_PX = 800;
 
 const prefers = (query: string) =>
   typeof window !== "undefined" &&
@@ -72,7 +73,7 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
     const glideNext = useRef(false);
     const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const touchY = useRef<number | null>(null);
-    const [atBottom, setAtBottom] = useState(true);
+    const [withinJumpThreshold, setWithinJumpThreshold] = useState(true);
     const [ready, setReady] = useState(false);
     const props = useRef({
       scrollAnchorId,
@@ -92,7 +93,14 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
           ":scope > [data-message-id]",
         ) ?? [],
       );
-    const capture = useCallback(() => {
+    const updateJumpVisibility = useCallback(() => {
+      const el = viewport.current;
+      if (!el) return;
+      setWithinJumpThreshold(
+        el.scrollHeight - el.clientHeight - el.scrollTop <= JUMP_TO_LATEST_THRESHOLD_PX,
+      );
+    }, []);
+    const captureLandmarks = useCallback(() => {
       const el = viewport.current;
       if (!el) return;
       const top = el.getBoundingClientRect().top;
@@ -103,9 +111,14 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
           id: row.dataset.messageId!,
           top: row.getBoundingClientRect().top - top,
         }));
-      expectedTop.current = el.scrollTop;
-      setAtBottom(readScroll(el, null).atEdge);
     }, []);
+    const capture = useCallback(() => {
+      const el = viewport.current;
+      if (!el) return;
+      captureLandmarks();
+      expectedTop.current = el.scrollTop;
+      updateJumpVisibility();
+    }, [captureLandmarks, updateJumpVisibility]);
 
     // The gap left above a pinned message. Defaults to the transcript's own
     // top padding, so a sent question sits where a conversation's first
@@ -360,6 +373,7 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
             if (event.target === event.currentTarget) settleFromPosition();
           }}
           onScroll={() => {
+            updateJumpVisibility();
             const el = viewport.current!;
             const current = glide.current;
             if (current) {
@@ -380,7 +394,12 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
               }
               return;
             }
-            if (Math.abs(el.scrollTop - expectedTop.current) <= 1) return;
+            if (Math.abs(el.scrollTop - expectedTop.current) <= 1) {
+              // Refresh the reading position without resetting the baseline:
+              // small reader movements must still accumulate past the tolerance.
+              if (mode.current === "reading") captureLandmarks();
+              return;
+            }
             // Also catches assistive technology and scrollbar scrolls.
             settleFromPosition();
             loadHistory();
@@ -425,7 +444,7 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
         {showScrollToBottom && (
           <ScrollToBottomButton
             label="Jump to latest"
-            isAtBottom={atBottom}
+            isAtBottom={withinJumpThreshold}
             onScrollToBottom={() => {
               mode.current = "following";
               glideNext.current = true;

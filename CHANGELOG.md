@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Stable history scrolling shows the "Jump to latest" pill only more than 800px from the bottom; within that distance it stays hidden and outside keyboard navigation.
+
 - `MessageActionBar` and `Message` accept `confirmedCorrect`: when the host knows the viewer already confirmed the answer, the thumbs up and thumbs down stay hidden and "Thanks!" shows, also after a reload or when the flag arrives after mount.
 - `MediaLightbox` manages focus like the modal it announces: opening it moves focus to its Close button, Tab and Shift+Tab stay inside the viewer (also after a click on the media, and when Tab leaves an embedded YouTube player), and closing it (Escape, Close or a click outside) returns focus to the element that opened it, usually the tile. Paging with the arrow keys does not move focus.
 - The overlay focus trap (`WorkPanel`, `SourceDetailModal`, `MediaLightbox`) counts `video[controls]` and `audio[controls]` as focusable, so Tab reaches native media controls instead of wrapping past them.
