@@ -258,7 +258,9 @@ export function ToolApprovalPanel({
 	}, [onApprove, approval.toolInputs]);
 
 	const handleReject = useCallback(() => {
-		onReject("User declined this action");
+		// No reason typed: send none. A default sentence would be stored as
+		// the person's reason and quoted back to them.
+		onReject();
 	}, [onReject]);
 
 	const handleChatSubmit = useCallback(() => {
