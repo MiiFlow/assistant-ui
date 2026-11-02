@@ -24,6 +24,9 @@ export interface MessageActionBarProps {
   onReportIncorrect?: (reason?: string) => void;
   /** Confirm this response was helpful / correct */
   onConfirmCorrect?: () => void;
+  /** The viewer already confirmed this response (persisted by the host), so
+   *  the feedback buttons stay hidden and "Thanks!" shows, also after a reload. */
+  confirmedCorrect?: boolean;
   /** Additional CSS classes */
   className?: string;
 }
@@ -38,11 +41,18 @@ export function MessageActionBar({
   onEdit,
   onReportIncorrect,
   onConfirmCorrect,
+  confirmedCorrect = false,
   className,
 }: MessageActionBarProps) {
   const [copied, setCopied] = useState(false);
-  const [feedbackState, setFeedbackState] = useState<"none" | "correct" | "incorrect">("none");
+  const [localFeedback, setFeedbackState] = useState<"none" | "correct" | "incorrect">("none");
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  // A confirm the host persisted (e.g. before a reload) counts as given,
+  // unless the viewer acted in this session or is mid-report.
+  const feedbackState =
+    localFeedback === "none" && confirmedCorrect && onConfirmCorrect && !feedbackOpen
+      ? "correct"
+      : localFeedback;
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [details, setDetails] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);

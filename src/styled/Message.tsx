@@ -337,6 +337,8 @@ export interface MessageProps {
 	onReportIncorrect?: (reason?: string) => void;
 	/** Confirm this assistant response was correct/helpful */
 	onConfirmCorrect?: () => void;
+	/** The viewer already confirmed this response; keeps the thumbs hidden. */
+	confirmedCorrect?: boolean;
 	/** Edit-and-resubmit for the viewer's own messages (ChatGPT-style). When
 	 *  provided, a pencil appears in the hover action bar; submitting replaces
 	 *  this message and everything after it with a fresh agent turn. */
@@ -387,6 +389,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 			renderInlineSuggestedAction,
 			onReportIncorrect,
 			onConfirmCorrect,
+			confirmedCorrect,
 			onEditSubmit,
 		},
 		ref,
@@ -944,6 +947,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 												textContent={message.textContent}
 												onReportIncorrect={onReportIncorrect}
 												onConfirmCorrect={onConfirmCorrect}
+												confirmedCorrect={confirmedCorrect}
 											/>
 										)}
 										{isViewer && message.textContent && (
