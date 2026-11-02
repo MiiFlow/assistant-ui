@@ -166,6 +166,50 @@
 	text-align: inherit;
 }
 
+/* A suggested next message the reader can send in one click: its label in
+   the prose's own colour over a solid bottom line, then an Enter icon, inline
+   with the sentence around it (the line follows the label across a wrap).
+   Only the latest answer's are buttons (`data-live`); older ones are plain
+   text. */
+.chat-prose .chat-next-message[data-live] {
+	font-weight: 500;
+	cursor: pointer;
+	/* The accent mixed with the text colour: visible on light and dark. */
+	border-bottom: 1.5px solid color-mix(in srgb, var(--chat-primary) 55%, currentColor);
+	transition:
+		color 150ms ease-out,
+		border-color 150ms ease-out;
+}
+
+.chat-prose .chat-next-message[data-live]:hover {
+	color: var(--chat-primary);
+	border-bottom-color: var(--chat-primary);
+}
+
+.chat-prose .chat-next-message[data-live]:focus-visible {
+	outline: 2px solid var(--chat-primary);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+.chat-prose .chat-next-message__tail {
+	white-space: nowrap;
+}
+
+.chat-prose .chat-next-message__icon {
+	display: inline-block;
+	width: 0.9em;
+	height: 0.9em;
+	margin-left: 0.3em;
+	vertical-align: -0.1em;
+	color: var(--chat-text-subtle);
+	transition: color 150ms ease-out;
+}
+
+.chat-prose .chat-next-message[data-live]:hover .chat-next-message__icon {
+	color: var(--chat-primary);
+}
+
 .chat-prose strong {
 	font-weight: 600;
 }

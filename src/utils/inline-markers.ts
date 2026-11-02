@@ -1,3 +1,5 @@
+import { stripNextMessages, trimPartialTrailingNextMessage } from "./next-message";
+
 // Inline markers: [VIZ:id], [MEDIA:id], [SA:id] and [ARTIFACT:id]. The kinds
 // are declared once; every pattern below is built from this list, so adding a
 // kind cannot leave one of them behind (the partial-marker list was once
@@ -44,7 +46,8 @@ export type MarkerKind = (typeof MARKER_KINDS)[number];
  */
 export function stripInlineMarkers(content: string): string {
   // Fresh regex per call: the shared literal is /g and carries `lastIndex`.
-  return content
+  // A suggested next message keeps its label, like a marker link.
+  return stripNextMessages(content)
     .replace(new RegExp(MARKER_LINK_SOURCE, "gi"), "$1")
     .replace(new RegExp(INLINE_MARKER_SOURCE, "gi"), "");
 }
@@ -65,11 +68,12 @@ const PARTIAL_TRAILING_MARKER_REGEX = new RegExp(
 
 /**
  * Drop a trailing fragment of an inline marker from text that is still
- * streaming. A completed marker is untouched — only the unfinished tail goes,
+ * streaming, and likewise an unfinished `<next-message>` element. A completed
+ * marker is untouched — only the unfinished tail goes,
  * and it comes back whole once its closing bracket streams in.
  */
 export function trimPartialTrailingMarker(content: string): string {
-	return content.replace(PARTIAL_TRAILING_MARKER_REGEX, "");
+	return trimPartialTrailingNextMessage(content.replace(PARTIAL_TRAILING_MARKER_REGEX, ""));
 }
 
 export type ContentPart =

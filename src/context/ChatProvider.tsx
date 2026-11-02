@@ -6,6 +6,7 @@ import {
   useContext,
   useCallback,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react";
 import type { ChatMessage, ParticipantRole } from "../types";
@@ -93,6 +94,22 @@ export interface ChatRenderContextValue {
 
 const ChatRenderContext = createContext<ChatRenderContextValue | null>(null);
 
+/**
+ * Where a suggested next message (`<next-message>` in an answer) may be sent
+ * from: only the latest message, and only once nothing is streaming. Its own
+ * context, derived to two values, so a link re-renders when the latest
+ * message changes, never on a streamed token.
+ */
+export interface NextMessageContextValue {
+  /** Id of the thread's latest message; null while a response streams. */
+  latestMessageId: string | null;
+  /** Send `text` as the user's next message. Single-flight: a second click
+   * before the first send settles is ignored. */
+  send: (text: string) => void;
+}
+
+const NextMessageContext = createContext<NextMessageContextValue | null>(null);
+
 export interface ChatProviderProps {
   children: ReactNode;
   messages: ChatMessage[];
@@ -138,6 +155,33 @@ export function ChatProvider({
       await onSendMessage(content, attachments);
     },
     [onSendMessage]
+  );
+
+  const latestMessageId = isStreaming ? null : (messages[messages.length - 1]?.id ?? null);
+  const nextMessageSending = useRef(false);
+  const sendNextMessage = useCallback(
+    (text: string) => {
+      if (nextMessageSending.current) return;
+      nextMessageSending.current = true;
+      const release = () => {
+        nextMessageSending.current = false;
+      };
+      // A failed send is the host's to report; this only releases the latch,
+      // also for a host whose handler throws or returns no promise.
+      let sent: unknown;
+      try {
+        sent = onSendMessage(text);
+      } catch (error) {
+        release();
+        throw error;
+      }
+      void Promise.resolve(sent).finally(release);
+    },
+    [onSendMessage]
+  );
+  const nextMessageValue = useMemo<NextMessageContextValue>(
+    () => ({ latestMessageId, send: sendNextMessage }),
+    [latestMessageId, sendNextMessage]
   );
 
   const value = useMemo<ChatContextValue>(
@@ -193,7 +237,9 @@ export function ChatProvider({
 
   return (
     <ChatContext.Provider value={value}>
-      <ChatRenderContext.Provider value={renderValue}>{children}</ChatRenderContext.Provider>
+      <ChatRenderContext.Provider value={renderValue}>
+        <NextMessageContext.Provider value={nextMessageValue}>{children}</NextMessageContext.Provider>
+      </ChatRenderContext.Provider>
     </ChatContext.Provider>
   );
 }
@@ -206,4 +252,4 @@ export function useChatContext() {
   return context;
 }
 
-export { ChatContext, ChatRenderContext };
+export { ChatContext, ChatRenderContext, NextMessageContext };

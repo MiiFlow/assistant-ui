@@ -787,6 +787,19 @@ import { VisualizationRenderer } from "@miiflow/assistant-ui/styled";
 Beyond `useMiiflowChat`: session helpers (`initSession`, `createThread`, `uploadFile`, `sendSystemEvent`, `sendPageContext`, `sendToolResult`, `getBackendBaseUrl`), tool validation (`validateToolDefinition`, `serializeToolDefinition`, `ToolValidationError`), and SSE-reducer helpers for hosts with their own stream parsing (`findToolChunkIndex`, `MatchableToolChunk`, `ToolFrame`).
 
 
+### Suggested next messages
+
+An agent can offer the user's likely next messages inline in its answer,
+written as
+`<next-message actual="Break the spend down by campaign">By campaign</next-message>`.
+It opts in through its own prompt: ask it to write them in exactly that form,
+one per line, closing tag included. `MarkdownContent` renders each as its label
+over a solid bottom line with a trailing Enter icon. On the latest message,
+once nothing streams, a click sends `actual` (or the label) through the
+`ChatProvider`'s `onSendMessage`. Anywhere else the tag reads as its label. A
+renderer outside this package shows it as literal text, so only ask for it from
+an agent whose chat renders through `Message`.
+
 ### Native interactions and form acknowledgements
 
 Package hosts opt in to native interactions. Only set `nativeInteractions: true` in

@@ -39,6 +39,7 @@ import type {
 import { cn } from "../utils/cn";
 import { isCreativeReviewMedia, placeUnreferencedCreatives, inlineMediaIds, replaceMediaUrls } from "../utils/media";
 import { ChatRenderContext } from "../context/ChatProvider";
+import { NextMessageScopeContext } from "./markdown/next-message";
 import {
 	$getRoot,
 	$getSelection,
@@ -741,6 +742,10 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 		const reducedMotion = usePrefersReducedMotion();
 
 		return (
+			// An answer's suggested next messages send from it only while it is
+			// the latest message (see ./markdown/next-message); the viewer's own
+			// message never offers any.
+			<NextMessageScopeContext.Provider value={isViewer ? null : message.id}>
 			<MessagePrimitive
 				ref={ref}
 				message={message}
@@ -1043,6 +1048,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 					)}
 				</div>
 			</MessagePrimitive>
+			</NextMessageScopeContext.Provider>
 		);
 	},
 );

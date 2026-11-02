@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../utils/cn";
+import { stripNextMessages } from "../utils/next-message";
 
 const FEEDBACK_CATEGORIES = [
   "Incorrect or incomplete",
@@ -96,14 +97,17 @@ export function MessageActionBar({
   }, [feedbackOpen, handleDismissFeedback]);
 
   const handleCopy = useCallback(async () => {
+    // The Markdown as written, but a suggested next message as its label:
+    // the tag only means something inside this chat.
+    const text = stripNextMessages(textContent);
     try {
-      await navigator.clipboard.writeText(textContent);
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback for older browsers / non-secure contexts
       const textarea = document.createElement("textarea");
-      textarea.value = textContent;
+      textarea.value = text;
       textarea.style.position = "fixed";
       textarea.style.opacity = "0";
       document.body.appendChild(textarea);

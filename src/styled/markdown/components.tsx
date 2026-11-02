@@ -3,6 +3,7 @@ import { ReferencedMedia, remarkMediaReferences } from "./media-references";
 import { parseMarkerHref } from "../../utils/inline-markers";
 import { ArtifactReference } from "./artifact-references";
 import { EntityReference, parseEntityHref } from "./entity-references";
+import { NextMessageLink, remarkNextMessages } from "./next-message";
 import {
 	Children,
 	Fragment,
@@ -44,7 +45,16 @@ import { MarkdownRenderContext, type CommandTokenResolver } from "./render-conte
 // itself does not: `~text~` becomes <del>. Assistants write `~` for
 // "approximately" constantly, so any answer with two of them struck out
 // everything between them. Only `~~text~~` should strike.
-export const REMARK_PLUGINS = [[remarkGfm, { singleTilde: false }], remarkBreaks, remarkMediaReferences] as const;
+//
+// `remarkNextMessages` turns the `<next-message>` tags of suggested next
+// messages into one element each (see ./next-message); any other raw HTML
+// still prints as text.
+export const REMARK_PLUGINS = [
+	[remarkGfm, { singleTilde: false }],
+	remarkBreaks,
+	remarkMediaReferences,
+	remarkNextMessages,
+] as const;
 
 // Mode chips only control routing. Skills remain visible alongside accounts
 // and guidelines so the selected skill is preserved in the message body,
@@ -393,4 +403,7 @@ export const COMPONENTS: Components = {
 	strong: Strong,
 	em: Em,
 	img: Img,
+	// A custom element name, which `Components` (keyed by intrinsic
+	// elements) does not list.
+	...({ "next-message": NextMessageLink } as unknown as Components),
 };

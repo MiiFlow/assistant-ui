@@ -1,0 +1,49 @@
+{
+  "_comment": "Plain-text form of an answer with suggested next messages: each element becomes its label. Run by server/assistant/tests/test_next_message_links.py and web/components/assistants/chat/__tests__/next-message-links.test.tsx so the server and client grammars cannot drift apart.",
+  "plain_text": [
+    {
+      "text": "<next-message actual=\"Break the spend down\">By campaign</next-message>",
+      "plain": "By campaign"
+    },
+    {
+      "text": "I can <next-message>go deeper</next-message> or stop.",
+      "plain": "I can go deeper or stop."
+    },
+    {
+      "text": "<next-message actual=\"Ads with CPA > $40\">Costly ads</next-message> now",
+      "plain": "Costly ads now"
+    },
+    {
+      "text": "<next-message actual=\"Which ads have CPA < $40?\">CPA < $40</next-message> only",
+      "plain": "CPA < $40 only"
+    },
+    {
+      "text": "<next-message actual=\"Say &quot;hi&quot;\">Tom &amp; Jerry</next-message>",
+      "plain": "Tom & Jerry"
+    },
+    {
+      "text": "<next-message actual=\"Why are clouds white?\">Clouds\n<next-message>Last",
+      "plain": "Clouds\nLast"
+    },
+    {
+      "text": "<next-message>two\nlines</next-message>",
+      "plain": "two\nlines</next-message>"
+    },
+    {
+      "text": "1 < 2 and <b>bold</b> stay",
+      "plain": "1 < 2 and <b>bold</b> stay"
+    },
+    {
+      "text": "<next-message>A</next-message> <next-message>B</next-message>",
+      "plain": "A B"
+    },
+    {
+      "text": "Write `<next-message>Go</next-message>` to suggest one",
+      "plain": "Write `<next-message>Go</next-message>` to suggest one"
+    },
+    {
+      "text": "```\n<next-message actual=\"x\">Go</next-message>\n```\nThen <next-message>Go</next-message>",
+      "plain": "```\n<next-message actual=\"x\">Go</next-message>\n```\nThen Go"
+    }
+  ]
+}
