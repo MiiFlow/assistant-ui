@@ -169,8 +169,8 @@
 /* A suggested next message the reader can send in one click: its label in
    the prose's own colour over a solid bottom line, then an Enter icon, inline
    with the sentence around it (the line follows the label across a wrap).
-   Only the latest answer's are buttons (`data-live`); older ones are plain
-   text. */
+   Outside a chat or message scope, or while a non-queueing host streams,
+   it is plain text instead. */
 .chat-prose .chat-next-message[data-live] {
 	font-weight: 500;
 	cursor: pointer;

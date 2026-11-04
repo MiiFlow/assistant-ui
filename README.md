@@ -266,6 +266,7 @@ Wraps children and provides chat context via React context.
 | `messages` | `ChatMessage[]` | — | **Required.** Messages to display |
 | `onSendMessage` | `(content: string, attachments?: File[]) => Promise<void>` | — | **Required.** Message send handler |
 | `isStreaming` | `boolean` | `false` | Whether a response is streaming |
+| `queuesWhileStreaming` | `boolean` | `false` | The host queues sends made during a turn; keeps inline next-message suggestions live instead of showing plain labels until the turn settles |
 | `streamingMessageId` | `string \| null` | `null` | ID of the streaming message |
 | `viewerRole` | `ParticipantRole` | `"user"` | Viewer's role (determines message alignment) |
 | `onStopStreaming` | `() => void` | — | Stop streaming handler (wire to the hook's `stopStreaming`) |
@@ -794,11 +795,13 @@ written as
 `<next-message actual="Break the spend down by campaign">By campaign</next-message>`.
 It opts in through its own prompt: ask it to write them in exactly that form,
 one per line, closing tag included. `MarkdownContent` renders each as its label
-over a solid bottom line with a trailing Enter icon. On the latest message,
-once nothing streams, a click sends `actual` (or the label) through the
-`ChatProvider`'s `onSendMessage`. Anywhere else the tag reads as its label. A
-renderer outside this package shows it as literal text, so only ask for it from
-an agent whose chat renders through `Message`.
+over a solid bottom line with a trailing Enter icon. In any settled assistant
+`Message`, including older answers, a click sends `actual` (or the label)
+through the `ChatProvider`'s `onSendMessage`. During streaming, suggestions send
+only when the provider has `queuesWhileStreaming`; other hosts show plain labels
+until the turn settles. Outside a chat or message scope the tag also reads as
+its label. A renderer outside this package shows it as literal text, so only ask
+for it from an agent whose chat renders through `Message`.
 
 ### Native interactions and form acknowledgements
 

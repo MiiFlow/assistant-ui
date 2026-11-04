@@ -742,10 +742,8 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 		const reducedMotion = usePrefersReducedMotion();
 
 		return (
-			// An answer's suggested next messages send from it only while it is
-			// the latest message (see ./markdown/next-message); the viewer's own
-			// message never offers any.
-			<NextMessageScopeContext.Provider value={isViewer ? null : message.id}>
+			// Only assistant answers offer suggested next messages.
+			<NextMessageScopeContext.Provider value={isAssistant ? message.id : null}>
 			<MessagePrimitive
 				ref={ref}
 				message={message}

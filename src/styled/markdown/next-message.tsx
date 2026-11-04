@@ -14,14 +14,14 @@ import {
  * rendered inline as its label over a solid bottom line, with a trailing
  * Enter icon: one click sends the message.
  *
- * Only the thread's latest message, once settled, sends: an older answer's
- * suggestions belong to a conversation that has moved on, so there they read
- * as their plain label. Outside a chat (no `ChatProvider`, no message scope —
+ * Every settled assistant answer in a chat sends, including older answers.
+ * Streaming answers send when the host queues; other hosts show plain labels
+ * until the turn settles. Outside a chat (no `ChatProvider`, no message scope —
  * a card, a clarification panel) they are plain labels too.
  */
 
-/** The id of the message whose body is being rendered; set by `Message` for
- * an answer (never for the viewer's own message). */
+/** The id of the assistant answer being rendered; null for other messages
+ * and outside `Message`. */
 export const NextMessageScopeContext = createContext<string | null>(null);
 
 interface MdastNode {
@@ -99,7 +99,7 @@ export function NextMessageLink({ actual, label = "" }: { actual?: string; label
 	const scope = useContext(NextMessageScopeContext);
 	const chat = useContext(NextMessageContext);
 	const text = nextMessageText(actual, label);
-	const live = !!text && !!chat && scope !== null && chat.latestMessageId === scope;
+	const live = !!text && !!chat?.canSend && scope !== null;
 	if (!live) return <span className="chat-next-message">{label || text}</span>;
 	const [head, tail] = splitLastWord(label || text);
 	// A span, not a <button>: a button lays out as an inline block, so a long

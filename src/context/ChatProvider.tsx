@@ -95,14 +95,12 @@ export interface ChatRenderContextValue {
 const ChatRenderContext = createContext<ChatRenderContextValue | null>(null);
 
 /**
- * Where a suggested next message (`<next-message>` in an answer) may be sent
- * from: only the latest message, and only once nothing is streaming. Its own
- * context, derived to two values, so a link re-renders when the latest
- * message changes, never on a streamed token.
+ * Sends a suggested next message (`<next-message>` in an answer). Its own
+ * context, so a link never re-renders on a streamed token.
  */
 export interface NextMessageContextValue {
-  /** Id of the thread's latest message; null while a response streams. */
-  latestMessageId: string | null;
+  /** Whether the host accepts a suggested next message right now. */
+  canSend: boolean;
   /** Send `text` as the user's next message. Single-flight: a second click
    * before the first send settles is ignored. */
   send: (text: string) => void;
@@ -114,6 +112,8 @@ export interface ChatProviderProps {
   children: ReactNode;
   messages: ChatMessage[];
   isStreaming?: boolean;
+  /** The host queues sends made during a turn instead of dropping them. */
+  queuesWhileStreaming?: boolean;
   streamingMessageId?: string | null;
   viewerRole?: ParticipantRole;
   onSendMessage: (content: string, attachments?: File[]) => Promise<void>;
@@ -136,6 +136,7 @@ export function ChatProvider({
   children,
   messages,
   isStreaming = false,
+  queuesWhileStreaming = false,
   streamingMessageId = null,
   viewerRole = "user",
   onSendMessage,
@@ -157,7 +158,6 @@ export function ChatProvider({
     [onSendMessage]
   );
 
-  const latestMessageId = isStreaming ? null : (messages[messages.length - 1]?.id ?? null);
   const nextMessageSending = useRef(false);
   const sendNextMessage = useCallback(
     (text: string) => {
@@ -179,9 +179,10 @@ export function ChatProvider({
     },
     [onSendMessage]
   );
+  const canSendNextMessage = !isStreaming || queuesWhileStreaming;
   const nextMessageValue = useMemo<NextMessageContextValue>(
-    () => ({ latestMessageId, send: sendNextMessage }),
-    [latestMessageId, sendNextMessage]
+    () => ({ canSend: canSendNextMessage, send: sendNextMessage }),
+    [canSendNextMessage, sendNextMessage]
   );
 
   const value = useMemo<ChatContextValue>(
