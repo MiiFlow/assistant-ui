@@ -1,4 +1,14 @@
-import { forwardRef, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type FocusEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import type { CommandProvider } from "../composer";
 import { cn } from "../utils/cn";
 import { Avatar } from "./Avatar";
@@ -105,6 +115,27 @@ function useRotatingPlaceholder(placeholders: string[], intervalMs = 3000) {
   return placeholders[index] ?? "";
 }
 
+/**
+ * Whether the welcome wrapper (a vertical scroller, overflow-y auto) currently
+ * holds more than it shows. That happens when a host squeezes it, e.g. the
+ * intro above a persistent composer on a short phone screen.
+ */
+function useScrollsVertically(ref: RefObject<HTMLElement | null>) {
+  const [scrolls, setScrolls] = useState(false);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const measure = () => setScrolls(node.scrollHeight > node.clientHeight);
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    // The content box changes size on its own (text wrapping, late fonts).
+    for (const child of Array.from(node.children)) observer.observe(child);
+    measure();
+    return () => observer.disconnect();
+  }, [ref]);
+  return scrolls;
+}
+
 /** Shared starting screen for full-page chat and compact assistant hosts. */
 export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
   (
@@ -132,11 +163,43 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
     ref,
   ) => {
     const placeholder = useRotatingPlaceholder(placeholders);
+    const headingId = useId();
+    const rootRef = useRef<HTMLDivElement>(null);
+    useImperativeHandle(ref, () => rootRef.current as HTMLDivElement, []);
+    const scrolls = useScrollsVertically(rootRef);
+    // Kept while focused, so a resize that ends the overflow does not drop
+    // keyboard focus to the document.
+    const [focused, setFocused] = useState(false);
+    const showsHeading = section !== "suggestions" && !!welcomeText;
+    const showsComposer = layout === "centered" && section !== "suggestions";
+    const showsSuggestions = section !== "intro" && suggestions.length > 0;
+    // A host composerSlot owns its own gating; the built-in one is disabled
+    // without onSubmit, and a disabled control is not a Tab stop.
+    const hasFocusableComposer = showsComposer && (!!composerSlot || !(disabled || !onSubmit));
+    const hasEnabledSuggestions = showsSuggestions && !disabled && !!onSuggestionClick;
+    // A scroller keyboard users cannot reach fails WCAG 2.1.1 (axe
+    // scrollable-region-focusable). With no composer or enabled suggestion
+    // inside (the intro-only instance above a host composer), the wrapper
+    // becomes a named, focusable region while it scrolls, so Tab reaches it
+    // and the arrow keys scroll it. When it fits it adds nothing.
+    const focusable = (scrolls || focused) && !hasFocusableComposer && !hasEnabledSuggestions;
     return (
       <div
-        ref={ref}
+        ref={rootRef}
         className={cn("chat-welcome", className)}
         data-layout={layout}
+        {...(focusable && {
+          tabIndex: 0,
+          role: "region",
+          "aria-labelledby": showsHeading ? headingId : undefined,
+          "aria-label": showsHeading ? undefined : welcomeText || "Welcome",
+        })}
+        onFocus={(event: FocusEvent<HTMLDivElement>) => {
+          if (event.target === event.currentTarget) setFocused(true);
+        }}
+        onBlur={(event: FocusEvent<HTMLDivElement>) => {
+          if (event.target === event.currentTarget) setFocused(false);
+        }}
       >
         <div className="chat-welcome-content">
           {section !== "suggestions" && (
@@ -153,11 +216,11 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
                   (emblem ?? <Sparkles size={38} strokeWidth={1.5} />)
                 )}
               </div>
-              {welcomeText && <h2>{welcomeText}</h2>}
+              {welcomeText && <h2 id={headingId}>{welcomeText}</h2>}
               {description && <p>{description}</p>}
             </div>
           )}
-          {layout === "centered" && section !== "suggestions" && (
+          {showsComposer && (
             <div className="chat-welcome-composer">
               {composerSlot ?? (
                 <MessageComposer
@@ -176,7 +239,7 @@ export const WelcomeScreen = forwardRef<HTMLDivElement, WelcomeScreenProps>(
               )}
             </div>
           )}
-          {section !== "intro" && suggestions.length > 0 && (
+          {showsSuggestions && (
             <div
               className="chat-welcome-suggestions"
               role="group"

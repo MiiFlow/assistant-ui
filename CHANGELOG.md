@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `WelcomeScreen` becomes a focusable region (`tabIndex={0}`, `role="region"`, named by its heading) while its wrapper scrolls and holds nothing focusable (no built-in composer, no enabled suggestion), so keyboard users can reach and scroll an intro squeezed above a persistent host composer on a short screen (axe `scrollable-region-focusable`). It stays focusable until blur if the overflow ends while focused. When it fits, or already holds a focusable control, it adds no tab stop or role, as before. Its forwarded ref still receives the wrapper element.
 - `TableVisualization` string cells render markdown links to http(s) URLs (`[Open in Meta](https://...)`) as links that open in a new tab, instead of the raw markdown; other schemes such as `javascript:` stay plain text. The new `TableCellText` export does the same for host tables.
 - Stable history scrolling shows the "Jump to latest" pill only more than 800px from the bottom; within that distance it stays hidden and outside keyboard navigation.
 
