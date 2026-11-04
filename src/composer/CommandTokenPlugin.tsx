@@ -20,6 +20,7 @@ import {
   $isCommandTokenNode,
 } from "./CommandTokenNode";
 import { DefaultCommandMenu } from "./DefaultCommandMenu";
+import { TypeaheadActiveDescendant } from "./TypeaheadActiveDescendant";
 import type { ChatComposerCommand, CommandProvider } from "./types";
 import { useDetachIdleTypeaheadAnchor } from "./useDetachIdleTypeaheadAnchor";
 
@@ -243,9 +244,17 @@ export function CommandTokenPlugin({
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
       ) => {
+        const activeDescendant = (
+          <TypeaheadActiveDescendant
+            editor={editor}
+            selectedIndex={selectedIndex}
+            optionCount={options.length}
+          />
+        );
         if (menuRenderer) {
           return (
             <>
+              {activeDescendant}
               {menuRenderer({
                 anchorElement: anchorElementRef.current,
                 options: options.map((option) => option.command),
@@ -265,18 +274,21 @@ export function CommandTokenPlugin({
           );
         }
         return (
-          <DefaultCommandMenu
-            anchorElement={anchorElementRef.current}
-            options={options.map((option) => option.command)}
-            selectedIndex={selectedIndex ?? 0}
-            setHighlightedIndex={setHighlightedIndex}
-            onSelect={(index) => selectOptionAndCleanUp(options[index])}
-            queryString={queryString}
-            editorElement={editor.getRootElement()}
-            trigger={trigger}
-            loading={pending}
-            error={error}
-          />
+          <>
+            {activeDescendant}
+            <DefaultCommandMenu
+              anchorElement={anchorElementRef.current}
+              options={options.map((option) => option.command)}
+              selectedIndex={selectedIndex ?? 0}
+              setHighlightedIndex={setHighlightedIndex}
+              onSelect={(index) => selectOptionAndCleanUp(options[index])}
+              queryString={queryString}
+              editorElement={editor.getRootElement()}
+              trigger={trigger}
+              loading={pending}
+              error={error}
+            />
+          </>
         );
       }}
     />

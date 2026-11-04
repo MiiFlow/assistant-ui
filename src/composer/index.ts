@@ -20,6 +20,11 @@ export { CommandTokenPlugin, type CommandTokenPluginProps } from "./CommandToken
 
 export { useDetachIdleTypeaheadAnchor } from "./useDetachIdleTypeaheadAnchor";
 
+export {
+  TypeaheadActiveDescendant,
+  type TypeaheadActiveDescendantProps,
+} from "./TypeaheadActiveDescendant";
+
 export { CommandTokenView, type CommandTokenViewProps } from "./CommandTokenView";
 
 export { $hydrateFromEncodedText, type ResolveTokenLabel } from "./hydrate";
