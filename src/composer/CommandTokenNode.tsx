@@ -8,8 +8,9 @@ import {
   type SerializedLexicalNode,
   type Spread,
 } from "lexical";
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
 
+import { ChatRenderContext } from "../context/ChatProvider";
 import { CommandTokenView } from "./CommandTokenView";
 
 export type SerializedCommandTokenNode = Spread<
@@ -137,12 +138,7 @@ export class CommandTokenNode extends DecoratorNode<ReactNode> {
   decorate(): ReactNode {
     return (
       <span contentEditable={false} style={{ userSelect: "none" }}>
-        <CommandTokenView
-          id={this.__id}
-          kind={this.__kind}
-          label={this.__label}
-          variant="chip"
-        />
+        <CommandTokenChip node={this} />
       </span>
     );
   }
@@ -159,6 +155,21 @@ export class CommandTokenNode extends DecoratorNode<ReactNode> {
   getTextContent(): string {
     return this.getEncodedText();
   }
+}
+
+function CommandTokenChip({ node }: { node: CommandTokenNode }) {
+  const resolvedLabel = useContext(ChatRenderContext)?.resolveCommandToken?.(
+    node.getCommandId(),
+    node.getCommandKind(),
+  )?.label;
+  return (
+    <CommandTokenView
+      id={node.getCommandId()}
+      kind={node.getCommandKind()}
+      label={resolvedLabel ?? node.getCommandLabel()}
+      variant="chip"
+    />
+  );
 }
 
 function convertCommandTokenElement(domNode: HTMLElement): DOMConversionOutput | null {
