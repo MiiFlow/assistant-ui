@@ -13,6 +13,7 @@ import {
 	useCallback,
 	useContext,
 	useState,
+	type CSSProperties,
 	type ReactNode,
 } from "react";
 import type { Components } from "react-markdown";
@@ -277,13 +278,28 @@ function Blockquote({ children }: WithChildren) {
 	const resolve = useResolver();
 	return <blockquote>{processInlineCommandTokens(children, resolve)}</blockquote>;
 }
-function Th({ children }: WithChildren) {
-	const resolve = useResolver();
-	return <th>{processInlineCommandTokens(children, resolve)}</th>;
+/**
+ * A GFM delimiter row (`| ---: |`) reaches a cell as `style.textAlign`
+ * (react-markdown turns the hast `align` property into a style). The cell keeps
+ * it, and a right-aligned column, the markdown way of saying "numbers", gets
+ * tabular numerals so its digits line up. Alignment is never guessed from the
+ * cell's text.
+ */
+function cellStyle(style: CSSProperties | undefined): CSSProperties | undefined {
+	const textAlign = style?.textAlign;
+	if (!textAlign) return undefined;
+	return textAlign === "right" || textAlign === "end"
+		? { textAlign, fontVariantNumeric: "tabular-nums" }
+		: { textAlign };
 }
-function Td({ children }: WithChildren) {
+type CellProps = WithChildren & { style?: CSSProperties };
+function Th({ children, style }: CellProps) {
 	const resolve = useResolver();
-	return <td>{processInlineCommandTokens(children, resolve)}</td>;
+	return <th style={cellStyle(style)}>{processInlineCommandTokens(children, resolve)}</th>;
+}
+function Td({ children, style }: CellProps) {
+	const resolve = useResolver();
+	return <td style={cellStyle(style)}>{processInlineCommandTokens(children, resolve)}</td>;
 }
 
 function Anchor({ href, children }: WithChildren & { href?: string }) {

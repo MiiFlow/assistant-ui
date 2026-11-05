@@ -110,12 +110,17 @@ export function CommandTokenView({
           // Optical correction: the pill otherwise reads slightly below adjacent text.
           transform: "translateY(-1px)",
           background: CHIP_BG,
-          borderRadius: 999,
-          padding: "2px 9px 2px 4px",
+          // Chip geometry: 12px medium text on 16px lines, 20px tall, 6px
+          // corners. Colour stays currentColor-derived (see the header note).
+          height: 20,
+          boxSizing: "border-box",
+          borderRadius: 6,
+          padding: "2px 8px 2px 3px",
           margin: "0 1px",
           whiteSpace: "nowrap",
+          fontSize: 12,
           fontWeight: 500,
-          lineHeight: 1,
+          lineHeight: "16px",
         }}
       >
         {tagNode}

@@ -6,26 +6,35 @@ import { cn } from "../utils/cn";
 import { citationTextToMarkdown, parseCitationContent } from "../utils/citation-content";
 import { MarkdownContent } from "./MarkdownContent";
 import { trapTabKey } from "../interactions/focus-trap";
-import type { SourceReference, SourceTypeConfig } from "../types";
+import type { SourceReference } from "../types";
 
-function getSourceTypeDisplay(sourceType: string): SourceTypeConfig {
+/**
+ * The kind of source, named in the detail modal. Chips are neutral metadata:
+ * the per-type hex colours they used to carry encoded nothing a reader was
+ * told about, and no host could theme them.
+ */
+function sourceTypeLabel(sourceType: string): string {
   switch (sourceType) {
     case "knowledge_base":
-      return { label: "Knowledge Base", color: "#4caf50" };
+      return "Knowledge Base";
     case "api":
-      return { label: "API", color: "#2196f3" };
+      return "API";
     case "system_tool":
-      return { label: "Tool", color: "#ff9800" };
+      return "Tool";
     case "mcp_tool":
-      return { label: "MCP", color: "#9c27b0" };
+      return "MCP";
     case "workflow":
-      return { label: "Workflow", color: "#00bcd4" };
+      return "Workflow";
     case "memory":
-      return { label: "Memory", color: "#e91e63" };
+      return "Memory";
     default:
-      return { label: "Source", color: "#757575" };
+      return "Source";
   }
 }
+
+// Chip geometry (12px medium, 24px, 6px corners) on the neutral tone.
+const SOURCE_CHIP =
+  "inline-flex items-center h-6 px-2 text-xs font-medium leading-4 rounded-md cursor-pointer transition-colors max-w-[280px] truncate focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-focus,var(--chat-primary))]";
 
 export interface CitationSourcesProps {
   sources: SourceReference[];
@@ -53,29 +62,26 @@ export function CitationSources({
   return (
     <>
       <div className={cn("flex flex-wrap gap-1.5 mt-2", className)}>
-        {visibleSources.map((source) => {
-          const typeDisplay = getSourceTypeDisplay(source.source_type);
-
-          return (
-            <span key={source.index} className="inline-flex items-center gap-0.5">
-              <button
-                onClick={() => setSelectedSource(source)}
-                className="inline-flex items-center h-6 px-2 text-[0.75rem] font-medium rounded-full border cursor-pointer transition-colors max-w-[280px] truncate"
-                style={{
-                  backgroundColor: typeDisplay.color + "1a",
-                  color: typeDisplay.color,
-                  borderColor: typeDisplay.color + "40",
-                }}
-              >
-                [{source.index}] {source.title}
-              </button>
-            </span>
-          );
-        })}
+        {visibleSources.map((source) => (
+          <span key={source.index} className="inline-flex items-center gap-0.5">
+            <button
+              onClick={() => setSelectedSource(source)}
+              className={cn(
+                SOURCE_CHIP,
+                "border-0 bg-[var(--chat-tone-neutral-bg)] text-[var(--chat-text)] hover:bg-[color-mix(in_srgb,var(--chat-text)_10%,transparent)]",
+              )}
+            >
+              [{source.index}] {source.title}
+            </button>
+          </span>
+        ))}
         {!showAll && hiddenCount > 0 && (
           <button
             onClick={() => setShowAll(true)}
-            className="inline-flex items-center h-6 px-2 text-[0.75rem] font-medium rounded-full border cursor-pointer transition-colors text-gray-500 border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+            className={cn(
+              SOURCE_CHIP,
+              "border border-[var(--chat-border)] bg-transparent text-[var(--chat-text-subtle)] hover:bg-[var(--chat-tone-neutral-bg)]",
+            )}
           >
             +{hiddenCount} more
           </button>
@@ -137,7 +143,7 @@ export function SourceDetailModal({
 
   if (!source || typeof document === "undefined") return null;
 
-  const typeDisplay = getSourceTypeDisplay(source.source_type);
+  const typeLabel = sourceTypeLabel(source.source_type);
   const rawText = source.full_content ?? source.snippet ?? null;
   const markdownText = parsed ? parsed.text : rawText;
 
@@ -183,14 +189,8 @@ export function SourceDetailModal({
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <h3 className="text-lg font-semibold truncate">{source.title}</h3>
-                <span
-                  className="text-[0.7rem] px-1.5 py-0.5 rounded font-medium shrink-0"
-                  style={{
-                    backgroundColor: typeDisplay.color + "1a",
-                    color: typeDisplay.color,
-                  }}
-                >
-                  {typeDisplay.label}
+                <span className="inline-flex h-5 items-center px-1.5 text-xs font-medium leading-4 rounded-md shrink-0 bg-[var(--chat-tone-neutral-bg)] text-[var(--chat-tone-neutral-fg)]">
+                  {typeLabel}
                 </span>
               </div>
               <button
@@ -317,8 +317,8 @@ export function InlineCitation({ index, source }: InlineCitationProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center min-w-[16px] h-4 rounded-full",
-        "bg-blue-500 text-white text-[0.6rem] font-semibold",
+        "inline-flex items-center justify-center min-w-[16px] h-4 rounded",
+        "bg-[var(--chat-tone-info-bg)] text-[var(--chat-tone-info-fg)] text-[0.6rem] font-semibold",
         "px-0.5 mx-0.5 align-super",
         source?.url ? "cursor-pointer hover:opacity-85" : "cursor-default"
       )}

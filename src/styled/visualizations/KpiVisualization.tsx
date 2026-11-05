@@ -31,23 +31,25 @@ export interface KpiVisualizationProps {
 /** Below this a cell wraps to its own row. */
 const CELL_MIN_PX = 150;
 
+// KPI tones on the host's --chat-tone-* roles: good is success, bad is danger.
+// Static class strings per tone so Tailwind's scanner sees every one.
 const CHIP_TONE: Record<KpiTone, string> = {
-  good: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  bad: "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300",
-  warning: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-  neutral: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+  good: "bg-[var(--chat-tone-success-bg)] text-[var(--chat-tone-success-fg)]",
+  bad: "bg-[var(--chat-tone-danger-bg)] text-[var(--chat-tone-danger-fg)]",
+  warning: "bg-[var(--chat-tone-warning-bg)] text-[var(--chat-tone-warning-fg)]",
+  neutral: "bg-[var(--chat-tone-neutral-bg)] text-[var(--chat-tone-neutral-fg)]",
 };
 const DOT_TONE: Record<KpiTone, string> = {
-  good: "bg-emerald-600 dark:bg-emerald-400",
-  bad: "bg-red-600 dark:bg-red-400",
-  warning: "bg-amber-600 dark:bg-amber-400",
-  neutral: "bg-gray-500",
+  good: "bg-[var(--chat-tone-success-fg)]",
+  bad: "bg-[var(--chat-tone-danger-fg)]",
+  warning: "bg-[var(--chat-tone-warning-fg)]",
+  neutral: "bg-[var(--chat-tone-neutral-fg)]",
 };
 const NOTE_TONE: Record<KpiTone, string> = {
   good: "text-gray-500 dark:text-gray-400",
   neutral: "text-gray-500 dark:text-gray-400",
-  warning: "text-amber-700 dark:text-amber-300",
-  bad: "text-red-700 dark:text-red-300",
+  warning: "text-[var(--chat-tone-warning-fg)]",
+  bad: "text-[var(--chat-tone-danger-fg)]",
 };
 const BREAKDOWN_COLORS = ["bg-blue-500", "bg-teal-500", "bg-amber-500", "bg-violet-500", "bg-pink-500"];
 
@@ -61,7 +63,8 @@ function Delta({ metric }: { metric: KpiMetric }) {
       {showChange && (
         <span
           className={cn(
-            "inline-flex min-w-0 max-w-full items-center gap-[3px] rounded-full py-px pl-[5px] pr-[7px] font-semibold leading-normal",
+            // Chip geometry: 12px medium text, 20px tall, 6px corners.
+            "inline-flex min-h-5 min-w-0 max-w-full items-center gap-[3px] rounded-md pl-[5px] pr-1.5 text-xs font-medium leading-4",
             CHIP_TONE[resolveKpiTone(metric)],
           )}
         >

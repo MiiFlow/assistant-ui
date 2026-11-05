@@ -93,6 +93,31 @@
 	/* Welcome screen halo effect */
 	--chat-halo-primary: rgba(16, 105, 151, 0.06);
 	--chat-halo-secondary: rgba(86, 193, 138, 0.03);
+
+	/* Tones: foreground/background pairs for chips that say something about
+	   state (table badges, KPI change chips, status dots). Each pair is
+	   legible on its own background in its own mode:
+	   - neutral: no judgement (draft, inactive, unknown)
+	   - info:    in motion or informational (running, queued, processing)
+	   - success / warning / danger: healthy / needs attention / failed
+	   Hosts map these to their own state roles. */
+	--chat-tone-neutral-fg: #52525b;
+	--chat-tone-neutral-bg: rgba(0, 0, 0, 0.05);
+	--chat-tone-info-fg: #1d4ed8;
+	--chat-tone-info-bg: #eff6ff;
+	--chat-tone-success-fg: #047857;
+	--chat-tone-success-bg: #ecfdf5;
+	--chat-tone-warning-fg: #b45309;
+	--chat-tone-warning-bg: #fffbeb;
+	--chat-tone-danger-fg: #b91c1c;
+	--chat-tone-danger-bg: #fef2f2;
+
+	/* Table chrome, deliberately NOT declared (see the note above on why a
+	   var() here would freeze the :root value):
+	   --chat-table-header-ink  header label colour; falls back to
+	                            --chat-text-subtle.
+	   --chat-table-rule        the rule under the header and between rows;
+	                            falls back to --chat-text at 10%. */
 }
 
 .dark {
@@ -122,4 +147,16 @@
 	/* Slightly stronger halo in dark mode */
 	--chat-halo-primary: rgba(16, 105, 151, 0.1);
 	--chat-halo-secondary: rgba(86, 193, 138, 0.05);
+
+	/* Tones — dark counterparts */
+	--chat-tone-neutral-fg: #d4d4d8;
+	--chat-tone-neutral-bg: rgba(255, 255, 255, 0.08);
+	--chat-tone-info-fg: #93c5fd;
+	--chat-tone-info-bg: #172554;
+	--chat-tone-success-fg: #6ee7b7;
+	--chat-tone-success-bg: #022c22;
+	--chat-tone-warning-fg: #fcd34d;
+	--chat-tone-warning-bg: #451a03;
+	--chat-tone-danger-fg: #fca5a5;
+	--chat-tone-danger-bg: #450a0a;
 }

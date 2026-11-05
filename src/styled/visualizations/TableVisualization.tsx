@@ -8,6 +8,7 @@ import {
   Copy as CopyIcon,
 } from "lucide-react";
 import { compareTableValues } from "../../utils/table-ordering";
+import { tableBadgeTone, type TableBadgeTone } from "../../utils/table-badge-tone";
 import { cn } from "../../utils/cn";
 import { TableCellText } from "./TableCellText";
 import type {
@@ -137,8 +138,7 @@ function CellHoverPopover({
     <div
       style={style}
       className={cn(
-        "relative overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg",
-        "dark:border-gray-700 dark:bg-gray-900",
+        "relative overflow-hidden rounded-md border border-[var(--chat-border)] bg-[var(--chat-surface-raised)] shadow-lg",
       )}
       role="tooltip"
       onMouseEnter={onEnter}
@@ -146,12 +146,12 @@ function CellHoverPopover({
     >
       <div
         className={cn(
-          "select-text overflow-auto px-2.5 py-1.5 pr-8 text-sm text-gray-900 dark:text-gray-100",
+          "select-text overflow-auto px-2.5 py-1.5 pr-8 text-sm text-[var(--chat-text)]",
           "whitespace-pre-wrap break-words",
         )}
         style={{ maxHeight: "50vh" }}
       >
-        {text || <span className="text-gray-400">—</span>}
+        {text || <span className="text-[var(--chat-text-subtle)]">—</span>}
       </div>
       <button
         type="button"
@@ -160,9 +160,8 @@ function CellHoverPopover({
         title={copied ? "Copied" : "Copy"}
         className={cn(
           "absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center",
-          "rounded text-gray-500 transition-colors",
-          "hover:bg-gray-100 hover:text-gray-800",
-          "dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100",
+          "rounded text-[var(--chat-text-subtle)] transition-colors",
+          "hover:bg-[color-mix(in_srgb,var(--chat-text)_6%,transparent)] hover:text-[var(--chat-text)]",
         )}
       >
         {copied ? <Check size={12} /> : <CopyIcon size={12} />}
@@ -198,7 +197,7 @@ function MediaCell({ item, onOpen }: { item: MediaItem; onOpen: () => void }) {
         ) : (
           // No text: a 72px tile has no room beside the 56px play circle,
           // which would cover it. The circle and the button's name say "video".
-          <div className="h-full w-full bg-gray-900" />
+          <div className="h-full w-full bg-[var(--chat-text)]" />
         )}
         <PlayOverlay label={item.altText || "Open video"} />
       </button>
@@ -222,20 +221,34 @@ function MediaCell({ item, onOpen }: { item: MediaItem; onOpen: () => void }) {
   );
 }
 
-const badgeColors: Record<string, string> = {
-  active: "bg-green-100 text-green-700",
-  completed: "bg-green-100 text-green-700",
-  success: "bg-green-100 text-green-700",
-  enabled: "bg-green-100 text-green-700",
-  pending: "bg-yellow-100 text-yellow-700",
-  processing: "bg-yellow-100 text-yellow-700",
-  in_progress: "bg-yellow-100 text-yellow-700",
-  failed: "bg-red-100 text-red-700",
-  error: "bg-red-100 text-red-700",
-  disabled: "bg-red-100 text-red-700",
-  inactive: "bg-gray-100 text-gray-700",
-  draft: "bg-gray-100 text-gray-700",
+// Chip geometry: 12px medium text, 20px tall, 6px corners. Static class
+// strings per tone so Tailwind's scanner sees every one.
+const BADGE_TONE_CLASS: Record<TableBadgeTone, string> = {
+  neutral: "bg-[var(--chat-tone-neutral-bg)] text-[var(--chat-tone-neutral-fg)]",
+  info: "bg-[var(--chat-tone-info-bg)] text-[var(--chat-tone-info-fg)]",
+  success: "bg-[var(--chat-tone-success-bg)] text-[var(--chat-tone-success-fg)]",
+  warning: "bg-[var(--chat-tone-warning-bg)] text-[var(--chat-tone-warning-fg)]",
+  danger: "bg-[var(--chat-tone-danger-bg)] text-[var(--chat-tone-danger-fg)]",
 };
+
+/** A state (known tone) is a dot and its label; anything else is a neutral label. */
+function TableBadge({ value }: { value: unknown }) {
+  const tone = tableBadgeTone(value);
+  return (
+    <span
+      data-tone={tone ?? "neutral"}
+      className={cn(
+        "inline-flex h-5 max-w-full items-center gap-1 rounded-md px-1.5 align-middle text-xs font-medium leading-4",
+        BADGE_TONE_CLASS[tone ?? "neutral"],
+      )}
+    >
+      {tone && (
+        <span aria-hidden className="h-1.5 w-1.5 flex-none rounded-full bg-current" />
+      )}
+      <span className="min-w-0 truncate">{String(value)}</span>
+    </span>
+  );
+}
 
 const LINK_PROTOCOLS = new Set(["https:", "http:", "mailto:", "tel:"]);
 // File names look like bare domains ("report.pdf"); they stay text. Same
@@ -307,7 +320,7 @@ export function tableLinkHref(url: unknown): string | null {
 
 function formatCellValue(value: unknown, column: TableColumn): React.ReactNode {
   if (value === null || value === undefined)
-    return <span className="text-gray-400">-</span>;
+    return <span className="text-[var(--chat-text-subtle)]">-</span>;
 
   const type = column.type || "string";
 
@@ -329,20 +342,8 @@ function formatCellValue(value: unknown, column: TableColumn): React.ReactNode {
       } catch {
         return String(value);
       }
-    case "badge": {
-      const strValue = String(value).toLowerCase().replace(/\s+/g, "_");
-      const colorClass = badgeColors[strValue] || "bg-gray-100 text-gray-700";
-      return (
-        <span
-          className={cn(
-            "inline-block px-2 py-0.5 rounded-full text-xs font-medium",
-            colorClass,
-          )}
-        >
-          {String(value)}
-        </span>
-      );
-    }
+    case "badge":
+      return <TableBadge value={value} />;
     case "link": {
       const link =
         typeof value === "object" ? (value as Record<string, unknown>) : null;
@@ -368,22 +369,22 @@ function formatCellValue(value: unknown, column: TableColumn): React.ReactNode {
     }
     case "boolean":
       return value ? (
-        <Check size={18} className="text-green-500" />
+        <Check size={18} className="text-[var(--chat-tone-success-fg)]" />
       ) : (
-        <X size={18} className="text-gray-400" />
+        <X size={18} className="text-[var(--chat-text-subtle)]" />
       );
     case "progress": {
       const numValue =
         typeof value === "number" ? value : parseFloat(String(value));
       return (
         <div className="flex items-center gap-2">
-          <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div className="flex-1 h-2 bg-[var(--chat-tone-neutral-bg)] rounded-full overflow-hidden">
             <div
-              className="h-full bg-blue-500 rounded-full"
+              className="h-full bg-[var(--chat-primary)] rounded-full"
               style={{ width: `${Math.min(100, Math.max(0, numValue))}%` }}
             />
           </div>
-          <span className="text-xs text-gray-500">{numValue.toFixed(0)}%</span>
+          <span className="text-xs text-[var(--chat-text-subtle)]">{numValue.toFixed(0)}%</span>
         </div>
       );
     }
@@ -550,7 +551,7 @@ export function TableVisualization({
       aria-label="Data table"
     >
       <table
-        className={cn("min-w-full text-sm", hasMedia && "w-full table-fixed")}
+        className={cn("min-w-full border-collapse text-sm", hasMedia && "w-full table-fixed")}
         style={{ minWidth: hasMedia ? 640 : undefined }}
       >
         <colgroup>
@@ -568,12 +569,14 @@ export function TableVisualization({
             {columns.map((col) => (
               <th
                 key={col.key}
+                // The table recipe: no header slab, muted 12px medium label in
+                // normal case, one rule beneath.
                 className={cn(
-                  "px-3 py-2 font-semibold bg-gray-50 dark:bg-gray-800 whitespace-normal break-words text-left",
+                  "px-3 py-2 align-bottom text-xs font-medium leading-4 normal-case whitespace-normal break-words text-left",
+                  "text-[var(--chat-table-header-ink,var(--chat-text-subtle))]",
+                  "border-b border-[var(--chat-table-rule,color-mix(in_srgb,var(--chat-text)_10%,transparent))]",
                   // Media columns aren't sortable in a meaningful way.
-                  sortable &&
-                    col.type !== "media" &&
-                    "cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700",
+                  sortable && col.type !== "media" && "select-none",
                 )}
                 style={{
                   width: col.width,
@@ -583,12 +586,9 @@ export function TableVisualization({
                       ? "right"
                       : "left"),
                 }}
+                // Only the sorted header carries aria-sort (WAI-ARIA: one at a time).
                 aria-sort={
-                  orderBy === col.key
-                    ? order === "asc"
-                      ? "ascending"
-                      : "descending"
-                    : undefined
+                  orderBy === col.key ? (order === "asc" ? "ascending" : "descending") : undefined
                 }
               >
                 <button
@@ -596,7 +596,11 @@ export function TableVisualization({
                   disabled={!sortable || col.type === "media"}
                   onClick={() => handleRequestSort(col.key)}
                   aria-label={`${col.label}: ${orderBy === col.key ? (order === "asc" ? "sort descending" : "clear sort") : "sort ascending"}`}
-                  className="inline-flex items-center gap-1 rounded border-0 bg-transparent p-0 text-inherit [font:inherit] focus-visible:outline focus-visible:outline-2 disabled:cursor-default"
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded border-0 bg-transparent p-0 text-inherit [font:inherit] focus-visible:outline focus-visible:outline-2 disabled:cursor-default",
+                    "enabled:cursor-pointer enabled:hover:text-[var(--chat-text)]",
+                    orderBy === col.key && "text-[var(--chat-text)]",
+                  )}
                 >
                   {col.label}
                   {sortable &&
@@ -616,7 +620,7 @@ export function TableVisualization({
           {processedRows.map((row, rowIdx) => (
             <tr
               key={rowIdx}
-              className="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              className="border-t border-[var(--chat-table-rule,color-mix(in_srgb,var(--chat-text)_10%,transparent))] first:border-t-0 hover:bg-[color-mix(in_srgb,var(--chat-text)_3%,transparent)]"
             >
               {columns.map((col) => {
                 if (col.type === "media") {
@@ -654,7 +658,7 @@ export function TableVisualization({
                             )}
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-[var(--chat-text-subtle)]">
                           Preview unavailable
                         </span>
                       )}
@@ -738,7 +742,7 @@ export function TableVisualization({
             <tr>
               <td
                 colSpan={columns.length}
-                className="px-3 py-8 text-center text-gray-400"
+                className="px-3 py-8 text-center text-[var(--chat-text-subtle)]"
               >
                 No data available
               </td>
@@ -766,12 +770,12 @@ export function TableVisualization({
         />
       )}
 
-      <div className="px-3 py-1 text-xs text-gray-500">
+      <div className="px-3 py-1 text-xs text-[var(--chat-text-subtle)]">
         Sorting applies to the rows in this response.
       </div>
       {paginated && rows.length > pageSize && (
-        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 dark:border-gray-700 text-sm">
-          <span className="text-gray-500">
+        <div className="flex items-center justify-between px-3 py-2 border-t border-[var(--chat-table-rule,color-mix(in_srgb,var(--chat-text)_10%,transparent))] text-sm">
+          <span className="text-[var(--chat-text-subtle)]">
             {page * pageSize + 1}-{Math.min((page + 1) * pageSize, rows.length)}{" "}
             of {rows.length}
           </span>
@@ -779,14 +783,14 @@ export function TableVisualization({
             <button
               onClick={() => setPage(Math.max(0, page - 1))}
               disabled={page === 0}
-              className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30"
+              className="px-2 py-1 rounded hover:bg-[color-mix(in_srgb,var(--chat-text)_6%,transparent)] disabled:opacity-30"
             >
               Prev
             </button>
             <button
               onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
               disabled={page >= totalPages - 1}
-              className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30"
+              className="px-2 py-1 rounded hover:bg-[color-mix(in_srgb,var(--chat-text)_6%,transparent)] disabled:opacity-30"
             >
               Next
             </button>

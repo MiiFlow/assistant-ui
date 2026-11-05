@@ -253,29 +253,42 @@
 	background: color-mix(in srgb, var(--chat-text) 5%, transparent);
 }
 
+/* Tables: no header slab and no frame. The header is quiet muted ink in
+   normal case; one rule sits under it and one between rows. Column alignment
+   comes from the markdown delimiter row (`---:`), applied by the Th/Td
+   components, which also give right-aligned cells tabular numerals. Explicit
+   collapse and spacing: the no-preflight build leaves the UA's separate
+   borders, which would double the rule under the header. */
 .chat-prose table {
 	min-width: 100%;
 	font-size: 0.925em;
+	border-collapse: collapse;
+	border-spacing: 0;
 	/* Keep column min-content widths: wide tables scroll in their wrapper
 	   rather than splitting metric values into individual characters. */
 	overflow-wrap: normal;
 }
 
-.chat-prose thead {
-	background: color-mix(in srgb, var(--chat-text) 4%, transparent);
-}
-
 .chat-prose th {
 	padding: 8px 12px;
 	text-align: left;
-	font-weight: 600;
-	border-bottom: 1px solid color-mix(in srgb, var(--chat-text) 12%, transparent);
+	vertical-align: bottom;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 16px;
+	text-transform: none;
+	letter-spacing: 0;
+	color: var(--chat-table-header-ink, var(--chat-text-subtle));
+	border-bottom: 1px solid var(--chat-table-rule, color-mix(in srgb, var(--chat-text) 10%, transparent));
 }
 
 .chat-prose td {
 	padding: 8px 12px;
-	border-top: 1px solid color-mix(in srgb, var(--chat-text) 8%, transparent);
 	vertical-align: top;
+}
+
+.chat-prose tbody tr + tr td {
+	border-top: 1px solid var(--chat-table-rule, color-mix(in srgb, var(--chat-text) 10%, transparent));
 }
 
 .chat-prose hr {
@@ -359,11 +372,10 @@
 	color: rgba(var(--chat-code-ink), 0.9);
 }
 
+/* Borderless: the wrapper only lets a wide table scroll sideways. */
 .chat-table-wrap {
 	margin: 1.05em 0;
 	overflow-x: auto;
-	border-radius: 8px;
-	border: 1px solid color-mix(in srgb, var(--chat-text) 12%, transparent);
 }
 
 /* User bubbles derive decoration from their own foreground, whether the host

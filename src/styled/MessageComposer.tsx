@@ -216,11 +216,13 @@ function AttachmentBar({
           <div
             key={att.id}
             className={cn(
-              "relative flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs",
+              // Chip geometry: 12px medium text, 24px, 6px corners; the
+              // neutral tone, or danger when the upload failed.
+              "relative flex min-h-6 items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium leading-4",
               isUploading ? "max-w-[280px]" : "max-w-[200px]",
               isError
-                ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400"
-                : "bg-gray-100 dark:bg-zinc-700 text-gray-600 dark:text-zinc-300",
+                ? "bg-[var(--chat-tone-danger-bg)] text-[var(--chat-tone-danger-fg)]"
+                : "bg-[var(--chat-tone-neutral-bg)] text-[var(--chat-tone-neutral-fg)]",
             )}
             {...(isUploading && {
               role: "progressbar",
@@ -267,7 +269,7 @@ function AttachmentBar({
                 type="button"
                 onClick={() => onRemove(att.id)}
                 aria-label={`Remove ${att.file.name}`}
-                className="chat-composer-remove flex-shrink-0 ml-0.5 p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-600 transition-colors"
+                className="chat-composer-remove flex-shrink-0 ml-0.5 p-0.5 rounded hover:bg-[color-mix(in_srgb,currentColor_14%,transparent)] transition-colors"
               >
                 <X size={12} />
               </button>
