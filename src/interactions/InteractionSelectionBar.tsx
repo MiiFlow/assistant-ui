@@ -28,7 +28,7 @@ export function InteractionSelectionBar({
   entry: Entry;
   onCompare: () => void;
 }) {
-  const { surface, runtime, busy, ready, retry } = entry;
+  const { surface, runtime, busy, saving, ready, retry } = entry;
   const { selectedIds } = surface.state;
   const selected = surface.data.items.filter((item) =>
     selectedIds.includes(item.id),
@@ -63,12 +63,12 @@ export function InteractionSelectionBar({
       ? "Choose 2 products to compare"
       : `Choose 2–${limit} products to compare`
     : `Choose up to ${limit} product${limit === 1 ? "" : "s"}`;
-  const feedback = busy
-    ? "Saving…"
-    : !runtime
-      ? "Preview only"
-      : !ready
-        ? "Connecting…"
+  const feedback = !runtime
+    ? "Preview only"
+    : !ready
+      ? "Connecting…"
+      : saving
+        ? "Saving…"
         : retry || entry.error
           ? "Changes need attention"
           : selected.length === 1 && allowsComparison

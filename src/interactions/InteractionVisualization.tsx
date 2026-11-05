@@ -189,7 +189,7 @@ function SurfaceContent({
   resetScroll: () => void;
   comparisonRef: Ref<HTMLDivElement>;
 }) {
-  const { surface, runtime, busy, ready, retry } = entry;
+  const { surface, runtime, busy, saving, ready, retry } = entry;
   const { query, page } = view;
   const setPage = (page: number) => {
     setView((current) => ({ ...current, page }));
@@ -356,10 +356,10 @@ function SurfaceContent({
       {places && (
         <footer className="interaction-footer">
           <span role="status" aria-live="polite">
-            {busy
-              ? "Saving…"
-              : !ready && runtime
-                ? "Connecting…"
+            {!ready && runtime
+              ? "Connecting…"
+              : saving
+                ? "Saving…"
                 : ready
                   ? "Selection saved to this conversation"
                   : "Preview"}

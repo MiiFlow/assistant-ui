@@ -69,7 +69,10 @@ export class InteractionFailure extends Error {
 interface Entry {
   surface: InteractionSurface;
   ready: boolean;
+  /** A request is in flight: the first load or a save. Locks further ones. */
   busy: boolean;
+  /** A save is in flight. Never set by a load, which saves nothing. */
+  saving: boolean;
   error?: string;
   unavailable?: boolean;
   retry?: InteractionRequest;
@@ -92,7 +95,7 @@ export class InteractionRuntime {
   };
   seed(surface: InteractionSurface) {
     if (!this.entries.has(surface.id))
-      this.entries.set(surface.id, { surface, ready: false, busy: false });
+      this.entries.set(surface.id, { surface, ready: false, busy: false, saving: false });
     return this.entries.get(surface.id)!;
   }
   ingest(surface: InteractionSurface) {
@@ -155,7 +158,7 @@ export class InteractionRuntime {
     }
   }
   private async send(id: string, request: InteractionRequest) {
-    this.update(id, { busy: true, error: undefined });
+    this.update(id, { busy: true, saving: true, error: undefined });
     try {
       this.accept(
         id,
@@ -167,7 +170,7 @@ export class InteractionRuntime {
         this.update(id, { retry: request });
       this.fail(id, error);
     } finally {
-      this.update(id, { busy: false });
+      this.update(id, { busy: false, saving: false });
     }
   }
   private fail(id: string, error: unknown) {
@@ -220,7 +223,7 @@ export function InteractionProvider({
 export function useInteraction(surface: InteractionSurface) {
   const runtime = useContext(Context);
   const fallback = useMemo<Entry>(
-    () => ({ surface, ready: false, busy: false }),
+    () => ({ surface, ready: false, busy: false, saving: false }),
     [surface],
   );
   const compatible = runtime?.threadId === surface.threadId ? runtime : null;
