@@ -533,7 +533,7 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 			if (!message.textContent) return null;
 			const text = isStreaming ? trimPartialTrailingMarker(placedText || "") : placedText || "";
 			return parseContentWithInlineMarkers(replaceMediaUrls(text, medias), true);
-		}, [isStreaming, placedText, medias]);
+		}, [message.textContent, isStreaming, placedText, medias]);
 
 		// Strip inline markers from the plain-text branches. The rich branch
 		// resolves media inside Markdown; reaching this plain-text branch
@@ -736,9 +736,9 @@ const MessageImpl = forwardRef<HTMLDivElement, MessageProps>(
 
 		// Track if this message was ever in streaming state.
 		// Streamed messages are already visible — re-animating them on completion causes a flash.
-		const wasStreamingRef = useRef(isStreaming);
-		if (isStreaming) wasStreamingRef.current = true;
-		const showFadeIn = !isStreaming && !wasStreamingRef.current;
+		const [wasStreaming, setWasStreaming] = useState(isStreaming);
+		if (isStreaming && !wasStreaming) setWasStreaming(true);
+		const showFadeIn = !isStreaming && !wasStreaming;
 		const reducedMotion = usePrefersReducedMotion();
 
 		return (

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRunClock } from "../hooks/use-run-clock";
 import { useScrollLock } from "../hooks/use-scroll-lock";
 import type { Event, PlanData, StreamingChunk } from "../types";
 import { injectBeamerKeyframes } from "../utils/beamer";
@@ -6,57 +7,6 @@ import { cn } from "../utils/cn";
 import { EventTimeline, convertChunkToEvent } from "./EventTimeline";
 import { PlanTimeline } from "./PlanTimeline";
 import { humanizeToolName } from "./reasoning/tool-label";
-
-/**
- * Live duration counter for the streaming header.
- *
- * `startedAt` (epoch ms) is the run's own start, supplied by the host app from
- * a durable source. It is preferred over the mount's clock because this panel
- * remounts whenever the user navigates away from a thread and back: timing from
- * mount restarts the counter at 0 while the run is minutes old. The local
- * fallback covers hosts that don't track a run start.
- *
- * `finalSeconds` is state, not a ref — the completion render happens before the
- * effect that computes it, so a ref would never surface.
- */
-function useStreamDuration(
-	isStreaming: boolean,
-	startedAt?: number,
-): { liveSeconds: number; finalSeconds: number } {
-	const localStartRef = useRef<number | null>(null);
-	const durableStartRef = useRef<number | null>(null);
-	const [liveSeconds, setLiveSeconds] = useState(0);
-	const [finalSeconds, setFinalSeconds] = useState(0);
-
-	if (isStreaming && localStartRef.current === null) localStartRef.current = Date.now();
-
-	const durableStart = startedAt && startedAt > 0 ? startedAt : null;
-	// Remembered because the host may drop the run start in the same commit the
-	// run completes — the final figure below still needs it.
-	if (durableStart !== null) durableStartRef.current = durableStart;
-	const startTime = durableStart ?? localStartRef.current;
-
-	useEffect(() => {
-		if (!isStreaming || startTime === null) return;
-		// Clamp: a durable start comes from the server, so a client clock running
-		// behind it must not render a negative figure.
-		const tick = () => setLiveSeconds(Math.max(0, (Date.now() - startTime) / 1000));
-		tick();
-		const interval = setInterval(tick, 1000);
-		return () => clearInterval(interval);
-	}, [isStreaming, startTime]);
-
-	useEffect(() => {
-		if (isStreaming || localStartRef.current === null) return;
-		// Streaming just ended — capture final elapsed time
-		setFinalSeconds(Math.max(0, (Date.now() - (durableStartRef.current ?? localStartRef.current)) / 1000));
-		localStartRef.current = null;
-		// Consumed: a later run in this same instance must not reuse this start.
-		durableStartRef.current = null;
-	}, [isStreaming, durableStart]);
-
-	return { liveSeconds, finalSeconds };
-}
 
 function hasSubagentChunks(chunks: StreamingChunk[]): boolean {
 	return chunks.some((c) => c.type === "subagent");
@@ -275,7 +225,7 @@ export function ReasoningPanel({
 	className,
 }: ReasoningPanelProps) {
 	const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
-	const { liveSeconds, finalSeconds: wallClockSeconds } = useStreamDuration(isStreaming, streamStartedAt);
+	const { liveSeconds, finalSeconds: wallClockSeconds } = useRunClock(isStreaming, streamStartedAt);
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -464,7 +414,7 @@ export function ReasoningPanel({
 				<HeaderIndicator isStreaming={isStreaming} justCompleted={justCompleted} />
 
 				{/* Streaming: current operation in prose + tabular timer. The timer
-				    counts from the run's start (see useStreamDuration), so leaving
+				    counts from the run's start (see useRunClock), so leaving
 				    the thread and returning mid-run resumes the real figure instead
 				    of restarting at zero. */}
 				{isStreaming && (

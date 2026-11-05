@@ -36,6 +36,36 @@ export function mediaFrame(aspectRatio: string, kind: "image" | "video" = "video
   };
 }
 
+interface PollRun {
+  jobId: string | undefined;
+  resolve: ResolveMediaGeneration | undefined;
+  attempt: number;
+  snapshot?: GenerationStatus;
+  unavailable: boolean;
+  playbackFailed: boolean;
+}
+
+function isSameRun(
+  run: PollRun | null,
+  jobId: string | undefined,
+  resolve: ResolveMediaGeneration | undefined,
+  attempt: number,
+): run is PollRun {
+  return !!run && run.jobId === jobId && run.resolve === resolve && run.attempt === attempt;
+}
+
+/** `previous` when it belongs to this run, else this run with nothing learned yet. */
+function stateForRun(
+  previous: PollRun | null,
+  jobId: string | undefined,
+  resolve: ResolveMediaGeneration | undefined,
+  attempt: number,
+): PollRun {
+  return isSameRun(previous, jobId, resolve, attempt)
+    ? previous
+    : { jobId, resolve, attempt, unavailable: false, playbackFailed: false };
+}
+
 /** One stable slot while a paid background job runs. Polling only reads our
  * status endpoint; it never calls a generation tool or the provider. */
 export function MediaGenerationCard({
@@ -45,37 +75,50 @@ export function MediaGenerationCard({
 }) {
   const resolve = useContext(ChatRenderContext)?.resolveMediaGeneration;
   const reduced = usePrefersReducedMotion();
-  const [snapshot, setSnapshot] = useState<GenerationStatus>();
-  const [unavailable, setUnavailable] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [playbackFailed, setPlaybackFailed] = useState(false);
+  // What one polling run (job, resolver, attempt) has learned. A new run reads
+  // as fresh from its first render, with no reset pass in between. No run is
+  // revisited: attempt only grows, and a card keeps its job.
+  const [run, setRun] = useState<PollRun | null>(null);
+  const jobId = generation.jobId;
+  const current = isSameRun(run, jobId, resolve, attempt) ? run : null;
+  const snapshot = current?.snapshot;
+  const unavailable = current?.unavailable ?? false;
+  const playbackFailed = current?.playbackFailed ?? false;
+  const setPlaybackFailed = () =>
+    setRun((previous) => ({
+      ...stateForRun(previous, jobId, resolve, attempt),
+      playbackFailed: true,
+    }));
   useEffect(() => {
-    if (!generation.jobId || !resolve) return;
+    if (!jobId || !resolve) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     let errors = 0;
     let polls = 0;
-    setUnavailable(false);
-    setSnapshot(undefined);
-    setPlaybackFailed(false);
+    const update = (patch: Partial<PollRun>) =>
+      setRun((previous) => ({
+        ...stateForRun(previous, jobId, resolve, attempt),
+        ...patch,
+      }));
     const poll = async () => {
       try {
-        const next = await resolve(generation.jobId!, controller.signal);
+        const next = await resolve(jobId, controller.signal);
         if (controller.signal.aborted) return;
-        setSnapshot(next);
+        update({ snapshot: next });
         errors = 0;
         if (["completed", "failed", "needs_review"].includes(next.status))
           return;
       } catch {
         if (controller.signal.aborted) return;
         if (++errors >= 3) {
-          setUnavailable(true);
+          update({ unavailable: true });
           return;
         }
       }
       // Bound a mounted card's polling; a status refresh never regenerates media.
       if (++polls >= 360) {
-        setUnavailable(true);
+        update({ unavailable: true });
         return;
       }
       timer = setTimeout(poll, errors ? 10000 : 5000);
@@ -85,7 +128,7 @@ export function MediaGenerationCard({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [generation.jobId, resolve, attempt]);
+  }, [jobId, resolve, attempt]);
 
   const frame = mediaFrame(generation.aspectRatio, generation.kind);
   if (snapshot?.status === "completed" && snapshot.url && !playbackFailed) {
@@ -98,7 +141,7 @@ export function MediaGenerationCard({
             playsInline
             preload="metadata"
             aria-label="Generated video"
-            onError={() => setPlaybackFailed(true)}
+            onError={setPlaybackFailed}
             style={{
               width: "100%",
               height: "100%",

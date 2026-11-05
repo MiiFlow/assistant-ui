@@ -6,7 +6,14 @@
  */
 
 import { updateTranscript, type AgentTranscript } from "../types/transcript";
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useInsertionEffect,
+  useRef,
+  useMemo,
+} from "react";
 import type {
   ChatMessage,
   ParticipantRole,
@@ -1108,15 +1115,27 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Updated in an insertion effect, not during render: it runs before every
+  // layout effect of the commit, so a child calling back in the same commit
+  // still reads the new value.
   const configRef = useRef(config);
-  configRef.current = config;
+  useInsertionEffect(() => {
+    configRef.current = config;
+  });
 
-  // Refs for mutable state — allows stable callback references
-  // that always read the latest values (fixes stale closure in widget bridge)
+  // The latest session, for stable callbacks (fixes stale closure in widget
+  // bridge). A refresh or replacement also writes it directly, so it follows
+  // the state only when the state commits a change: a render-time copy ran on
+  // every render and could put back the session a refresh had just replaced.
   const sessionRef = useRef(session);
-  sessionRef.current = session;
-  const isStreamingRef = useRef(isStreaming);
-  isStreamingRef.current = isStreaming;
+  useInsertionEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+  // The send lock. Taken by sendMessage before anything awaits and released
+  // with the streaming state wherever that ends (the send's finally, stop), so
+  // it never waits on a state change: a turn that fails synchronously batches
+  // true and false into no change at all.
+  const isStreamingRef = useRef(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -1933,6 +1952,7 @@ export function useMiiflowChat(config: MiiflowChatConfig): MiiflowChatResult {
         // state now belongs to someone else, so leave it alone.
         if (abortControllerRef.current === abortController) {
           abortControllerRef.current = null;
+          isStreamingRef.current = false;
           setIsStreaming(false);
           setStreamingMessageId(null);
           setStatusText(null);

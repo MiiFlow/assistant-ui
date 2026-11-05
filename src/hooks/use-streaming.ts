@@ -11,7 +11,11 @@ export function useStreaming(options: StreamingOptions = {}) {
     streamedContent: "",
   });
 
+  // The ref aborts whichever stream is current, even from a callback created
+  // before that stream started. The signal handed out is state, so it changes
+  // in the same render that starts a stream rather than a render later.
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [abortSignal, setAbortSignal] = useState<AbortSignal>();
 
   const startStreaming = useCallback((messageId: string) => {
     setState({
@@ -19,7 +23,9 @@ export function useStreaming(options: StreamingOptions = {}) {
       streamingMessageId: messageId,
       streamedContent: "",
     });
-    abortControllerRef.current = new AbortController();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    setAbortSignal(controller.signal);
   }, []);
 
   const appendContent = useCallback(
@@ -67,6 +73,6 @@ export function useStreaming(options: StreamingOptions = {}) {
     appendContent,
     stopStreaming,
     handleError,
-    abortSignal: abortControllerRef.current?.signal,
+    abortSignal,
   };
 }

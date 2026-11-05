@@ -49,13 +49,12 @@ export function decodeFrame(text: string, progress: number, frame: number): stri
  */
 export function DecodingText({ text, className }: { text: string; className?: string }) {
 	const reducedMotion = usePrefersReducedMotion();
-	const [shown, setShown] = useState(reducedMotion ? text : "");
+	const [decoded, setDecoded] = useState(reducedMotion ? text : "");
+	// Reduced motion shows the text as is; only the animation keeps state.
+	const shown = reducedMotion ? text : decoded;
 
 	useEffect(() => {
-		if (reducedMotion) {
-			setShown(text);
-			return;
-		}
+		if (reducedMotion) return;
 		const total = Math.min(text.length * PER_CHAR_MS, MAX_DECODE_MS);
 		const start = performance.now();
 		let frame = 0;
@@ -63,7 +62,7 @@ export function DecodingText({ text, className }: { text: string; className?: st
 		const id = setInterval(() => {
 			const progress = Math.min(1, (performance.now() - start) / total);
 			frame += 1;
-			setShown(decodeFrame(text, progress, frame));
+			setDecoded(decodeFrame(text, progress, frame));
 			if (progress >= 1) clearInterval(id);
 		}, ROLL_MS);
 

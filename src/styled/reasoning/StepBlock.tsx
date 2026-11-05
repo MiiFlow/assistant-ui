@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 import { injectBeamerKeyframes } from "../../utils/beamer";
 import { MarkdownContent } from "../MarkdownContent";
@@ -15,9 +15,12 @@ export interface StepBlockProps {
 	step: RunStep;
 	/** Older step in the live window: quieter, and never the shimmering one. */
 	dimmed?: boolean;
-	/** Animate an entrance. False for steps already on screen (a replayed
-	 *  trace must not perform, and re-opening one must not re-animate). */
+	/** Animate an entrance now: a finished trace the reader is revealing. */
 	entering?: boolean;
+	/** True while the step is in the live window. A step that mounts there
+	 *  plays its entrance and keeps it until it leaves the window, so the next
+	 *  render cannot cut it short; one already on screen never performs one. */
+	inLiveWindow?: boolean;
 	/** Delay in ms, for staggering a revealed trace. */
 	enterDelayMs?: number;
 }
@@ -40,10 +43,17 @@ export function StepBlock({
 	step,
 	dimmed = false,
 	entering = false,
+	inLiveWindow = false,
 	enterDelayMs = 0,
 }: StepBlockProps) {
 	const ref = useRef<HTMLDivElement>(null);
 	const reducedMotion = usePrefersReducedMotion();
+	// Armed only by mounting in the live window, and dropped for good once the
+	// step leaves it: a later reveal then starts a fresh animation (a running
+	// one would only change its delay), and collapsing back never replays it.
+	const [liveEntrance, setLiveEntrance] = useState(inLiveWindow);
+	if (liveEntrance && !inLiveWindow) setLiveEntrance(false);
+	const animateIn = (entering || (liveEntrance && inLiveWindow)) && !reducedMotion;
 	useEffect(() => {
 		injectBeamerKeyframes(ref.current);
 	}, []);
@@ -67,10 +77,9 @@ export function StepBlock({
 				alignItems: "start",
 				minWidth: 0,
 				maxWidth: "100%",
-				animation:
-					entering && !reducedMotion
-						? `mf-step-in 340ms ${EASE} ${enterDelayMs}ms both`
-						: undefined,
+				animation: animateIn
+					? `mf-step-in 340ms ${EASE} ${enterDelayMs}ms both`
+					: undefined,
 			}}
 		>
 			<span

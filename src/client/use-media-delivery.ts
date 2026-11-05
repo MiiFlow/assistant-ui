@@ -16,9 +16,15 @@ export function useMediaDelivery(
   scope: string,
   onToken: (token: string) => void,
 ) {
-  const [resources, setResources] = useState<Record<string, string | false>>(
-    {},
-  );
+  // Tagged with the scope they were fetched for. A scope change empties them
+  // during render (React re-renders before committing), so no frame shows the
+  // previous scope's URLs, which its cleanup has revoked, and returning to an
+  // earlier scope never brings them back.
+  const [delivered, setDelivered] = useState<{
+    scope: string;
+    resources: Record<string, string | false>;
+  }>({ scope, resources: {} });
+  if (delivered.scope !== scope) setDelivered({ scope, resources: {} });
   const jobs = useRef(new Map<string, AbortController>());
   const blobs = useRef(new Set<string>());
   const loaded = useRef(new Set<string>());
@@ -33,15 +39,18 @@ export function useMediaDelivery(
   ]);
 
   useEffect(() => {
-    setResources({});
-    loaded.current.clear();
+    // The containers are created once and never replaced, so the cleanup
+    // empties the same ones the loader below fills.
+    const scopeJobs = jobs.current;
+    const scopeBlobs = blobs.current;
+    const scopeLoaded = loaded.current;
     return () => {
       generation.current += 1;
-      for (const controller of jobs.current.values()) controller.abort();
-      jobs.current.clear();
-      for (const url of blobs.current) URL.revokeObjectURL(url);
-      blobs.current.clear();
-      loaded.current.clear();
+      for (const controller of scopeJobs.values()) controller.abort();
+      scopeJobs.clear();
+      for (const url of scopeBlobs) URL.revokeObjectURL(url);
+      scopeBlobs.clear();
+      scopeLoaded.clear();
       refresh.current = null;
     };
   }, [scope]);
@@ -49,6 +58,12 @@ export function useMediaDelivery(
   useEffect(() => {
     if (!token) return;
     const currentGeneration = generation.current;
+    const setResource = (path: string, value: string | false) =>
+      setDelivered((current) =>
+        current.scope === scope
+          ? { scope, resources: { ...current.resources, [path]: value } }
+          : current,
+      );
     for (const path of JSON.parse(urls) as string[]) {
       if (loaded.current.has(path) || jobs.current.has(path)) continue;
       const controller = new AbortController();
@@ -81,19 +96,19 @@ export function useMediaDelivery(
         const url = URL.createObjectURL(blob);
         blobs.current.add(url);
         loaded.current.add(path);
-        setResources((current) => ({ ...current, [path]: url }));
+        setResource(path, url);
       };
       void load()
         .catch(() => {
           if (!controller.signal.aborted)
-            setResources((current) => ({ ...current, [path]: false }));
+            setResource(path, false);
         })
         .finally(() => {
           if (jobs.current.get(path) === controller) jobs.current.delete(path);
         });
     }
   }, [urls, token, baseUrl, publicKey, scope, onToken]);
-  return resources;
+  return delivered.resources;
 }
 
 export function deliveredMedia(

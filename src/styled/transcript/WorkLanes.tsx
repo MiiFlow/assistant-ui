@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { AgentTranscript } from "../../types/transcript";
 import { TEXT_SHIMMER_STYLE, formatDuration, formatElapsed } from "../reasoning/atoms";
 import { SubagentBody, humanizeHandle } from "../reasoning/SubagentBlock";
@@ -175,8 +175,7 @@ export function WorkLanes({
 }) {
 	// Lanes present at mount never animate. Read-only after init: a lane's
 	// entrance class stays on it, and a CSS animation runs once per element.
-	const atMount = useRef<Set<string> | null>(null);
-	if (atMount.current === null) atMount.current = new Set(units.map((u) => u.id));
+	const [atMount] = useState(() => new Set(units.map((u) => u.id)));
 	const fork = units.length > 1;
 	const resolveActivity = useToolActivity();
 	const statuses = units.map((unit) => laneStatus(unit, run, unit.kind === "tool" ? resolveActivity(unit.chunk) : undefined));
@@ -212,7 +211,7 @@ export function WorkLanes({
 	}
 
 	const lanes = units.map((unit) => {
-		const enter = animate && !atMount.current!.has(unit.id);
+		const enter = animate && !atMount.has(unit.id);
 		return (
 			<Lane
 				key={unit.id}

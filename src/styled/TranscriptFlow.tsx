@@ -264,8 +264,7 @@ export function TranscriptFlow({
 	// Rail slots that arrive after mount enter; those present at mount do not.
 	// Read-only after init: a slot's entrance class stays on it, and a CSS
 	// animation runs once per element, so nothing needs marking as seen.
-	const atMount = useRef<Set<string> | null>(null);
-	if (atMount.current === null) atMount.current = new Set(flow.map((item) => item.id));
+	const [atMount] = useState(() => new Set(flow.map((item) => item.id)));
 	const lastItem = flow[flow.length - 1];
 
 	const renderItem = (item: FlowItem) => {
@@ -317,7 +316,7 @@ export function TranscriptFlow({
 				/>
 			);
 		}
-		const enter = watchedLive && !reducedMotion && !atMount.current!.has(item.id);
+		const enter = watchedLive && !reducedMotion && !atMount.has(item.id);
 		return (
 			<div
 				{...slot}

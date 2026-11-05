@@ -70,6 +70,16 @@ export interface CommandTokenPluginProps {
   onMenuStateChange?: (isOpen: boolean, trigger: string) => void;
 }
 
+interface SettledFetch {
+  provider: CommandProvider;
+  query: string;
+  attempt: number;
+  results: ChatComposerCommand[];
+  error?: string;
+}
+
+const NO_COMMANDS: ChatComposerCommand[] = [];
+
 export function CommandTokenPlugin({
   commandProvider,
   menuRenderer,
@@ -77,9 +87,7 @@ export function CommandTokenPlugin({
 }: CommandTokenPluginProps): React.JSX.Element | null {
   const [editor] = useLexicalComposerContext();
   const [queryString, setQueryString] = useState<string | null>(null);
-  const [results, setResults] = useState<ChatComposerCommand[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [fetchError, setFetchError] = useState<string>();
+  const [settled, setSettled] = useState<SettledFetch | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [open, setOpen] = useState(false);
 
@@ -95,36 +103,40 @@ export function CommandTokenPlugin({
   const anchorClassName = useDetachIdleTypeaheadAnchor(editor, open, Boolean(commandProvider));
 
   useEffect(() => {
-    setResults([]);
-    setFetchError(undefined);
-    if (
-      !commandProvider ||
-      queryString == null
-    ) {
-      setLoading(false);
-      return;
-    }
+    if (!commandProvider || queryString == null) return;
     let cancelled = false;
-    setLoading(true);
+    const settle = (results: ChatComposerCommand[], error?: string) => {
+      if (!cancelled) {
+        setSettled({ provider: commandProvider, query: queryString, attempt, results, error });
+      }
+    };
     // The promise boundary also catches a synchronous provider failure.
     Promise.resolve()
       .then(() => commandProvider.fetch(queryString))
-      .then((result) => {
-        if (!cancelled) {
-          setResults(Array.isArray(result) ? result : result.commands);
-          setFetchError(Array.isArray(result) ? undefined : result.error);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setFetchError("Could not load options. Try again.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      .then((result) =>
+        Array.isArray(result) ? settle(result) : settle(result.commands, result.error),
+      )
+      .catch(() => settle([], "Could not load options. Try again."));
     return () => {
       cancelled = true;
     };
   }, [commandProvider, queryString, attempt]);
+
+  // Only the answer to the current request counts: a new query or a retry
+  // reads as loading with no rows until its own fetch settles. Returning to the
+  // query last answered, before the newer fetch settles, shows that answer
+  // again while it refetches: the rows are right for it, so that is kept.
+  const current =
+    commandProvider &&
+    queryString != null &&
+    settled?.provider === commandProvider &&
+    settled.query === queryString &&
+    settled.attempt === attempt
+      ? settled
+      : null;
+  const results = current?.results ?? NO_COMMANDS;
+  const fetchError = current?.error;
+  const loading = Boolean(commandProvider) && queryString != null && !current;
 
   const error =
     commandProvider?.error ||

@@ -105,7 +105,14 @@ export function SourceDetailModal({
   source,
   onClose,
 }: SourceDetailModalProps) {
+  // Every open starts formatted. Reset during render when the source changes;
+  // closing passes through null, so reopening the same source resets too.
   const [showRaw, setShowRaw] = useState(false);
+  const [rawFor, setRawFor] = useState(source);
+  if (rawFor !== source) {
+    setRawFor(source);
+    setShowRaw(false);
+  }
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
 
@@ -119,13 +126,11 @@ export function SourceDetailModal({
     return () => document.removeEventListener("keydown", handleKey);
   }, [source, onClose]);
 
-  // Focus the panel on open, return focus to the chip that opened it on close,
-  // and reset the raw/formatted view for each new source.
+  // Focus the panel on open and return focus to the chip that opened it on close.
   useEffect(() => {
     if (!source) return;
     restoreFocusRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setShowRaw(false);
     const frame = requestAnimationFrame(() => panelRef.current?.focus());
     return () => {
       cancelAnimationFrame(frame);

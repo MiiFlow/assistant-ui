@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   useEffect,
+  useInsertionEffect,
   useImperativeHandle,
   type ReactNode,
   type Ref,
@@ -665,6 +666,9 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     // as a send without a wait would.
     useEffect(() => {
       if (pendingSend === null || isAnyUploading) return;
+      // Consumes the waiting send as it goes out. Uploads settle
+      // asynchronously, so this runs on the commit where the last one lands.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPendingSend(null);
       const failed = attachments.some(
         (a) => a.status === "error" && pendingSend.waitingOn.includes(a.id),
@@ -790,7 +794,9 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     // On unmount, release the previews of whatever is attached THEN (not at
     // the first render) and stop uploads in flight.
     const attachmentsRef = useRef(attachments);
-    attachmentsRef.current = attachments;
+    useInsertionEffect(() => {
+      attachmentsRef.current = attachments;
+    });
     useEffect(() => {
       const aborters = uploadAbortersRef.current;
       return () => {

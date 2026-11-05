@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useInsertionEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -15,6 +16,7 @@ import {
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useThreadLayout } from "../layout/ThreadLayoutProvider";
+import { assignRef } from "../utils/assign-ref";
 import { THREAD_LAYOUT } from "../layout/layout-tiers";
 import { trapTabKey } from "./focus-trap";
 import { WorkPanelHeader } from "./WorkPanelHeader";
@@ -125,8 +127,13 @@ export function WorkPanelLayout({ children }: { children: ReactNode }) {
   // The stored preference survives a narrower layout until the next resize;
   // what renders and what the separator announces is always the clamped width.
   const renderedWidth = clampWidth(width);
+  // Updated in an insertion effect, not during render: it runs before every
+  // layout effect of the commit, so a child calling back in the same commit
+  // still reads the new value.
   const activeRef = useRef(active);
-  activeRef.current = active;
+  useInsertionEffect(() => {
+    activeRef.current = active;
+  });
   const open = useCallback(
     (id: string, resourceId?: string, opts?: { collapsed?: boolean }) => {
       // Only a genuinely new panel takes over the return-focus target:
@@ -334,17 +341,16 @@ export function WorkPanel({
   const [contentMounted, setContentMounted] = useState(mounted);
   if (mounted && !contentMounted) setContentMounted(true);
   useEffect(() => {
+    // One commit late on purpose (above), so this cannot be derived in render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!mounted && contentMounted) setContentMounted(false);
   }, [mounted, contentMounted]);
-  useEffect(() => {
-    if (visible) setOpened(true);
-  }, [visible]);
+  if (visible && !opened) setOpened(true);
   // The layout owns the collapsed flag, so the expanded state is derived in
   // the same commit that opens/expands the panel — no post-paint flash.
   const expanded = !panel?.activeCollapsed;
-  useEffect(() => {
-    if (!visible) setFullOpen(false);
-  }, [visible]);
+  // Full screen is entered only from a visible panel; closing leaves it.
+  if (!visible && fullOpen) setFullOpen(false);
   const wasVisible = useRef(false);
   useEffect(() => {
     if (wasVisible.current && !visible) onClose?.();
@@ -373,7 +379,9 @@ export function WorkPanel({
   }, [visible, frameEl, setActiveFrame]);
   // A removed result or changed thread must not leave an empty pane open.
   const panelRef = useRef(panel);
-  panelRef.current = panel;
+  useInsertionEffect(() => {
+    panelRef.current = panel;
+  });
   useEffect(
     () => () => {
       if (panelRef.current?.activeId === id) panelRef.current.close();
@@ -385,8 +393,7 @@ export function WorkPanel({
       if (slot && contentEl && contentEl.parentNode !== slot) {
         slot.appendChild(contentEl);
       }
-      if (typeof contentRef === "function") contentRef(slot);
-      else if (contentRef) contentRef.current = slot;
+      assignRef(contentRef, slot);
     },
     [contentEl, contentRef],
   );

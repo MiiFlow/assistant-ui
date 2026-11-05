@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
+import { useRunClock } from "../../hooks/use-run-clock";
 import { useScrollLock } from "../../hooks/use-scroll-lock";
 import type { StreamingChunk } from "../../types";
 import type { RunStep } from "./types";
@@ -104,29 +105,6 @@ export interface ReasoningStreamProps {
 	className?: string;
 }
 
-/** Live elapsed seconds, counted from the run's durable start where available. */
-function useElapsed(isStreaming: boolean, startedAt?: number): number {
-	const localStartRef = useRef<number | null>(null);
-	const [seconds, setSeconds] = useState(0);
-
-	if (isStreaming && localStartRef.current === null) localStartRef.current = Date.now();
-	if (!isStreaming) localStartRef.current = null;
-
-	const start = startedAt && startedAt > 0 ? startedAt : localStartRef.current;
-
-	useEffect(() => {
-		if (!isStreaming || start === null) return;
-		// Clamp: a durable start comes from the server, so a client clock running
-		// behind it must not render a negative figure.
-		const tick = () => setSeconds(Math.max(0, (Date.now() - start) / 1000));
-		tick();
-		const id = setInterval(tick, 1000);
-		return () => clearInterval(id);
-	}, [isStreaming, start]);
-
-	return seconds;
-}
-
 /**
  * The agent's work, rendered as steps in the transcript.
  *
@@ -162,14 +140,8 @@ export function ReasoningStream({
 		() => stepsProp ?? buildRunSteps(chunks, isStreaming),
 		[stepsProp, chunks, isStreaming],
 	);
-	const elapsed = useElapsed(isStreaming, streamStartedAt);
+	const { liveSeconds: elapsed } = useRunClock(isStreaming, streamStartedAt);
 	const phase = resolveReasoningPhase({ isStreaming, answerStarted, stepCount: steps.length });
-
-	// Highest step count this instance has rendered. Steps at or below it were
-	// already on screen, so only what arrives ABOVE it animates in — a replayed
-	// trace, and a re-opened one, must not perform an entrance for work that
-	// finished minutes ago.
-	const seenStepsRef = useRef(0);
 
 	// One disclosure flag for both phases: "show all steps" during the run and
 	// "the trace is open" after it. Sharing them is what lets a trace the user
@@ -209,7 +181,9 @@ export function ReasoningStream({
 	// not a replay of the completion fold. Nothing to fold when the trace is
 	// open, and reduced motion lands on the summary directly.
 	const foldOnMount = justCompleted && !reducedMotion && !isExpanded;
-	const foldStepsRef = useRef<RunStep[]>(foldOnMount ? steps.slice(-WINDOW_SIZE) : []);
+	const [foldSteps, setFoldSteps] = useState<RunStep[]>(() =>
+		foldOnMount ? steps.slice(-WINDOW_SIZE) : [],
+	);
 	const [foldRequest, setFoldRequest] = useState(foldOnMount ? 1 : 0);
 	const [foldPhase, setFoldPhase] = useState<"idle" | "open" | "closing">(
 		foldOnMount ? "open" : "idle",
@@ -229,14 +203,15 @@ export function ReasoningStream({
 		setPrevPhase(phase);
 		setPrevJustCompleted(justCompleted);
 		if ((closingEdge || remountEdge) && !reducedMotion && !isExpanded) {
-			foldStepsRef.current = steps.slice(-WINDOW_SIZE);
+			setFoldSteps(steps.slice(-WINDOW_SIZE));
 			setFoldRequest((n) => n + 1);
 			setFoldPhase("open");
 		}
 	}
 	useEffect(() => {
 		if (foldRequest === 0) return;
-		setFoldPhase("open");
+		// Already "open": every request sets it in the same render (the block
+		// above, or the mount state).
 		// Deliberately NOT scroll-locked. `useScrollLock` hides the scrollbar
 		// for the duration, and a layout scrollbar vanishing changes the
 		// column width and rewraps every line in the transcript — a bigger
@@ -266,11 +241,6 @@ export function ReasoningStream({
 		if (distanceFromBottom > 48) return;
 		el.scrollTop = el.scrollHeight;
 	}, [steps.length]);
-
-	// Commit after the render that used it: the value read above must be the
-	// count from the PREVIOUS pass, or every step would look already-seen.
-	const previouslySeen = seenStepsRef.current;
-	seenStepsRef.current = Math.max(seenStepsRef.current, steps.length);
 
 	if (steps.length === 0 && (!isStreaming || phase === "hidden")) return null;
 
@@ -307,7 +277,7 @@ export function ReasoningStream({
 	let bodySteps: RunStep[];
 	if (isExpanded) bodySteps = steps;
 	else if (windowed) bodySteps = steps.slice(-WINDOW_SIZE);
-	else if (folding) bodySteps = foldStepsRef.current;
+	else if (folding) bodySteps = foldSteps;
 	// Finished and closed: the trace stays in the DOM at zero height, so
 	// re-opening it costs no re-render and the caret has something to reveal.
 	else if (phase === "done") bodySteps = steps;
@@ -397,9 +367,12 @@ export function ReasoningStream({
 								<StepBlock
 									step={step}
 									dimmed={windowed && opacityFor(i) < 1}
-									entering={
-										revealing || (windowed && isStreaming && step.sequence >= previouslySeen)
-									}
+									entering={revealing}
+									// A step mounts in the live window when it arrives (the
+									// window slides forward; collapsing an expanded trace keeps
+									// its keys), so StepBlock arms its entrance at that mount. A
+									// replayed trace is not streaming, so it never animates in.
+									inLiveWindow={windowed && isStreaming}
 									enterDelayMs={
 										revealing ? Math.min(i * REVEAL_STAGGER_MS, REVEAL_STAGGER_CAP_MS) : 0
 									}

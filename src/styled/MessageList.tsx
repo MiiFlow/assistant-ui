@@ -3,7 +3,6 @@ import {
 	forwardRef,
 	isValidElement,
 	useCallback,
-	useEffect,
 	useLayoutEffect,
 	useRef,
 	useState,
@@ -183,10 +182,11 @@ const LegacyMessageList = forwardRef<HTMLDivElement, MessageListProps>(
 
 		// No bottom-follow while a turn is anchored, unless the reader asked for
 		// it with the button. A new anchored turn cancels the request.
-		const [followRequested, setFollowRequested] = useState(false);
-		useEffect(() => {
-			setFollowRequested(false);
-		}, [liveAnchorId]);
+		// Any change of anchor cancels the request, during render, so the new
+		// anchor never reads it and returning to an earlier one cannot revive it.
+		const [follow, setFollow] = useState({ anchorId: liveAnchorId, requested: false });
+		if (follow.anchorId !== liveAnchorId) setFollow({ anchorId: liveAnchorId, requested: false });
+		const followRequested = follow.requested;
 		const engineAutoScroll = autoScroll && (liveAnchorId === null || followRequested);
 
 		// The engine leaves anchored mode on wheel/touch/keys only. A scrollbar
@@ -233,7 +233,7 @@ const LegacyMessageList = forwardRef<HTMLDivElement, MessageListProps>(
 					</MessageScroller.Viewport>
 					<TurnFill liveAnchorId={liveAnchorId} peek={scrollPreviousItemPeek} />
 					{showScrollToBottom && (
-						<ScrollToEndControl onFollow={() => setFollowRequested(true)} />
+						<ScrollToEndControl onFollow={() => setFollow({ anchorId: liveAnchorId, requested: true })} />
 					)}
 				</MessageScroller.Root>
 			</MessageScroller.Provider>

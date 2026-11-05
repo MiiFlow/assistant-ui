@@ -1,7 +1,7 @@
 import type { ArtifactChunkData, MediaChunkData } from "../types";
 import { MarkdownArtifactContext, type MarkdownArtifactContextValue } from "./markdown/artifact-references";
 import { MarkdownMediaContext } from "./markdown/media-references";
-import { useContext, useMemo, useRef } from "react";
+import { useContext, useMemo, useState } from "react";
 import { ChatRenderContext } from "../context/ChatProvider";
 import { usePrefersReducedMotion } from "../hooks/use-reduced-motion";
 import { cn } from "../utils/cn";
@@ -9,7 +9,7 @@ import { ListUnwrapContext } from "./markdown/components";
 import { MarkdownBlock } from "./markdown/MarkdownBlock";
 import { MarkdownRenderContext, type MarkdownRenderContextValue } from "./markdown/render-context";
 import { repairTail } from "./markdown/repair";
-import { splitBlocks } from "./markdown/split-blocks";
+import { splitBlocks, type MarkdownBlock as MarkdownUnit } from "./markdown/split-blocks";
 
 const NO_ARTIFACTS: readonly ArtifactChunkData[] = [];
 
@@ -35,6 +35,18 @@ export interface MarkdownContentProps {
 	/** Per-word mount fade on the live block. Only honoured while
 	 *  `isStreaming`; reduced-motion viewers never get it. Default true. */
 	animateText?: boolean;
+}
+
+const NO_KEYS: ReadonlySet<string> = new Set();
+
+/** Key of the unit a stream is writing into: the last block, or the last item
+ *  when the last block is a split list. Matches the keys rendered below. */
+function liveUnitKey(blocks: MarkdownUnit[]): string | null {
+	const last = blocks.length - 1;
+	if (last < 0) return null;
+	const block = blocks[last];
+	if (block.kind !== "list") return String(last);
+	return block.items.length > 0 ? `${last}-${block.items.length - 1}` : null;
 }
 
 /**
@@ -125,12 +137,17 @@ export function MarkdownContent({
 	const blocks = useMemo(() => splitBlocks(children), [children]);
 	const last = blocks.length - 1;
 	const animateLive = isStreaming && animateText && !reducedMotion;
-	// Keys of the units that have streamed with the fade on; they keep it.
-	const animatedKeys = useRef(new Set<string>());
-	const animateFor = (key: string, live: boolean): boolean => {
-		if (live && animateLive) animatedKeys.current.add(key);
-		return animatedKeys.current.has(key);
-	};
+	// Keys of the units that have streamed with the fade on; they keep it, so
+	// a finished unit's word spans don't unwrap (a re-parse and a reflow).
+	// Recorded with a render-phase update: React re-renders before committing,
+	// and the live unit already reads true below on the first pass.
+	const [animatedKeys, setAnimatedKeys] = useState<ReadonlySet<string>>(NO_KEYS);
+	const liveKey = animateLive ? liveUnitKey(blocks) : null;
+	if (liveKey !== null && !animatedKeys.has(liveKey)) {
+		setAnimatedKeys(new Set(animatedKeys).add(liveKey));
+	}
+	const animateFor = (key: string, live: boolean): boolean =>
+		(live && animateLive) || animatedKeys.has(key);
 
 	return (
 		<MarkdownMediaContext.Provider value={medias || []}>

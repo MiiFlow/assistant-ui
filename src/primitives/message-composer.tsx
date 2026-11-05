@@ -7,6 +7,7 @@ import {
   type ButtonHTMLAttributes,
 } from "react";
 import { useMessageComposer } from "../hooks/use-message-composer";
+import { assignRef } from "../utils/assign-ref";
 
 interface ComposerContextValue {
   content: string;
@@ -95,12 +96,8 @@ export const ComposerInput = forwardRef<HTMLTextAreaElement, ComposerInputProps>
 
     // Merge refs
     const mergedRef = (node: HTMLTextAreaElement | null) => {
-      (inputRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = node;
-      if (typeof ref === "function") {
-        ref(node);
-      } else if (ref) {
-        ref.current = node;
-      }
+      assignRef(inputRef, node);
+      assignRef(ref, node);
     };
 
     return (

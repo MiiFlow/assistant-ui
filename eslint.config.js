@@ -1,25 +1,36 @@
 import tsParser from "@typescript-eslint/parser";
 import reactHooks from "eslint-plugin-react-hooks";
 
-// eslint-plugin-react-hooks 7 folded the React Compiler rule family into
-// `recommended` at error level. This package does not build with the React
-// Compiler and has ~50 unmet sites, so taking those severities verbatim would
-// adopt a new standard under cover of a dependency bump (#2577 did exactly
-// that and the mirror's lint failed for two weeks). The two classic rules keep
-// their severities; every other recommended rule is a warning until adopting
-// them is its own change. web/ makes the same call in web/eslint.config.mjs
-// with an explicit list; this one is computed because the mirror installs
-// without a lockfile, so a newer minor that adds a rule at error would
-// otherwise turn its lint red again with no change here.
-const CLASSIC_HOOK_RULES = new Set([
+// The rules of eslint-plugin-react-hooks' `recommended` config that this
+// package has adopted, at the severity that config gives them: the two classic
+// rules and the React Compiler family 7.x added. A rule a later minor adds is
+// a warning until adopting it is its own change: the standalone mirror installs
+// without a lockfile, so taking an unseen rule at error would turn its lint red
+// with no change here (#2577 did exactly that for two weeks). web/ keeps the
+// compiler family at warn (web/eslint.config.mjs) until it meets them too.
+const ADOPTED_HOOK_RULES = new Set([
   "react-hooks/rules-of-hooks",
   "react-hooks/exhaustive-deps",
+  "react-hooks/static-components",
+  "react-hooks/use-memo",
+  "react-hooks/preserve-manual-memoization",
+  "react-hooks/incompatible-library",
+  "react-hooks/immutability",
+  "react-hooks/globals",
+  "react-hooks/refs",
+  "react-hooks/set-state-in-effect",
+  "react-hooks/error-boundaries",
+  "react-hooks/purity",
+  "react-hooks/set-state-in-render",
+  "react-hooks/unsupported-syntax",
+  "react-hooks/config",
+  "react-hooks/gating",
 ]);
 const reactHooksRules = Object.fromEntries(
   Object.entries(reactHooks.configs.recommended.rules).map(([rule, level]) => [
     rule,
     // A rule upstream ships off stays off; this only lowers severities.
-    CLASSIC_HOOK_RULES.has(rule) || level === "off" || level === 0
+    ADOPTED_HOOK_RULES.has(rule) || level === "off" || level === 0
       ? level
       : "warn",
   ]),

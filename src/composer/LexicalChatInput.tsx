@@ -26,6 +26,7 @@ import {
   forwardRef,
   useCallback,
   useEffect,
+  useInsertionEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -231,8 +232,13 @@ function ChatInputBody({
 }) {
   const [editor] = useLexicalComposerContext();
   const prefersReducedMotion = usePrefersReducedMotion();
+  // Updated in an insertion effect, not during render: it runs before every
+  // layout effect of the commit, so a child calling back in the same commit
+  // still reads the new value.
   const onSubmitRef = useRef(onSubmit);
-  onSubmitRef.current = onSubmit;
+  useInsertionEffect(() => {
+    onSubmitRef.current = onSubmit;
+  });
   const openCommandMenus = useRef(new Set<string>());
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
   const commandMenuState = useMemo(() => ({

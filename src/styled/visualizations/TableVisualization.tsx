@@ -520,21 +520,21 @@ export function TableVisualization({
     cancelHideTimer();
   };
 
-  // Clean up timers on unmount and when lightbox opens (avoid stale popover
-  // on top of a modal).
+  // Clean up timers on unmount.
   useEffect(() => {
     return () => {
       cancelShowTimer();
       cancelHideTimer();
     };
   }, []);
-  useEffect(() => {
-    if (lightboxIndex !== null) {
-      cancelShowTimer();
-      cancelHideTimer();
-      setHoveredCell(null);
-    }
-  }, [lightboxIndex]);
+  // Opening the lightbox drops the hover popover and its pending timers, so
+  // no stale popover lands on top of the modal or returns when it closes.
+  const openMedia = (index: number) => {
+    cancelShowTimer();
+    cancelHideTimer();
+    setHoveredCell(null);
+    openLightbox(index);
+  };
 
   const hoveredCol =
     hoveredCell && columns.find((c) => c.key === hoveredCell.colKey);
@@ -642,7 +642,7 @@ export function TableVisualization({
                             onOpen={() => {
                               const idx =
                                 mediaIndex.lookup[`${rowIdx}::${col.key}`];
-                              if (typeof idx === "number") openLightbox(idx);
+                              if (typeof idx === "number") openMedia(idx);
                             }}
                           />
                           {parsed.previewUrl &&

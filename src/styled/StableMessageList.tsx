@@ -267,8 +267,12 @@ export const StableMessageList = forwardRef<HTMLDivElement, MessageListProps>(
         lastAnchor.current = scrollAnchorId;
       }
       correct();
-      setReady(true);
     });
+    // Shown once the first layout is positioned (the effect above runs first);
+    // a layout effect, so it is never painted unpositioned.
+    useLayoutEffect(() => {
+      setReady(true);
+    }, []);
 
     useLayoutEffect(() => {
       const el = viewport.current;

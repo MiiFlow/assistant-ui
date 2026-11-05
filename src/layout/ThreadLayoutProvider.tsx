@@ -45,6 +45,9 @@ export function ThreadLayoutProvider({ children, host }: ThreadLayoutProviderPro
 		}
 		const width = host.getBoundingClientRect().width;
 		if (width > 0) {
+			// A DOM measurement, so it cannot be derived in render; a layout
+			// effect re-renders with it before paint.
+			// eslint-disable-next-line react-hooks/set-state-in-effect
 			setLayout({ tier: classifyTier(width), hostWidth: width });
 		}
 	}, [host]);
@@ -55,6 +58,8 @@ export function ThreadLayoutProvider({ children, host }: ThreadLayoutProviderPro
 		}
 		if (typeof ResizeObserver === "undefined") {
 			const width = typeof window === "undefined" ? 0 : window.innerWidth;
+			// No observer to subscribe to: read the viewport once instead.
+			// eslint-disable-next-line react-hooks/set-state-in-effect
 			setLayout((previous) => ({ tier: deriveTier(width, previous.tier), hostWidth: width }));
 			return;
 		}
