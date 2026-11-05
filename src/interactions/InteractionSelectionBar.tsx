@@ -1,18 +1,44 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 import { Columns2, X } from "lucide-react";
 import type { useInteraction } from "./runtime";
 
 type Entry = ReturnType<typeof useInteraction>;
 
-export function InteractionError({ entry }: { entry: Entry }) {
+/**
+ * The error and its retry. The runtime keeps the error until the retry's
+ * outcome, so the button stays mounted and keeps focus while it runs (it is
+ * aria-disabled, not disabled, which would drop focus). Meanwhile the message
+ * says the retry is running; a retry that fails puts the error back, a text
+ * change the alert announces again. When a retry succeeds the alert goes; if
+ * its button still had focus, focus moves to `focusAfter` instead of falling
+ * to the page.
+ */
+export function InteractionError({
+  entry,
+  focusAfter,
+}: {
+  entry: Entry;
+  focusAfter: RefObject<HTMLElement | null>;
+}) {
+  const focused = useRef(false);
+  const shown = !!entry.error;
+  useLayoutEffect(() => {
+    if (shown || !focused.current) return;
+    focused.current = false;
+    focusAfter.current?.focus();
+  }, [shown, focusAfter]);
   if (!entry.error) return null;
   return (
     <div className="interaction-error" role="alert">
-      {entry.error}{" "}
+      {entry.retrying ? "Trying again…" : entry.error}{" "}
       <button
         type="button"
-        disabled={entry.busy}
-        onClick={() => void entry.runtime?.retry(entry.surface.id)}
+        aria-disabled={entry.busy || undefined}
+        onFocus={() => (focused.current = true)}
+        onBlur={() => (focused.current = false)}
+        onClick={() => {
+          if (!entry.busy) void entry.runtime?.retry(entry.surface.id);
+        }}
       >
         {entry.retry ? "Retry saving" : "Refresh result"}
       </button>
@@ -63,10 +89,16 @@ export function InteractionSelectionBar({
       ? "Choose 2 products to compare"
       : `Choose 2–${limit} products to compare`
     : `Choose up to ${limit} product${limit === 1 ? "" : "s"}`;
+  // A failed first load says so once, in the alert above with its action, so
+  // the status line and prompt stay empty rather than repeating or
+  // contradicting it; while a retry of it runs, they read as a first load.
+  const loadFailed = !ready && !!entry.error && !busy;
   const feedback = !runtime
     ? "Preview only"
     : !ready
-      ? "Connecting…"
+      ? loadFailed
+        ? ""
+        : "Loading…"
       : saving
         ? "Saving…"
         : retry || entry.error
@@ -83,7 +115,7 @@ export function InteractionSelectionBar({
       aria-label="Product selection"
       ref={root}
     >
-      <InteractionError entry={entry} />
+      <InteractionError entry={entry} focusAfter={summary} />
       {selected.length > 0 && (
         <div
           className="interaction-selection-chips"
@@ -120,7 +152,9 @@ export function InteractionSelectionBar({
           <strong>
             {selected.length
               ? `${selected.length} of ${limit} selected`
-              : requirement}
+              : loadFailed
+                ? null
+                : requirement}
           </strong>
           <span>{feedback}</span>
         </div>

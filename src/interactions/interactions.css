@@ -357,11 +357,13 @@
   color: inherit;
   cursor: pointer;
 }
-[data-interaction] button:disabled {
+/* aria-disabled: a busy retry button keeps keyboard focus but reads as disabled. */
+[data-interaction] button:disabled,
+[data-interaction] button[aria-disabled="true"] {
   opacity: 0.48;
   cursor: default;
 }
-[data-interaction] button:not(:disabled):hover {
+[data-interaction] button:not(:disabled):not([aria-disabled="true"]):hover {
   border-color: var(--chat-focus, #b94317);
 }
 [data-interaction] :is(button, a, input):focus-visible,
@@ -525,7 +527,9 @@
   );
 }
 .interaction-selection-status:focus-visible,
-.interaction-comparison:focus-visible {
+.interaction-comparison:focus-visible,
+.interaction-products:focus-visible,
+.interaction-links:focus-visible {
   outline: 2px solid var(--chat-focus, #b94317);
   outline-offset: 3px;
 }

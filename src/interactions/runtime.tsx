@@ -73,6 +73,8 @@ interface Entry {
   busy: boolean;
   /** A save is in flight. Never set by a load, which saves nothing. */
   saving: boolean;
+  /** The reader asked to retry the current error; that attempt is in flight. */
+  retrying?: boolean;
   error?: string;
   unavailable?: boolean;
   retry?: InteractionRequest;
@@ -124,12 +126,12 @@ export class InteractionRuntime {
     const entry = this.get(id);
     if (entry.busy || entry.ready || entry.surface.threadId !== this.threadId)
       return;
-    this.update(id, { busy: true, error: undefined });
+    this.begin(id, { busy: true });
     try {
       this.accept(id, await this.transport.load(id, this.controller.signal));
-      this.update(id, { ready: true, unavailable: false });
+      this.update(id, { ready: true, unavailable: false, error: undefined });
     } catch (error) {
-      this.fail(id, error);
+      this.fail(id, error, "load");
     } finally {
       this.update(id, { busy: false });
     }
@@ -151,37 +153,56 @@ export class InteractionRuntime {
   async retry(id: string) {
     const entry = this.get(id);
     if (entry.busy) return;
-    if (entry.retry) await this.send(id, entry.retry);
-    else {
-      this.update(id, { ready: false });
-      await this.load(id);
+    this.update(id, { retrying: true });
+    try {
+      if (entry.retry) await this.send(id, entry.retry);
+      else {
+        this.update(id, { ready: false });
+        await this.load(id);
+      }
+    } finally {
+      this.update(id, { retrying: false });
     }
   }
   private async send(id: string, request: InteractionRequest) {
-    this.update(id, { busy: true, saving: true, error: undefined });
+    this.begin(id, { busy: true, saving: true });
     try {
       this.accept(
         id,
         await this.transport.act(id, request, this.controller.signal),
       );
-      this.update(id, { retry: undefined });
+      this.update(id, { retry: undefined, error: undefined });
     } catch (error) {
       if (!(error instanceof InteractionFailure))
         this.update(id, { retry: request });
-      this.fail(id, error);
+      this.fail(id, error, "save");
     } finally {
       this.update(id, { busy: false, saving: false });
     }
   }
-  private fail(id: string, error: unknown) {
+  /**
+   * Starts a request. A retry keeps the error it retries until its outcome, so
+   * the alert and the button the reader pressed stay mounted (and focused)
+   * meanwhile; any other request supersedes an earlier error.
+   */
+  private begin(id: string, patch: Partial<Entry>) {
+    this.update(
+      id,
+      this.get(id).retrying ? patch : { ...patch, error: undefined },
+    );
+  }
+  private fail(id: string, error: unknown, during: "load" | "save") {
     if (this.controller.signal.aborted) return;
     if (error instanceof InteractionFailure && error.surface)
       this.accept(id, error.surface);
     this.update(id, {
+      // A failed load changed nothing, so its message must not mention changes.
       error:
         error instanceof InteractionFailure
           ? error.message
-          : "Connection interrupted. Retry to confirm your changes.",
+          : during === "load"
+            ? "Couldn't load this result."
+            : "Connection interrupted. Retry to confirm your changes.",
       unavailable:
         error instanceof InteractionFailure &&
         [401, 403, 404].includes(error.status),

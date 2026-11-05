@@ -190,6 +190,8 @@ function SurfaceContent({
   comparisonRef: Ref<HTMLDivElement>;
 }) {
   const { surface, runtime, busy, saving, ready, retry } = entry;
+  // Where focus goes when a successful refresh removes the error alert.
+  const itemsRef = useRef<HTMLDivElement>(null);
   const { query, page } = view;
   const setPage = (page: number) => {
     setView((current) => ({ ...current, page }));
@@ -224,7 +226,7 @@ function SurfaceContent({
     });
   return (
     <>
-      {!products && <InteractionError entry={entry} />}
+      {!products && <InteractionError entry={entry} focusAfter={itemsRef} />}
       {items.length > 4 && (
         <label className="interaction-search">
           <span className="sr-only">
@@ -258,7 +260,13 @@ function SurfaceContent({
           items={items.filter((item) => selected.includes(item.id))}
         />
       ) : null}
-      <div className={products ? "interaction-products" : "interaction-links"}>
+      <div
+        ref={itemsRef}
+        tabIndex={-1}
+        role="group"
+        aria-label={`${surface.title} results`}
+        className={products ? "interaction-products" : "interaction-links"}
+      >
         {visible.map((item) => (
           <article
             key={item.id}
@@ -357,7 +365,9 @@ function SurfaceContent({
         <footer className="interaction-footer">
           <span role="status" aria-live="polite">
             {!ready && runtime
-              ? "Connecting…"
+              ? entry.error && !busy
+                ? ""
+                : "Loading…"
               : saving
                 ? "Saving…"
                 : ready
