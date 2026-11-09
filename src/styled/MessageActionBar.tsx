@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
+import { trapTabKey } from "../interactions/focus-trap";
 import { cn } from "../utils/cn";
 import { stripNextMessages } from "../utils/next-message";
 
@@ -58,6 +59,8 @@ export function MessageActionBar({
   const [details, setDetails] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
   const reportButtonRef = useRef<HTMLButtonElement>(null);
+  const statusRef = useRef<HTMLSpanElement>(null);
+  const focusStatusRef = useRef(false);
 
   // Move focus into the dialog on open; return it to the trigger on dismiss,
   // so keyboard users are not stranded on an unmounted button.
@@ -83,10 +86,36 @@ export function MessageActionBar({
     setFeedbackOpen(false);
     setSelectedCategory(null);
     setDetails("");
+    focusStatusRef.current = true;
     onReportIncorrect?.(reason || undefined);
   }, [feedbackState, selectedCategory, details, onReportIncorrect]);
 
-  // Escape closes the modal (backdrop click handles mouse dismissal).
+  // Submitting unmounts both the dialog and its trigger; land focus on the
+  // "Reported" status in the same bar so the keyboard user keeps their place.
+  useEffect(() => {
+    if (localFeedback !== "incorrect" || !focusStatusRef.current) return;
+    focusStatusRef.current = false;
+    statusRef.current?.focus();
+  }, [localFeedback]);
+
+  // aria-modal promises that nothing behind the overlay is reachable, so Tab
+  // and Shift+Tab wrap inside the card instead of walking out onto the page
+  // chrome; the shared trap skips the disabled Submit on every press.
+  // stopPropagation: React bubbles portal events up the component tree, so the
+  // chat's own key handlers (another trap, a panel's Escape) would see them too.
+  const handleDialogKeyDown = useCallback((e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      handleDismissFeedback();
+      return;
+    }
+    if (e.key !== "Tab") return;
+    e.stopPropagation();
+    trapTabKey(e.currentTarget, e);
+  }, [handleDismissFeedback]);
+
+  // Escape closes the modal even when focus is not inside the card (backdrop
+  // click handles mouse dismissal); inside it the card's handler runs first.
   useEffect(() => {
     if (!feedbackOpen) return;
     const handleKey = (e: KeyboardEvent) => {
@@ -297,7 +326,15 @@ export function MessageActionBar({
 
       {/* Feedback submitted indicator */}
       {feedbackState !== "none" && (
-        <span className="text-xs text-[var(--chat-text-subtle)] px-1">
+        <span
+          ref={statusRef}
+          role="status"
+          tabIndex={-1}
+          className={cn(
+            "text-xs text-[var(--chat-text-subtle)] px-1 rounded-md outline-none",
+            "focus-visible:ring-2 focus-visible:ring-[var(--chat-text-subtle)]",
+          )}
+        >
           {feedbackState === "correct" ? "Thanks!" : "Reported"}
         </span>
       )}
@@ -330,6 +367,7 @@ export function MessageActionBar({
               aria-label="Share feedback"
               tabIndex={-1}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={handleDialogKeyDown}
               className="mf-fbm-card"
             >
               <div className="mf-fbm-header">
@@ -346,13 +384,14 @@ export function MessageActionBar({
                 </button>
               </div>
 
-              <div className="mf-fbm-chips">
+              <div className="mf-fbm-chips" role="group" aria-label="Feedback category">
                 {FEEDBACK_CATEGORIES.map((cat) => {
                   const active = selectedCategory === cat;
                   return (
                     <button
                       key={cat}
                       type="button"
+                      aria-pressed={active}
                       onClick={() => setSelectedCategory(active ? null : cat)}
                       className={cn("mf-fbm-chip", active && "mf-fbm-chip--active")}
                     >
