@@ -157,4 +157,5 @@ export type { BackgroundWait } from "./utils/background-wait";
 
 export { compareTableValues } from "./utils/table-ordering";
 export { tableBadgeTone, type TableBadgeTone } from "./utils/table-badge-tone";
+export { parseTableDateOnly } from "./utils/table-date-only";
 export { TableCellText } from "./styled/visualizations/TableCellText";

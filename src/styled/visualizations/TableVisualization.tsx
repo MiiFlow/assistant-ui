@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { compareTableValues } from "../../utils/table-ordering";
 import { tableBadgeTone, type TableBadgeTone } from "../../utils/table-badge-tone";
+import { parseTableDateOnly } from "../../utils/table-date-only";
 import { cn } from "../../utils/cn";
 import { TableCellText } from "./TableCellText";
 import type {
@@ -336,12 +337,19 @@ function formatCellValue(value: unknown, column: TableColumn): React.ReactNode {
               : {},
           ).format(value)
         : String(value);
-    case "date":
-      try {
-        return new Date(value as string | number).toLocaleDateString();
-      } catch {
-        return String(value);
+    case "date": {
+      // A date-only "YYYY-MM-DD" names a calendar day: show that day in UTC,
+      // where it is stored, not the previous day west of UTC.
+      const day = parseTableDateOnly(value);
+      if (day) {
+        return Number.isNaN(day.getTime())
+          ? String(value)
+          : day.toLocaleDateString(undefined, { timeZone: "UTC" });
       }
+      if (typeof value !== "string" && typeof value !== "number") return String(value);
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString();
+    }
     case "badge":
       return <TableBadge value={value} />;
     case "link": {
