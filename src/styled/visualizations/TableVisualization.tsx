@@ -574,7 +574,9 @@ export function TableVisualization({
                 className={cn(
                   "px-3 py-2 align-bottom text-xs font-medium leading-4 normal-case whitespace-normal break-words text-left",
                   "text-[var(--chat-table-header-ink,var(--chat-text-subtle))]",
-                  "border-b border-[var(--chat-table-rule,color-mix(in_srgb,var(--chat-text)_10%,transparent))]",
+                  // The color: hint keeps tailwind-merge from reading the arbitrary value
+                  // as a border width, which would drop border-b (V3-BUG-358).
+                  "border-b border-[color:var(--chat-table-rule,color-mix(in_srgb,var(--chat-text)_10%,transparent))]",
                   // Media columns aren't sortable in a meaningful way.
                   sortable && col.type !== "media" && "select-none",
                 )}
@@ -620,7 +622,7 @@ export function TableVisualization({
           {processedRows.map((row, rowIdx) => (
             <tr
               key={rowIdx}
-              className="border-t border-[var(--chat-table-rule,color-mix(in_srgb,var(--chat-text)_10%,transparent))] first:border-t-0 hover:bg-[color-mix(in_srgb,var(--chat-text)_3%,transparent)]"
+              className="border-t border-[color:var(--chat-table-rule,color-mix(in_srgb,var(--chat-text)_10%,transparent))] first:border-t-0 hover:bg-[color-mix(in_srgb,var(--chat-text)_3%,transparent)]"
             >
               {columns.map((col) => {
                 if (col.type === "media") {
@@ -774,7 +776,7 @@ export function TableVisualization({
         Sorting applies to the rows in this response.
       </div>
       {paginated && rows.length > pageSize && (
-        <div className="flex items-center justify-between px-3 py-2 border-t border-[var(--chat-table-rule,color-mix(in_srgb,var(--chat-text)_10%,transparent))] text-sm">
+        <div className="flex items-center justify-between px-3 py-2 border-t border-[color:var(--chat-table-rule,color-mix(in_srgb,var(--chat-text)_10%,transparent))] text-sm">
           <span className="text-[var(--chat-text-subtle)]">
             {page * pageSize + 1}-{Math.min((page + 1) * pageSize, rows.length)}{" "}
             of {rows.length}

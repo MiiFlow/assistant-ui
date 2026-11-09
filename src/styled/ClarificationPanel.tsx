@@ -421,7 +421,8 @@ export function ClarificationPanel({
               disabled={disabled || loading}
               className={cn(
                 "flex-1 min-w-0 px-2 py-0.5 text-sm rounded border bg-transparent",
-                "border-[color-mix(in_oklab,var(--chat-clarification-accent,#f97316)_40%,transparent)]",
+                // color: hint: untyped, tailwind-merge reads this as a border width and drops `border`.
+                "border-[color:color-mix(in_oklab,var(--chat-clarification-accent,#f97316)_40%,transparent)]",
                 "focus:outline-none focus:border-[var(--chat-clarification-accent,#f97316)]",
                 "placeholder:text-gray-400 dark:placeholder:text-gray-500",
                 focusStyle,

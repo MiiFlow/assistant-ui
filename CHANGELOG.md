@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `TableVisualization` header cells draw the rule beneath them again, and the `ClarificationPanel` free-text input gets its 1px accent border back. Both arbitrary border colours now carry a `color:` type hint, so `cn()` (tailwind-merge) no longer reads them as a border width and drops `border-b` / `border`.
 - The `MessageActionBar` "Share feedback" dialog keeps keyboard focus inside it, as its `aria-modal` promises: Tab from the last enabled control (Submit, or the details box while Submit is disabled) wraps to Close, and Shift+Tab from Close or from the dialog itself wraps to the last one, instead of reaching the page behind the overlay. The category chips are toggle buttons with `aria-pressed`, in a group named "Feedback category", so the selected chip is announced. Tab and Escape pressed inside the dialog no longer bubble (through the React tree) to the chat's own key handlers, so an enclosing panel neither pulls focus out nor closes along with it. After Submit, focus lands on the "Reported" status (`role="status"`, with the bar's focus ring) in the same action bar instead of the page body (the thumbs down it would return to is gone); Escape and Close still return focus to the thumbs down.
 
 - Markdown tables honour column alignment from the `---:` / `:---:` syntax (it was dropped before); right-aligned cells use tabular numerals. Tables lose the tinted header band and the outer rounded frame: a muted 12px header, one rule under it and one between rows, inside a borderless horizontal scroll wrapper.
