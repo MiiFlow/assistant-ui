@@ -405,6 +405,8 @@ export interface AuthPromptVisualizationData {
   authMethods?: Array<{ id: string; name: string; authType: string }>;
   /** Routing hints a host may use to pick a connect flow for an MCP server. */
   mcpAuthType?: string;
+  /** The card can only link out to Integrations (decided by the server). */
+  linksOut?: boolean;
   mcpProviderKey?: string;
   /**
    * Why the prompt was shown. `"add"`: the user asked to connect, so the prompt
