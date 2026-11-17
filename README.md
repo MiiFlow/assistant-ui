@@ -24,6 +24,10 @@ import "@miiflow/assistant-ui/styles-no-preflight.css";
 
 The rich-interaction workspace uses shared component CSS. Import one of the stylesheets above when using `ChatLayout` or native interaction renderers, including in hosts that already use Tailwind. Use the no-preflight variant alongside an existing design system.
 
+## WebSocket authentication upgrade
+
+The hosted backend accepts embed credentials through the WebSocket subprotocol as of November 17, 2026. Use SDK 0.8.1 or later, which handles this transport automatically. Query-only `?embed_token=` authentication has been retired. Reload older hosted chat tabs and upgrade integrations pinned to earlier SDK versions. Custom browser clients should offer `miiflow.v1` and `embed-token.<token>` as subprotocols. Native clients may also use `X-Embed-Token` or `Authorization: Bearer` headers.
+
 ## Quick Start
 
 ```tsx
