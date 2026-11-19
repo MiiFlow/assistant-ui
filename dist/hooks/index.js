@@ -1,2 +1,2 @@
-export{b as useAttachments,a as useStreaming}from'../chunk-ISMTV5BU.js';export{b as usePrefersReducedMotion,a as useScrollLock}from'../chunk-OU5ITGKX.js';export{a as useAutoScroll,b as useMessageComposer}from'../chunk-LDTAZ4GT.js';export{b as useBrandingCSSVars}from'../chunk-AW3ZI2NK.js';import'../chunk-4C666HHU.js';//# sourceMappingURL=index.js.map
+export{b as useAttachments,a as useStreaming}from'../chunk-GF644HKG.js';export{a as useScrollLock}from'../chunk-D2PFIJNZ.js';export{a as useAutoScroll,b as useMessageComposer}from'../chunk-LDTAZ4GT.js';export{b as useBrandingCSSVars}from'../chunk-AW3ZI2NK.js';export{a as usePrefersReducedMotion}from'../chunk-45QNWNNR.js';import'../chunk-4C666HHU.js';//# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map

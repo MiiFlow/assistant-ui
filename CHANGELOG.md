@@ -2,176 +2,56 @@
 
 ## Unreleased
 
-- `TableVisualization` `date` cells holding a date-only `YYYY-MM-DD` value show that calendar day. They were parsed as UTC midnight, so every viewer west of UTC saw each date one day early. A value that is not a date now shows as written instead of "Invalid Date".
-- Export `parseTableDateOnly(value)`: the calendar day a `YYYY-MM-DD` table value names, at UTC midnight (format it with `timeZone: "UTC"`), an Invalid Date for a day that does not exist such as `2026-02-30`, and null for anything else. Host tables use it to show the same day as `TableVisualization`.
-- `TableVisualization` header cells draw the rule beneath them again, and the `ClarificationPanel` free-text input gets its 1px accent border back. Both arbitrary border colours now carry a `color:` type hint, so `cn()` (tailwind-merge) no longer reads them as a border width and drops `border-b` / `border`.
-- The `MessageActionBar` "Share feedback" dialog keeps keyboard focus inside it, as its `aria-modal` promises: Tab from the last enabled control (Submit, or the details box while Submit is disabled) wraps to Close, and Shift+Tab from Close or from the dialog itself wraps to the last one, instead of reaching the page behind the overlay. The category chips are toggle buttons with `aria-pressed`, in a group named "Feedback category", so the selected chip is announced. Tab and Escape pressed inside the dialog no longer bubble (through the React tree) to the chat's own key handlers, so an enclosing panel neither pulls focus out nor closes along with it. After Submit, focus lands on the "Reported" status (`role="status"`, with the bar's focus ring) in the same action bar instead of the page body (the thumbs down it would return to is gone); Escape and Close still return focus to the thumbs down.
+## 0.22.0
 
-- Markdown tables honour column alignment from the `---:` / `:---:` syntax (it was dropped before); right-aligned cells use tabular numerals. Tables lose the tinted header band and the outer rounded frame: a muted 12px header, one rule under it and one between rows, inside a borderless horizontal scroll wrapper.
-- New tone tokens `--chat-tone-{neutral,info,success,warning,danger}-{fg,bg}` (light and dark defaults) and optional `--chat-table-header-ink` / `--chat-table-rule` overrides. `TableVisualization`, `KpiVisualization`, citation chips, attachment chips and command tokens now draw from them instead of fixed palette classes, on one chip size (12px medium, 20–24px, 6px corners). Hosts can map the tones to their own palette.
-- Export `tableBadgeTone(value)`: the status vocabulary `TableVisualization` uses to tone badge cells (running/queued/scheduled → info, failed/rejected → danger, paused/draft/disabled → neutral, active/completed → success; unknown values stay plain).
-
-- The composer's `/` and `@` menus keep `aria-activedescendant` on an option that exists: it is removed while the list is empty or still loading, and Up or Down pressed before the options arrive no longer leaves it on `typeahead-item--1` with nothing highlighted. Once the options load, the first one is highlighted and named. The attribute now also follows a highlight moved by the pointer, so it always names the option Enter would pick.
-- Export `TypeaheadActiveDescendant` from the composer entry point: render it from a `LexicalTypeaheadMenuPlugin` `menuRenderFn` (options with ids `typeahead-item-<index>`) to get the same `aria-activedescendant` handling in a custom Lexical typeahead.
-- `WelcomeScreen` becomes a focusable region (`tabIndex={0}`, `role="region"`, named by its heading) while its wrapper scrolls and holds nothing focusable (no built-in composer, no enabled suggestion), so keyboard users can reach and scroll an intro squeezed above a persistent host composer on a short screen (axe `scrollable-region-focusable`). It stays focusable until blur if the overflow ends while focused. When it fits, or already holds a focusable control, it adds no tab stop or role, as before. Its forwarded ref still receives the wrapper element.
-- `TableVisualization` string cells render markdown links to http(s) URLs (`[Open in Meta](https://...)`) as links that open in a new tab, instead of the raw markdown; other schemes such as `javascript:` stay plain text. The new `TableCellText` export does the same for host tables.
-- Stable history scrolling shows the "Jump to latest" pill only more than 800px from the bottom; within that distance it stays hidden and outside keyboard navigation.
-
-- `MessageActionBar` and `Message` accept `confirmedCorrect`: when the host knows the viewer already confirmed the answer, the thumbs up and thumbs down stay hidden and "Thanks!" shows, also after a reload or when the flag arrives after mount.
-- `MediaLightbox` manages focus like the modal it announces: opening it moves focus to its Close button, Tab and Shift+Tab stay inside the viewer (also after a click on the media, and when Tab leaves an embedded YouTube player), and closing it (Escape, Close or a click outside) returns focus to the element that opened it, usually the tile. Paging with the arrow keys does not move focus.
-- The overlay focus trap (`WorkPanel`, `SourceDetailModal`, `MediaLightbox`) counts `video[controls]` and `audio[controls]` as focusable, so Tab reaches native media controls instead of wrapping past them.
-- Video placeholders with no poster no longer hide their text under the play circle: the inline chat video shows "Click to load video" under the circle (and leads its accessible name with it), the media grid tile shows "Video" under it, and the 72px table thumbnail drops the label it had no room for.
-- `useMiiflowChat` copies `tool_args` from the planned and executing tool frames onto the live tool chunk (`toolArgs`), so a running media card sizes its placeholder from the requested aspect ratio (a 9:16 video no longer shows a 16:9 frame).
-- `mediaGenerations` also maps the image aspect ratios 4:5, 5:4, 3:2 and 2:3 to the working card's frame instead of falling back to 1 / 1.
-- `ScrollToBottomButton` is `inert` with `tabIndex={-1}` while hidden at the bottom, so the faded-out "Jump to latest" or icon button is no longer a Tab stop or an accessibility-tree node. It stays mounted for the fade, and its look is unchanged.
-
-- `MessageComposer` accepts `followUpSuggestions` and shows an accessible picker above a focused composer, filtering options by case-insensitive substring matches against the draft. The compact list has a leading Enter icon on each option. Arrow keys highlight and Enter or a click replaces the text with an undoable draft for editing before sending; Escape dismisses it. Skill and mention menus take precedence.
-- Export `FollowUpSuggestion` from the root, styled and composer entry points, and `FollowUpSuggestionsPlugin` from the composer entry point for custom Lexical composers.
-- `LexicalChatInput` leaves IME Enter to composition and ignores repeated Enter keydown events, so holding Enter after inserting a suggestion cannot send the draft.
-- Answers can suggest the user's next message inline: `<next-message actual="Break the spend down by campaign">By campaign</next-message>` renders inline as its label over a solid bottom line with a trailing Enter icon, and a click sends `actual` (or the label, when `actual` is left out) as the next message in one click. An agent opts in through its own prompt. Every settled assistant message sends through the `ChatProvider`'s `onSendMessage`, including older answers; streaming answers send when the provider has `queuesWhileStreaming`, and otherwise show plain labels until the turn settles. A second click before a send settles is ignored. Outside a chat or message scope the tag reads as its label. `stripInlineMarkers` and the copy button keep the label, and a streaming answer hides an unfinished tag until its closing tag arrives.
-
-- `SuggestedActions` accepts an optional `icon` that replaces the type-specific icon on every action.
-- `ToolApprovalSlots` accepts an optional `Header` and `actionsAfterDetails` presentation hook. Embedded defaults retain their existing header and action sequence.
-- `WorkItemHeader` accepts optional `titleId`, `headingLevel`, and `status` hooks for host-owned draft and decision surfaces.
-- Approval's Enter shortcut respects focused native and ARIA controls, so activating details, Decline, or a choice does not approve the proposal. Non-interactive Enter and Escape shortcuts remain available.
-
-- `ComposerToolbar`: Add context collapses to icon-only at the compact container breakpoint, matching Attach and Skills, while retaining its accessible name and tooltip.
-- `remarkEntityReferences` no longer links a registered id inside an `@<id>:<kind>` command token, so a sent message renders the token as its chip instead of `@`, a raw-id link and `:<kind>`.
-
-- `MessageComposer` refuses an empty (0-byte) file from paste, drop or the file picker: it shows a "File is empty" chip and is never passed to `onUploadFile` or `onSubmit`. A clipboard can hand the browser an empty image.
-
-- Approval evidence no longer implies tool execution has finished; actual execution status controls live lanes, and failure messages take precedence over approval labels.
-
-- `StreamingChunk.backgroundWaitId` lets hosts bind each tool card to its own durable wait across resumed and merged messages.
-
-- `WorkPanelLayout`: the result panel's resize separator follows the width that actually renders. `aria-valuemax` and `aria-valuenow` are capped at 60% of the measured layout (never above 800), and keyboard and pointer resizing clamp to the same cap, so widening past it no longer leaves a dead zone before ArrowRight narrows the panel.
+A chat that lays itself out by its own width, uploads that show progress and let you keep typing, queued messages with Steer, sortable and correctly dated tables, and host actions on chat media. Several props and defaults change behaviour; read **Behavior changes** before upgrading.
 
 ### Features
 
-- **Queued messages and Steer.** `MessageComposer` takes a `queue` prop
-  (`MessageComposerQueue`). With it, sending during a turn goes through
-  `onSubmit` for the host to queue instead of being blocked, and the queued
-  messages show in a tray above the composer with Steer (Send now when not
-  streaming), Edit and Remove. `QueuedMessages` and `QueuedComposerMessage`
-  are exported. Without `queue` the composer behaves as before.
+- **Thread layout follows the chat's own width (`layout/ThreadLayoutProvider.tsx`, `layout/layout-tiers.ts`, `interactions/WorkPanel.tsx`, `interactions/WorkPanelInline.tsx`)**: `ChatLayout` measures its host and switches between a `wide` tier (above 700px) and a `narrow` tier (below 660px). Wide hosts get the result panel as a resizable side column; narrow hosts render it inline as a collapsible card that can open full screen. The conversation stays interactive while the panel is inline and is made inert only while it is open full screen. `ThreadLayoutProvider`, `useThreadLayout`, `THREAD_LAYOUT`, `classifyTier`, `deriveTier` and their types are exported from `/styled`. The resize separator follows the width that actually renders, capped at 60% of the measured layout (never above 800px), for both keyboard and pointer.
+- **One compact document toolbar for result panels (`interactions/WorkPanelHeader.tsx`, `interactions/WorkPanel.tsx`)**: every result type gets a 40px toolbar with icon and title, on a flat surface with one divider. `WorkPanel` takes an optional `icon`, `label`, opt-in `keepMounted`, footer and content-scroll props. `useWorkPanelTitle()` lets embedded content avoid repeating the title. `WorkItemHeader` gives cards a shared identity and navigation (`titleId`, `headingLevel`, `status` hooks), and `WorkPanelActions` places domain actions in the persistent panel footer.
+- **Queued messages and Steer (`styled/MessageComposer.tsx`)**: with the new `queue` prop (`MessageComposerQueue`), sending during a turn goes to `onSubmit` for the host to queue instead of being blocked. Queued messages show in a tray above the composer with Steer (Send now when not streaming), Edit and Remove. `QueuedMessages` and `QueuedComposerMessage` are exported. Without `queue` the composer behaves as before.
+- **Upload progress, cancellable uploads and sends that wait (`styled/MessageComposer.tsx`)**: `onUploadFile(file, options?)` receives `UploadFileOptions` (`onProgress(loaded, total)`, `signal`). File chips show a progress ring and size ("12 / 33 MB"), and removing a file aborts its upload. Send pressed during an upload reads "Sends when uploaded" and sends once the upload finishes; pressing again cancels. If an upload fails, the draft stays in the composer. `onSubmit` gets an optional fourth argument, `uploadedAttachments`. Empty (0-byte) files are refused with a "File is empty" chip. `WelcomeScreen` forwards `onUploadFile`. `UploadedComposerAttachment` and `UploadFileOptions` are exported.
+- **Follow-up suggestions (`styled/MessageComposer.tsx`, `composer/FollowUpSuggestionsPlugin.tsx`)**: `MessageComposer` accepts `followUpSuggestions` and shows an accessible picker above a focused composer, filtered by the draft. Enter or a click puts the suggestion in as an undoable draft. `FollowUpSuggestion` is exported from the root, `/styled` and `/composer`; `FollowUpSuggestionsPlugin` from `/composer`. Answers can also suggest the next message inline with `<next-message actual="…">label</next-message>`, which sends `actual` (or the label) through `ChatProvider`'s `onSendMessage` in one click.
+- **Host controls in the composer and welcome screen (`styled/ComposerToolbar.tsx`, `styled/WelcomeScreen.tsx`, `styled/ChatLayout.tsx`)**: `MessageComposer` takes `toolbarSlot`, `WelcomeScreen` takes `composerToolbarSlot` and `section` (`"all"`, `"intro"` or `"suggestions"`), `ComposerToolbar` takes `startSlot`, and `ChatLayout` takes `welcomeFooter`. Composers with `@` or `/` providers expose Add context and Skills controls; Attach now comes first. Welcome suggestions accept `{ message, title, description?, icon? }` with an optional `emblem` slot; string suggestions still work. `WelcomeScreen layout="intro"` with `ChatLayout showComposerOnWelcome` keeps the bottom composer.
+- **Stable history scrolling (`styled/StableMessageList.tsx`, `styled/MessageList.tsx`)**: passing `scrollAnchorId` (`null` when there is no local send) turns on one scroll controller. It opens at the end, glides a sent question to the top (instant under `prefers-reduced-motion`), follows a reply that outgrows the screen once the reader scrolls back down, and keeps the first visible message in place when older ones are prepended. `scrollPreviousItemPeek` keeps a sliver of the previous turn. `history={{ hasOlder, loading, error, onLoadOlder }}` adds paging back with retry. The scroll control becomes a "Jump to latest" pill more than 800px from the bottom; `ScrollToBottomButton` takes a `label`. Callers that leave out `scrollAnchorId` keep the original engine.
+- **Host actions on chat media (`styled/MediaLightbox.tsx`, `styled/MediaGenerationCard.tsx`)**: `ChatProvider` accepts `renderMediaActions(media, { surface, origin })`, drawn on media tiles (galleries, attachments, inline previews, finished background videos) and under the item in `MediaLightbox`. A click on an action never opens the lightbox. `MediaLightbox` takes its own `renderActions`, and the action context carries `close()`. `MediaItem` and `MediaChunkData` carry `fileAssetId`, `sourceUrl`, `creativeId`, `creativeUnsaved` and `creativeHasStoredMedia`. `MediaLightbox`, `useMediaLightbox` and the media types are exported from the root and `/styled`.
+- **Background work in the transcript (`styled/transcript/ToolActivity.tsx`, `utils/background-wait.ts`, `styled/TranscriptFlow.tsx`)**: `ToolActivityProvider`, `useToolActivity` and the `ToolActivity` / `ToolActivityResolver` types let a host drive a tool's lane status, label and details. `ToolActivity.active` and `defaultExpanded` control the header ("Background work", "Needs attention") and folding. While work is active, timestamps and completion actions are hidden with their space kept. `ToolActivityProvider`, `readBackgroundWait`, `isBackgroundWaitOpen`, `BackgroundWait` and the `StreamingChunk` type are exported from the root, `TranscriptFlow` from `/styled`. `StreamingChunk.backgroundTaskId` and `backgroundWaitId` bind each tool card to its own durable wait.
+- **Approvals (`styled/ToolApprovalPanel.tsx`)**: `onApproveStanding` and `standingApprovalLabel` add a third action that approves this call and later calls of the same tool, for a scope the host decides (`slots.StandingApprovalButton` replaces it). `ToolApprovalSlots` accepts `Header` and an `actionsAfterDetails` hook. Enter approves only when focus isn't on another control.
+- **Clarification as a work item (`styled/ClarificationPanel.tsx`)**: clarification uses the shared work-item card and can expand into the result panel without losing answers. Optional `feedback` travels with it. Answers stay visible until the host accepts the submission or replaces the prompt; `ActionSubmission` and `InteractionActionRequest` give host adapters a shared acceptance lifecycle with stable retry keys. Native interaction results say "Loading…" while they load and "Couldn't load this result." on failure, with a Retry that keeps focus; `useMiiflowChat({ nativeInteractions: true })` advertises support only when the host mounts the renderer and an authenticated `InteractionProvider`.
+- **Sortable assistant tables (`styled/visualizations/TableVisualization.tsx`, `utils/table-ordering.ts`)**: header sort buttons with `aria-sort` cycle ascending, descending, off. Dates sort as dates and empty values go last. Number, currency and progress columns align right with tabular numerals. Cells take keyboard focus, show their full text on focus, and copy with Cmd/Ctrl+C. String cells render markdown http(s) links as links. `compareTableValues`, `parseTableDateOnly`, `tableBadgeTone` and `TableCellText` are exported from the root.
+- **Tone tokens (`styles/`)**: `--chat-tone-{neutral,info,success,warning,danger}-{fg,bg}` (light and dark defaults) and optional `--chat-table-header-ink` / `--chat-table-rule`. Tables, KPI blocks, citation, attachment and command chips draw from them on one chip size, so hosts can map them to their own palette. Markdown tables follow `---:` / `:---:` column alignment and drop the tinted header band and rounded frame.
+- **Media and uploads (`utils/media-generation.ts`, `utils/media.ts`, `styled/ReservedImage.tsx`)**: the live generation card covers `image_generate`, `image_edit`, `video_generate`, GPT Image Sunburst and Nano Banana 2.1 / 2 Lite, and sizes its placeholder from the requested aspect ratio (now including 4:5, 5:4, 3:2, 2:3). Message and markdown images reserve their box before they load (`Attachment.width` / `height`, default 320×240). A failed preview reads "Preview unavailable: <filename>". The default upload allow-list adds XML and uses registered video MIME types, so `.mov` uploads are accepted.
+- **Editing and citations (`styled/Message.tsx`, `styled/CitationSources.tsx`)**: Edit message uses the rich-text input, so `@` mentions come back as chips. Esc cancels, Cmd/Ctrl+Enter sends. A citation source whose payload is JSON or a Python literal shows as a nested key/value list in the Formatted view. `MessageActionBar` and `Message` accept `confirmedCorrect`, which shows "Thanks!" instead of the thumbs. `SuggestedActions` accepts an `icon`.
+- **Composer typeahead exports (`/composer`)**: `TypeaheadActiveDescendant` and `useDetachIdleTypeaheadAnchor`, exported from `@miiflow/assistant-ui/composer`, give custom Lexical typeaheads the same `aria-activedescendant` and idle-anchor handling as the built-in `/` and `@` menus.
 
-- **Live host-owned tool activity.** Export `useToolActivity` so activity
-  providers can compose, and accept `ToolActivity.defaultExpanded` to reveal
-  a running agent's tools until the reader folds them. Transcript marks now
-  show running activity when host-owned work is queued or running, including
-  work that outlives a paused parent turn.
+### Bug Fixes
 
-- **Stable transcript scrolls like a conversation.** With `scrollAnchorId`, a
-  sent question glides to the top (instant under `prefers-reduced-motion`) and
-  sits at the transcript's top padding instead of under a 64px sliver of the
-  previous turn; pass `scrollPreviousItemPeek` to keep a sliver. A reader who
-  scrolls to the bottom of a reply that has outgrown the screen is followed
-  again while it streams, and the scroll-to-bottom control becomes a "Jump to
-  latest" pill. `ScrollToBottomButton` takes an optional `label`.
-
-- **Chat media names its library creative.** `MediaChunkData` and `MediaItem`
-  carry an optional `creativeId`, `creativeUnsaved` and `creativeHasStoredMedia`,
-  read from the server's top-level `creative_id` / `creative_unsaved` /
-  `creative_has_stored_media` (never from a tool's `metadata`), so a host action
-  can treat a chat image as that creative and gate what needs its stored file.
-
-- **Host actions on chat media.** `ChatProvider` accepts `renderMediaActions(media,
-  { surface, origin })`. Its result is drawn on each media tile (message galleries,
-  image attachments, inline `media_ref` previews) and under the item in the
-  `MediaLightbox`. `surface` is `"tile"` or `"lightbox"`; `origin` is `"message"`,
-  `"attachment"`, `"inline"` or `"table"`. chat-ui only places the actions, and a
-  click on one never opens the lightbox. `MediaLightbox` also takes its own
-  `renderActions`, which wins over the provider's. `MediaItem` now carries
-  `fileAssetId` and `sourceUrl` from the message media, so an action can address
-  the stored file. `MediaLightbox`, `useMediaLightbox` and the media types are
-  exported from the package root and `/styled`.
-- **Actions on finished background videos.** `MediaGenerationCard` draws the
-  provider's `renderMediaActions` under a completed video (`surface: "tile"`,
-  `origin: "inline"`), and `GenerationStatus` takes an optional `fileAssetId`
-  that the card passes on as the `MediaItem`'s, so a host action can address the
-  stored video.
-- **`MediaActionContext.close`.** In the lightbox, the action context carries
-  `close()`, so a host action that opens its own UI (a panel, a dialog) can
-  dismiss the lightbox first.
+- **Table dates showed a day early west of UTC (`styled/visualizations/TableVisualization.tsx`)**: date-only `YYYY-MM-DD` values were parsed as UTC midnight. They show their calendar day now, and a value that isn't a date shows as written instead of "Invalid Date".
+- **Table link cells linked plain words (`styled/visualizations/TableVisualization.tsx`)**: a cell is a link only for an absolute http(s), mailto or tel URL, an in-app `/path`, or a bare domain. Link colours are readable in dark mode.
+- **Missing borders (`styled/visualizations/TableVisualization.tsx`, `styled/ClarificationPanel.tsx`)**: the table header rule and the clarification text field's accent border are back. `cn()` had read the arbitrary colours as border widths and dropped them.
+- **The embedded chat failed for good after its empty thread was swept (`client/useMiiflowChat.ts`)**: a `thread_not_found` 404 now replaces the session, re-registers runtime tools and resends the turn once.
+- **Media generation frames lost their ratio (`styled/MediaGenerationCard.tsx`)**: portrait frames narrow instead of being cut off, and a wide frame in a narrow chat no longer clips its status text.
+- **Focus escaped modal dialogs (`styled/MessageActionBar.tsx`, `styled/MediaLightbox.tsx`, `styled/CitationSources.tsx`)**: the "Share feedback" dialog, the media lightbox and the citation source dialog keep Tab inside and return focus to what opened them. Feedback category chips are toggle buttons with `aria-pressed`. The overlay focus trap reaches native `video` and `audio` controls.
+- **Composer menus pointed `aria-activedescendant` at nothing (`composer/CommandTokenPlugin.tsx`)**: the attribute is removed while the `/` or `@` list is empty or loading, follows the pointer highlight, and empty "Typeahead menu" listboxes no longer stay in the page. Command chips use the label from `ChatProvider`'s `resolveCommandToken`, and a sent `@<id>:<kind>` token renders as its chip.
+- **Keyboard and screen-reader gaps**: a hidden "Jump to latest" button is no longer a Tab stop (`ScrollToBottomButton`). A `WelcomeScreen` that scrolls with nothing focusable becomes a focusable region. Video placeholders without a poster no longer hide their label under the play circle. Clarification focus rings are no longer clipped. Holding Enter after inserting a suggestion can't send the draft, and IME Enter is left to composition (`LexicalChatInput`).
+- **Declining an approval stored an invented reason (`styled/ToolApprovalPanel.tsx`)**: Decline calls `onReject()` with no reason instead of "User declined this action". Approval evidence no longer implies a tool finished; execution status drives live lanes.
+- **Layout and render defects**: long links wrap inside message bubbles (`styles/prose.css`). A run reloaded mid-way no longer leaves its activity rail open unless the reader scrolled up. A live reasoning step keeps its entrance animation, revoked blob URLs from a previous media scope no longer flash, and `useStreaming`'s `abortSignal` updates in the render the stream starts. Add context collapses to icon-only at the compact breakpoint, like Attach and Skills.
 
 ### Behavior changes
 
-- Clarification question tabs are removed; a centered, fixed-width section of
-  the footer top border shows unnumbered steps, completed answers and the current question.
-  The progress list stays non-interactive and names each step for assistive technology. Answer
-  controls are native radios and checkboxes: arrows choose within a radio group,
-  Tab moves between checkbox choices, and Space/Enter selects. Selecting no longer
-  advances automatically; use Previous/Next or Enter in the text field.
-  This keeps keyboard focus predictable and leaves room for additional text.
-  Hosts querying toggle buttons must use the radio/checkbox roles and checked state.
-
-- Clarification uses the shared work-item card and can expand into the result
-  panel without losing answers or the current question. Inline-only hosts stay
-  supported; optional `feedback` travels with the question into the panel.
-  `WorkItemHeader` provides common card identity/navigation, and
-  `WorkPanelActions` places domain actions in the persistent panel footer (or
-  inline without a panel). `WorkPanel` accepts a `label` and opt-in `keepMounted`
-  to retain editor state after first opening. Retained panels are hidden/inert;
-  hosts must key editors by their domain target, and unmount them on scope change.
-
-- Clarification answers remain visible until the host accepts the submission or
-  replaces the prompt. Hosts should key the panel by prompt identity/revision.
-  `ActionSubmission` and `InteractionActionRequest` provide a shared acceptance
-  lifecycle and action envelope for host continuation adapters, including
-  unchanged retry keys after uncertain responses.
-
-- Composers with `@` or `/` providers expose Add context and Skills controls,
-  sharing the keyboard picker and token format. The default picker adapts to
-  the host theme and viewport, with loading, empty, error and keyboard retry
-  states. Providers can expose optional `loading`, `error` and `retry` metadata.
-  `CommandProvider.fetch` now returns `CommandFetchResult`: either the existing
-  command array or `{ commands, error? }` for partial results. Provider
-  implementations returning arrays remain valid. Direct callers must normalize
-  with `Array.isArray(result) ? result : result.commands` and handle `result.error`
-  on the object form; callers that assume an array must migrate before upgrading.
-  `composerRef` exposes `appendText` and `focus` for editable starter prompts;
-  the existing forwarded DOM ref is unchanged. Rejected sends retain chip labels.
-- Expanded native results replace their transcript controls with compact
-  references. Filters, four-item pages, media consent and panel scroll survive
-  opening and closing. Product selections have removable chips, explicit
-  comparison requirements and a persistent panel footer; comparison moves focus
-  to the saved table. `WorkPanel` also accepts optional footer and content-scroll
-  props for hosts that need persistent actions.
-- Shared welcome, composer and result-panel styling now uses semantic host colors,
-  a branded glow, elevated input and responsive touch targets. Welcome suggestions
-  also accept `{ message, title, description?, icon? }`, with an optional `emblem`
-  slot for the brand mark. Existing string suggestions remain supported. Intro welcomes use
-  `WelcomeScreen layout="intro"` with `ChatLayout showComposerOnWelcome` to retain
-  the bottom composer; centered layouts keep their existing composition. The glow clips
-  at the welcome scroller's edge (`.chat-welcome` is `overflow: hidden auto`), so
-  compact hosts such as a 500px drawer get no horizontal scrollbar from its overhang.
-- The built-in welcome input now uses `MessageComposer`. It retains text/files
-  when an async send rejects or returns `{ accepted: false }`, and applies the
-  same file-type/size validation as the active composer. Attachments remain
-  opt-in on `WelcomeScreen`; synchronous callbacks remain supported.
-
-- Legacy visualization form hosts must return `{ accepted: true }` only after
-  accepting a submission (or `{ accepted: false }` / throw on rejection).
-  `VisualizationActionHandler` no longer accepts `void`; migrate existing
-  callbacks before upgrading. The unacknowledged `visualization-form-submit`
-  window-event fallback is removed. Missing acknowledgement never reports success.
-- Native interaction creation is enabled on the server by default. Set
-  `NATIVE_INTERACTIONS_ENABLED=false` as a kill switch for new creation; existing
-  result reads, actions and rendering remain available. Clients still advertise
-  support per request:
-  `useMiiflowChat({ nativeInteractions: true })` advertises v1 support only when
-  the host mounts the renderer and an authenticated `InteractionProvider`.
-  Existing widgets remain on their current visualization tools by default.
-- Product images contact their source only after the user chooses to load them.
+- **Tables keep the agent's row order.** Before, they were sorted by the first column ascending. Numeric columns align right by default.
+- **Clarification controls are native radios and checkboxes.** Question tabs are replaced by a step list in the footer. Selecting no longer advances on its own: use Previous/Next, or Enter in the text field. Hosts querying toggle buttons must use the radio/checkbox roles and checked state. Retained panels are hidden and inert; key editors by their domain target.
+- **`CommandProvider.fetch` may return `{ commands, error? }`.** Providers returning arrays stay valid. Direct callers must normalise with `Array.isArray(result) ? result : result.commands` and handle `result.error`. `composerRef` exposes `appendText` and `focus`.
+- **`VisualizationActionHandler` must acknowledge.** Return `{ accepted: true }` only after accepting a submission, and `{ accepted: false }` or throw on rejection; `void` is no longer accepted. The unacknowledged `visualization-form-submit` window-event fallback is removed.
+- **Product images load from their source only after the user chooses to load them.**
+- **The built-in welcome input is `MessageComposer`.** It keeps text and files when an async send rejects or returns `{ accepted: false }`, and applies the same file validation as the active composer.
+- **Default upload allow-list.** The unregistered `video/mov`, `video/wmv`, `video/flv` and `video/mkv` names are replaced by their registered MIME types. `onReject` gets `undefined` when Decline is pressed with no reason.
 
 ### Dependencies
 
-- **`react-syntax-highlighter` ^15 → ^16 (security).** v15 reached `prismjs ~1.27.0`
-  through `refractor` 3, so every install of this package carried prismjs's DOM
-  clobbering advisory (GHSA-x7hr-w5r2-h6wg, fixed in 1.30.0). v16 depends on
-  `prismjs ^1.30.0` directly. The `Prism` component and `styles/prism` themes are
-  unchanged. `refractor` 5 is ESM-only, so a consumer running CJS test tooling (for
-  example Jest without a transform for `refractor`) may need to transform it.
+- **`react-syntax-highlighter` ^15 → ^16 (security).** v15 pulled in `prismjs ~1.27.0`, which has a DOM-clobbering advisory (GHSA-x7hr-w5r2-h6wg, fixed in 1.30.0). v16 depends on `prismjs ^1.30.0`. `refractor` 5 is ESM-only, so CJS test tooling (for example Jest) may need to transform it.
+- **Other runtime dependencies:** `react-markdown` ^9 → ^10.1, `@shadcn/react` ^0.2 → ^0.3.1, `tailwind-merge` ^2.6.1, `remend` ^1.4, `@chenglou/pretext` ^0.0.5. Peer dependencies are unchanged.
 
 ## 0.21.0
 

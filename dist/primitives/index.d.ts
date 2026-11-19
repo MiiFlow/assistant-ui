@@ -1,8 +1,8 @@
-export { A as Avatar, h as AvatarProps, C as ComposerContext, a as ComposerInput, i as ComposerInputProps, b as ComposerSubmit, j as ComposerSubmitProps, e as Message, M as MessageComposer, k as MessageComposerProps, c as MessageContent, l as MessageContentProps, d as MessageContext, m as MessageProps, f as MessageTimestamp, n as MessageTimestampProps, u as useComposer, g as useMessage } from '../avatar-4yOfN6F3.js';
+export { A as Avatar, h as AvatarProps, C as ComposerContext, a as ComposerInput, i as ComposerInputProps, b as ComposerSubmit, j as ComposerSubmitProps, e as Message, M as MessageComposer, k as MessageComposerProps, c as MessageContent, l as MessageContentProps, d as MessageContext, m as MessageProps, f as MessageTimestamp, n as MessageTimestampProps, u as useComposer, g as useMessage } from '../avatar-D_EGMdQK.js';
 import * as react from 'react';
 import { HTMLAttributes, ReactNode, ButtonHTMLAttributes } from 'react';
-import { d as SuggestedAction } from '../message-uk04zxQ1.js';
-import '../streaming-BGKrQjSB.js';
+import { d as SuggestedAction } from '../message-CBlWVHol.js';
+import '../streaming-znIjUNao.js';
 
 interface MessageListProps extends HTMLAttributes<HTMLDivElement> {
     /** Messages to render */

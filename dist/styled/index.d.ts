@@ -1,25 +1,29 @@
-export { c as AttachmentPreview, m as AttachmentPreviewProps, d as Avatar, n as AvatarProps, C as ChatContainer, o as ChatContainerProps, e as ChatLayout, p as ChatLayoutProps, M as MarkdownContent, q as MarkdownContentProps, f as Message, g as MessageActionBar, r as MessageActionBarProps, h as MessageComposer, s as MessageComposerProps, i as MessageList, t as MessageListProps, u as MessageProps, S as ScrollToBottomButton, v as ScrollToBottomButtonProps, j as StreamingText, w as StreamingTextProps, k as SuggestedActions, x as SuggestedActionsProps, y as ToolStatus, T as ToolStatusIndicator, z as ToolStatusIndicatorProps, l as TypingIndicator, B as TypingIndicatorProps, W as WelcomeScreen, E as WelcomeScreenProps } from '../WelcomeScreen-yLEbtqHc.js';
-import * as react_jsx_runtime from 'react/jsx-runtime';
+import { c as AgentTranscript, a as ActivityMarkRenderer, A as ActivityLabels } from '../WelcomeScreen-ry7Avydx.js';
+export { d as AttachmentPreview, o as AttachmentPreviewProps, e as Avatar, p as AvatarProps, C as ChatContainer, q as ChatContainerProps, f as ChatLayout, s as ChatLayoutProps, M as MarkdownContent, t as MarkdownContentProps, g as Message, h as MessageActionBar, v as MessageActionBarProps, i as MessageComposer, w as MessageComposerHandle, x as MessageComposerProps, y as MessageComposerQueue, j as MessageList, z as MessageListProps, B as MessageProps, Q as QueuedComposerMessage, E as QueuedMessages, S as ScrollToBottomButton, F as ScrollToBottomButtonProps, k as StreamingText, G as StreamingTextProps, l as SuggestedActions, H as SuggestedActionsProps, I as ToolStatus, T as ToolStatusIndicator, J as ToolStatusIndicatorProps, n as TypingIndicator, K as TypingIndicatorProps, U as UploadFileOptions, L as UploadedComposerAttachment, W as WelcomeScreen, N as WelcomeScreenProps, O as WelcomeSuggestion } from '../WelcomeScreen-ry7Avydx.js';
 import * as react from 'react';
-import react__default, { ReactNode, ComponentType } from 'react';
-import { A as Attachment, S as SourceReference } from '../message-uk04zxQ1.js';
-export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-uk04zxQ1.js';
-import { S as StreamingChunk, P as PlanData, f as SubagentChunkData, C as ClarificationData, c as ClarificationAnswer, T as ToolApprovalData, V as VisualizationChunkData, g as VisualizationActionEvent, M as MediaChunkData, h as ChartVisualizationData, i as VisualizationConfig, j as TableVisualizationData, k as CardVisualizationData, K as KpiVisualizationData, l as KpiMetric, m as CodePreviewVisualizationData, F as FormVisualizationData, n as AuthPromptVisualizationData, A as ArtifactChunkData, E as Event, o as EventStatus } from '../streaming-BGKrQjSB.js';
-export { p as ArtifactStatus, q as ChunkType, r as EventType, s as FollowupAction, t as KpiBreakdownItem, u as KpiMeter, v as KpiPolarity, w as KpiStatus, O as ObservationEvent, x as PlanningEvent, y as ProgressData, z as StreamingMessage, B as SubTaskData, D as SubtaskEvent, G as ThinkingEvent, H as ToolEvent, I as VisualizationType } from '../streaming-BGKrQjSB.js';
+import react__default, { ReactNode, ComponentType, Ref, UIEventHandler } from 'react';
+export { F as FollowUpSuggestion } from '../LexicalChatInput-BjzABE9T.js';
+import { A as Attachment, S as SourceReference } from '../message-CBlWVHol.js';
+export { C as ChatMessage, M as MessageData, a as MessageError, b as Participant, P as ParticipantRole, c as SourceTypeConfig, d as SuggestedAction, e as SuggestedActionType } from '../message-CBlWVHol.js';
+export { a as ChatContextValue, b as ChatProvider, c as ChatProviderProps, M as MediaActionContext, i as MediaActionSurface, j as MediaItem, k as MediaLightbox, l as MediaLightboxProps, m as MediaOrigin, R as RenderMediaActions, u as useChatContext, o as useMediaLightbox } from '../index-BD-egO9p.js';
+import { S as StreamingChunk, P as PlanData, f as SubagentChunkData, C as ClarificationData, c as ClarificationAnswer, T as ToolApprovalData, V as VisualizationChunkData, g as VisualizationActionHandler, M as MediaChunkData, h as ChartVisualizationData, i as VisualizationConfig, j as TableVisualizationData, k as CardVisualizationData, K as KpiVisualizationData, l as KpiMetric, m as CodePreviewVisualizationData, F as FormVisualizationData, n as AuthPromptVisualizationData, A as ArtifactChunkData, E as Event, o as EventStatus, p as VisualizationActionEvent } from '../streaming-znIjUNao.js';
+export { q as ArtifactStatus, r as ChunkType, s as EventType, t as FollowupAction, u as KpiBreakdownItem, v as KpiMeter, w as KpiPolarity, x as KpiStatus, O as ObservationEvent, y as PlanningEvent, z as ProgressData, B as StreamingMessage, D as SubTaskData, G as SubtaskEvent, H as ThinkingEvent, I as ToolEvent, J as VisualizationType } from '../streaming-znIjUNao.js';
 import { z, ZodSchema } from 'zod';
-export { a as ChatContextValue, b as ChatProvider, c as ChatProviderProps, u as useChatContext } from '../index-BNH7IiHQ.js';
 export { B as BrandingData } from '../branding-BQBGqRIV.js';
-export { u as useComposer, g as useMessage } from '../avatar-4yOfN6F3.js';
-import '../types-Du00UBst.js';
+export { u as useComposer, g as useMessage } from '../avatar-D_EGMdQK.js';
 
 /**
  * Bottom toolbar row for composers: attach button, an Enter-to-send hint that
  * fades in while the composer is focused (requires `group` on the shell), and
  * a trailing slot for the send/stop button.
  */
-declare function ComposerToolbar({ onAttachClick, disabled, hint, showHint, endSlot, className, }: {
-    /** Renders the "+" attach button when provided. */
+declare function ComposerToolbar({ onAttachClick, onContextClick, onSkillsClick, startSlot, disabled, hint, showHint, endSlot, className, }: {
+    /** Renders the attach (paperclip) button when provided. */
     onAttachClick?: () => void;
+    onContextClick?: () => void;
+    onSkillsClick?: () => void;
+    /** Host controls after the built-in buttons (e.g. a mode switch). */
+    startSlot?: ReactNode;
     disabled?: boolean;
     /** Keyboard hint shown while focused. Pass showHint={false} to hide. */
     hint?: string;
@@ -27,7 +31,7 @@ declare function ComposerToolbar({ onAttachClick, disabled, hint, showHint, endS
     /** Send / stop button. */
     endSlot?: ReactNode;
     className?: string;
-}): react_jsx_runtime.JSX.Element;
+}): react.JSX.Element;
 
 interface LoadingDotsProps {
     /** Size variant */
@@ -38,7 +42,7 @@ interface LoadingDotsProps {
 /**
  * Animated loading dots indicator
  */
-declare function LoadingDots({ size, className }: LoadingDotsProps): react_jsx_runtime.JSX.Element;
+declare function LoadingDots({ size, className }: LoadingDotsProps): react.JSX.Element;
 
 interface TimeMarkerProps {
     /** The label to display (e.g. "Today", "Yesterday", "Monday") */
@@ -50,7 +54,7 @@ interface TimeMarkerProps {
  * Centered time separator between message groups.
  * Displays a label like "Today" or "Yesterday" with horizontal rules.
  */
-declare function TimeMarker({ label, className }: TimeMarkerProps): react_jsx_runtime.JSX.Element;
+declare function TimeMarker({ label, className }: TimeMarkerProps): react.JSX.Element;
 
 /**
  * One frame of the decode: everything left of the wavefront is settled, the
@@ -83,7 +87,7 @@ interface ThinkingIndicatorProps {
  * halves are the same idea: something is being worked out, and it is nearly
  * here.
  */
-declare function ThinkingIndicator({ mark, label, className }: ThinkingIndicatorProps): react_jsx_runtime.JSX.Element;
+declare function ThinkingIndicator({ mark, label, className }: ThinkingIndicatorProps): react.JSX.Element;
 
 interface ChatHeaderAction {
     id: string;
@@ -112,7 +116,7 @@ interface ChatHeaderProps {
     /** Custom styles via CSS variables */
     style?: react__default.CSSProperties;
 }
-declare function ChatHeader({ title, subtitle, logo, actions, showClose, onClose, loading, className, style, }: ChatHeaderProps): react_jsx_runtime.JSX.Element;
+declare function ChatHeader({ title, subtitle, logo, actions, showClose, onClose, loading, className, style, }: ChatHeaderProps): react__default.JSX.Element;
 
 interface MessageAttachmentsProps {
     /** List of attachments to display */
@@ -127,11 +131,7 @@ interface MessageAttachmentsProps {
     /** Additional class names */
     className?: string;
 }
-/**
- * Display attachments in messages: images render as inline thumbnails that open
- * a lightbox; everything else renders as a compact file chip.
- */
-declare function MessageAttachments({ attachments, onDownload, onPreview, align, className, }: MessageAttachmentsProps): react_jsx_runtime.JSX.Element | null;
+declare function MessageAttachments({ attachments, onDownload, onPreview, align, className, }: MessageAttachmentsProps): react.JSX.Element | null;
 
 /**
  * @deprecated Superseded by `ReasoningStream`, which renders the agent's work as
@@ -171,7 +171,7 @@ interface ReasoningPanelProps {
     /** Additional class names */
     className?: string;
 }
-declare function ReasoningPanel({ isStreaming, chunks, plan, executionTimeline, userMessageTimestamp, executionTime, streamStartedAt, defaultExpanded, expanded: controlledExpanded, onExpandedChange, className, }: ReasoningPanelProps): react_jsx_runtime.JSX.Element | null;
+declare function ReasoningPanel({ isStreaming, chunks, plan, executionTimeline, userMessageTimestamp, executionTime, streamStartedAt, defaultExpanded, expanded: controlledExpanded, onExpandedChange, className, }: ReasoningPanelProps): react.JSX.Element | null;
 
 /**
  * `interrupted` is not `failed` and not `completed`.
@@ -316,15 +316,18 @@ interface ReasoningStreamProps {
  * then on nothing above the streaming text changes height. Finished, the
  * header reads `Thought for 2:14 · 6 steps` and re-opens to the full trace.
  */
-declare function ReasoningStream({ isStreaming, answerStarted, waitingLabel, waitingMark, chunks, steps: stepsProp, executionTime, streamStartedAt, justCompleted, expanded: controlledExpanded, onExpandedChange, className, }: ReasoningStreamProps): react_jsx_runtime.JSX.Element | null;
+declare function ReasoningStream({ isStreaming, answerStarted, waitingLabel, waitingMark, chunks, steps: stepsProp, executionTime, streamStartedAt, justCompleted, expanded: controlledExpanded, onExpandedChange, className, }: ReasoningStreamProps): react.JSX.Element | null;
 
 interface StepBlockProps {
     step: RunStep;
     /** Older step in the live window: quieter, and never the shimmering one. */
     dimmed?: boolean;
-    /** Animate an entrance. False for steps already on screen (a replayed
-     *  trace must not perform, and re-opening one must not re-animate). */
+    /** Animate an entrance now: a finished trace the reader is revealing. */
     entering?: boolean;
+    /** True while the step is in the live window. A step that mounts there
+     *  plays its entrance and keeps it until it leaves the window, so the next
+     *  render cannot cut it short; one already on screen never performs one. */
+    inLiveWindow?: boolean;
     /** Delay in ms, for staggering a revealed trace. */
     enterDelayMs?: number;
 }
@@ -342,7 +345,7 @@ interface StepBlockProps {
  * back into the trace viewer the redesign replaced; the shared x-position is
  * enough to read as a column.
  */
-declare function StepBlock({ step, dimmed, entering, enterDelayMs, }: StepBlockProps): react_jsx_runtime.JSX.Element | null;
+declare function StepBlock({ step, dimmed, entering, inLiveWindow, enterDelayMs, }: StepBlockProps): react.JSX.Element | null;
 
 /**
  * One tool call, inline in the flow of the thought that justified it.
@@ -366,7 +369,7 @@ declare function StepBlock({ step, dimmed, entering, enterDelayMs, }: StepBlockP
  */
 declare function ToolChip({ tool }: {
     tool: RunStepTool;
-}): react_jsx_runtime.JSX.Element;
+}): react.JSX.Element;
 
 /**
  * Turn an LLM-facing handle ("google_ads_specialist") into a human label
@@ -393,7 +396,7 @@ declare function initials(handle: string): string;
  */
 declare function SubagentBody({ data }: {
     data: SubagentChunkData;
-}): react_jsx_runtime.JSX.Element;
+}): react.JSX.Element;
 
 interface SubagentGroupProps {
     /** One dispatch, or several gathered from the same parent step. */
@@ -413,7 +416,7 @@ interface SubagentGroupProps {
  * no platform link, and initials spell out letters nobody reads. So the group
  * carries COUNT and STATUS, and the tab row underneath carries identity.
  */
-declare function SubagentGroup({ members }: SubagentGroupProps): react_jsx_runtime.JSX.Element;
+declare function SubagentGroup({ members }: SubagentGroupProps): react.JSX.Element;
 
 /**
  * Marks for the reasoning stream.
@@ -435,7 +438,7 @@ interface MarkProps {
  * specific enough that the gutter reads as a deliberate column rather than an
  * indent.
  */
-declare function StepMark({ size }: MarkProps): react_jsx_runtime.JSX.Element;
+declare function StepMark({ size }: MarkProps): react.JSX.Element;
 /**
  * A WRITE: the agent changed something on a live account.
  *
@@ -444,7 +447,7 @@ declare function StepMark({ size }: MarkProps): react_jsx_runtime.JSX.Element;
  * something", with no translation. It is the ONLY mark a chip ever carries, so
  * a single change stands out in a paragraph full of reads.
  */
-declare function WriteMark({ size }: MarkProps): react_jsx_runtime.JSX.Element;
+declare function WriteMark({ size }: MarkProps): react.JSX.Element;
 /**
  * An AGENT: one specialist, as it appears in a dispatch's pip row.
  *
@@ -457,7 +460,7 @@ declare function WriteMark({ size }: MarkProps): react_jsx_runtime.JSX.Element;
  * painted in a background colour: this package has no surface token, so a
  * filled counter-shape would be wrong on any host that is not white.
  */
-declare function AgentMark({ size }: MarkProps): react_jsx_runtime.JSX.Element;
+declare function AgentMark({ size }: MarkProps): react.JSX.Element;
 /**
  * A DISPATCH: the STEP in which the agent handed work to specialists.
  *
@@ -467,9 +470,9 @@ declare function AgentMark({ size }: MarkProps): react_jsx_runtime.JSX.Element;
  * sequence. Who is doing the work is said by the pips (`AgentMark`), a level
  * down; the two glyphs answer different questions and both are needed.
  */
-declare function DispatchMark({ size }: MarkProps): react_jsx_runtime.JSX.Element;
+declare function DispatchMark({ size }: MarkProps): react.JSX.Element;
 /** Disclosure chevron. Rotates 90° on open. */
-declare function Chevron({ size }: MarkProps): react_jsx_runtime.JSX.Element;
+declare function Chevron({ size }: MarkProps): react.JSX.Element;
 /**
  * Three bars reading as a level meter: "this is working right now".
  *
@@ -482,7 +485,7 @@ declare function Chevron({ size }: MarkProps): react_jsx_runtime.JSX.Element;
 declare function ActivityMeter({ reducedMotion, size, }: {
     reducedMotion?: boolean;
     size?: number;
-}): react_jsx_runtime.JSX.Element;
+}): react.JSX.Element;
 
 /**
  * Tools that are machinery rather than work the user asked for.
@@ -535,6 +538,50 @@ declare function stepsWallClockSeconds(steps: readonly RunStep[]): number | unde
  */
 declare function humanizeToolName(name?: string): string;
 
+declare const THREAD_LAYOUT: {
+    readonly NARROW_MAX: 660;
+    readonly WIDE_MIN: 700;
+    readonly PANEL_MIN: 360;
+    readonly PANEL_MAX: 800;
+    /** Share of the layout the result panel may take: the inline `max-width` and the resizer cap both read it. */
+    readonly PANEL_MAX_SHARE: 0.6;
+    readonly DRAWER_MIN: 380;
+    readonly DRAWER_MAX: 720;
+    readonly DRAWER_DEFAULT: 500;
+};
+type ThreadLayoutTier = "wide" | "narrow";
+/**
+ * First-measurement classification, without hysteresis: there is no previous
+ * tier to hold, and falling back to the unmeasured default would make the
+ * starting layout depend on drag history. DRAWER_MAX (720px + chrome) clears
+ * WIDE_MIN so the drawer can always reach the wide tier.
+ */
+declare function classifyTier(hostWidth: number): ThreadLayoutTier;
+/**
+ * Pure tier classification with a hysteresis band between NARROW_MAX and
+ * WIDE_MIN: widths inside the band (or invalid/zero) hold the previous tier so
+ * panels do not flip-flop when the host hovers at the boundary. The band's
+ * floor is a side panel at its 360px minimum plus ~340px of usable thread.
+ */
+declare function deriveTier(hostWidth: number, previous: ThreadLayoutTier): ThreadLayoutTier;
+
+interface ThreadLayoutValue {
+    tier: ThreadLayoutTier;
+    hostWidth: number;
+}
+declare function useThreadLayout(): ThreadLayoutValue;
+interface ThreadLayoutProviderProps {
+    children: ReactNode;
+    /** Host element whose rendered width drives the tier (ChatLayout's root div). */
+    host?: HTMLElement | null;
+}
+/**
+ * Container-driven thread layout: classifies the chat host's rendered width
+ * into a layout tier and republishes it through context. Renders no DOM.
+ * Without ResizeObserver it classifies once from the viewport width.
+ */
+declare function ThreadLayoutProvider({ children, host }: ThreadLayoutProviderProps): react.JSX.Element;
+
 interface ClarificationPanelProps {
     clarification: ClarificationData;
     /**
@@ -554,14 +601,16 @@ interface ClarificationPanelProps {
      * shows what was answered.
      */
     answer?: string;
+    /** Submission/retry feedback follows the questions into the work panel. */
+    feedback?: ReactNode;
 }
 /**
  * Clarification panel — displays when the agent needs the user to pick from
- * one or more multiple-choice questions. Orange left-border panel.
+ * one or more questions, inline or in the shared interaction workspace.
  *
  * If `answer` is provided, switches to a read-only "answered" view.
  */
-declare function ClarificationPanel({ clarification, onSubmit, onOptionSelect, disabled, loading, className, answer, }: ClarificationPanelProps): react_jsx_runtime.JSX.Element | null;
+declare function ClarificationPanel({ clarification, onSubmit, onOptionSelect, disabled, loading, className, answer, feedback, }: ClarificationPanelProps): react.JSX.Element | null;
 
 interface ApprovalButtonSlotProps {
     onClick: () => void;
@@ -578,7 +627,16 @@ interface ApprovalChatInputSlotProps {
     autoFocus?: boolean;
 }
 interface ToolApprovalSlots {
+    /** Opt in to footer placement; embedded hosts keep their existing sequence. */
+    actionsAfterDetails?: boolean;
+    /** Optional host header; default embeds retain their existing presentation. */
+    Header?: ComponentType<{
+        title: string;
+        label: string;
+    }>;
     AllowButton?: ComponentType<ApprovalButtonSlotProps>;
+    /** The optional standing-approval action (`onApproveStanding`); a text button by default. */
+    StandingApprovalButton?: ComponentType<ApprovalButtonSlotProps>;
     RejectButton?: ComponentType<ApprovalButtonSlotProps>;
     ChatButton?: ComponentType<ApprovalButtonSlotProps>;
     SendButton?: ComponentType<ApprovalButtonSlotProps>;
@@ -589,6 +647,14 @@ interface ToolApprovalPanelProps {
     approval: ToolApprovalData;
     onApprove: (modifiedInputs: Record<string, unknown>) => void;
     onReject: (reason?: string) => void;
+    /**
+     * Approve this call AND every later call of the same tool for a scope the
+     * host decides (e.g. "for this conversation"). Rendered between Approve and
+     * Decline only when provided; the host decides which tools may offer it.
+     */
+    onApproveStanding?: () => void;
+    /** Label for the standing-approval action. Required to show it. */
+    standingApprovalLabel?: ReactNode;
     disabled?: boolean;
     className?: string;
     /**
@@ -609,10 +675,13 @@ interface ToolApprovalPanelProps {
  *   │  Show all details                                       │
  *   └─────────────────────────────────────────────────────────┘
  *
+ * With `onApproveStanding`, a third action ("approve and stop asking", in the
+ * host's words) sits between Approve and Decline.
+ *
  * Buttons and the chat input are slottable via the `slots` prop so host apps
  * can swap in their own brand-aligned components.
  */
-declare function ToolApprovalPanel({ approval, onApprove, onReject, disabled, className, slots, }: ToolApprovalPanelProps): react_jsx_runtime.JSX.Element;
+declare function ToolApprovalPanel({ approval, onApprove, onReject, onApproveStanding, standingApprovalLabel, disabled, className, slots, }: ToolApprovalPanelProps): react.JSX.Element;
 
 interface CitationSourcesProps {
     sources: SourceReference[];
@@ -622,7 +691,7 @@ interface CitationSourcesProps {
  * Renders citation sources as a horizontal row of clickable chips.
  * Clicking a chip opens a modal showing full source content.
  */
-declare function CitationSources({ sources, className, }: CitationSourcesProps): react_jsx_runtime.JSX.Element | null;
+declare function CitationSources({ sources, className, }: CitationSourcesProps): react.JSX.Element | null;
 interface SourceDetailModalProps {
     source: SourceReference | null;
     onClose: () => void;
@@ -636,7 +705,7 @@ interface InlineCitationProps {
     index: number;
     source?: SourceReference;
 }
-declare function InlineCitation({ index, source }: InlineCitationProps): react_jsx_runtime.JSX.Element;
+declare function InlineCitation({ index, source }: InlineCitationProps): react.JSX.Element;
 
 interface SubagentPanelProps {
     chunk: StreamingChunk;
@@ -647,14 +716,14 @@ interface SubagentPanelProps {
  * multi-agent rows. Nested chunks (thinking/tool/observation/sub-assistant)
  * render as an indented `EventTimeline` underneath.
  */
-declare function SubagentPanel({ chunk }: SubagentPanelProps): react_jsx_runtime.JSX.Element | null;
+declare function SubagentPanel({ chunk }: SubagentPanelProps): react.JSX.Element | null;
 
 declare const chartVisualizationSchema: z.ZodObject<{
     chartType: z.ZodEnum<{
+        area: "area";
         line: "line";
         bar: "bar";
         pie: "pie";
-        area: "area";
         scatter: "scatter";
         composed: "composed";
     }>;
@@ -673,8 +742,8 @@ declare const chartVisualizationSchema: z.ZodObject<{
         label: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         type: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
             number: "number";
-            category: "category";
             time: "time";
+            category: "category";
         }>>>;
         min: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
         max: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
@@ -683,8 +752,8 @@ declare const chartVisualizationSchema: z.ZodObject<{
         label: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         type: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
             number: "number";
-            category: "category";
             time: "time";
+            category: "category";
         }>>>;
         min: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
         max: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
@@ -699,16 +768,16 @@ declare const tableVisualizationSchema: z.ZodObject<{
             string: "string";
             number: "number";
             boolean: "boolean";
+            link: "link";
             progress: "progress";
             media: "media";
             currency: "currency";
             date: "date";
             badge: "badge";
-            link: "link";
         }>>>;
         align: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
-            left: "left";
             center: "center";
+            left: "left";
             right: "right";
         }>>>;
         width: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -730,9 +799,9 @@ declare const cardVisualizationSchema: z.ZodObject<{
         label: z.ZodString;
         action: z.ZodString;
         variant: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
+            text: "text";
             primary: "primary";
             secondary: "secondary";
-            text: "text";
         }>>>;
     }, z.core.$strip>>>>;
 }, z.core.$strip>;
@@ -766,8 +835,8 @@ declare const kpiVisualizationSchema: z.ZodObject<{
         color: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     }, z.core.$strip>>;
     layout: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
-        row: "row";
         grid: "grid";
+        row: "row";
         bento: "bento";
     }>>>;
 }, z.core.$strip>;
@@ -783,14 +852,14 @@ declare const formVisualizationSchema: z.ZodObject<{
         name: z.ZodString;
         type: z.ZodEnum<{
             number: "number";
-            date: "date";
             text: "text";
-            email: "email";
             select: "select";
-            multiselect: "multiselect";
+            textarea: "textarea";
             checkbox: "checkbox";
             radio: "radio";
-            textarea: "textarea";
+            date: "date";
+            email: "email";
+            multiselect: "multiselect";
             datetime: "datetime";
         }>;
         label: z.ZodString;
@@ -828,18 +897,18 @@ declare const authPromptVisualizationSchema: z.ZodObject<{
 interface VisualizationRendererProps {
     data: VisualizationChunkData;
     isStreaming?: boolean;
-    onAction?: (event: VisualizationActionEvent) => void;
+    onAction?: VisualizationActionHandler;
     /** Message-level media bag used to resolve `media_ref:<id>` cell values. */
     medias?: MediaChunkData[];
 }
-declare function VisualizationRenderer({ data, isStreaming, onAction, medias, }: VisualizationRendererProps): react_jsx_runtime.JSX.Element;
+declare function VisualizationRenderer({ data, isStreaming, onAction, medias, }: VisualizationRendererProps): react.JSX.Element;
 
 interface ChartVisualizationProps {
     data: ChartVisualizationData;
     config?: VisualizationConfig;
     isStreaming?: boolean;
 }
-declare function ChartVisualization({ data, config, isStreaming }: ChartVisualizationProps): react_jsx_runtime.JSX.Element;
+declare function ChartVisualization({ data, config, isStreaming }: ChartVisualizationProps): react.JSX.Element;
 
 interface TableVisualizationProps {
     data: TableVisualizationData;
@@ -848,15 +917,15 @@ interface TableVisualizationProps {
     /** Message-level media bag used to resolve `media_ref:<id>` cell values. */
     medias?: MediaChunkData[];
 }
-declare function TableVisualization({ data, config, medias, }: TableVisualizationProps): react_jsx_runtime.JSX.Element;
+declare function TableVisualization({ data, config, medias, }: TableVisualizationProps): react.JSX.Element;
 
 interface CardVisualizationProps {
     data: CardVisualizationData;
     config?: VisualizationConfig;
     isStreaming?: boolean;
-    onAction?: (event: VisualizationActionEvent) => void;
+    onAction?: VisualizationActionHandler;
 }
-declare function CardVisualization({ data, config, onAction }: CardVisualizationProps): react_jsx_runtime.JSX.Element;
+declare function CardVisualization({ data, config, onAction }: CardVisualizationProps): react.JSX.Element;
 
 interface KpiVisualizationProps {
     data: KpiVisualizationData;
@@ -870,7 +939,7 @@ interface KpiVisualizationProps {
  * so no cell is ever left empty. Payload semantics live in `./kpi`, shared
  * with every other KPI renderer.
  */
-declare function KpiVisualization({ data }: KpiVisualizationProps): react_jsx_runtime.JSX.Element | null;
+declare function KpiVisualization({ data }: KpiVisualizationProps): react.JSX.Element | null;
 
 /**
  * Rendering semantics for KPI visualizations, shared by every renderer (this
@@ -986,21 +1055,21 @@ interface CodePreviewVisualizationProps {
     config?: VisualizationConfig;
     isStreaming?: boolean;
 }
-declare function CodePreviewVisualization({ data }: CodePreviewVisualizationProps): react_jsx_runtime.JSX.Element;
+declare function CodePreviewVisualization({ data }: CodePreviewVisualizationProps): react.JSX.Element;
 
 interface FormVisualizationProps {
     data: FormVisualizationData;
     config?: VisualizationConfig;
     isStreaming?: boolean;
-    onAction?: (event: VisualizationActionEvent) => void;
+    onAction?: VisualizationActionHandler;
 }
-declare function FormVisualization({ data, config, isStreaming, onAction }: FormVisualizationProps): react_jsx_runtime.JSX.Element;
+declare function FormVisualization({ data, config, isStreaming, onAction }: FormVisualizationProps): react.JSX.Element;
 
 interface AuthPromptVisualizationProps {
     data: AuthPromptVisualizationData;
     config?: VisualizationConfig;
     isStreaming?: boolean;
-    onAction?: (event: VisualizationActionEvent) => void;
+    onAction?: VisualizationActionHandler;
 }
 /**
  * "Connect your account" card for an integration the assistant could not use.
@@ -1020,14 +1089,14 @@ interface AuthPromptVisualizationProps {
  * Without `onAction` there is nothing a button could do, so none is drawn — a
  * dead Connect button reads as a broken feature rather than a missing one.
  */
-declare function AuthPromptVisualization({ data, onAction, }: AuthPromptVisualizationProps): react_jsx_runtime.JSX.Element;
+declare function AuthPromptVisualization({ data, onAction, }: AuthPromptVisualizationProps): react.JSX.Element;
 
 interface VisualizationEntry {
     component: React.ComponentType<{
         data: any;
         config?: VisualizationConfig;
         isStreaming?: boolean;
-        onAction?: (event: VisualizationActionEvent) => void;
+        onAction?: VisualizationActionHandler;
         medias?: MediaChunkData[];
     }>;
     schema?: ZodSchema;
@@ -1057,7 +1126,7 @@ interface ArtifactInlineCardProps {
  * shipped with the chat-ui package so headless / embedded consumers still
  * render something when a tool emits an artifact.
  */
-declare function ArtifactInlineCard({ artifact, isStreaming, onOpen, }: ArtifactInlineCardProps): react_jsx_runtime.JSX.Element;
+declare function ArtifactInlineCard({ artifact, isStreaming, onOpen, }: ArtifactInlineCardProps): react.JSX.Element;
 
 interface ArtifactListProps {
     artifacts: ArtifactChunkData[];
@@ -1068,7 +1137,7 @@ interface ArtifactListProps {
  * Renders one inline card per artifact using the registered renderer when
  * available; falls back to the unstyled `ArtifactInlineCard` otherwise.
  */
-declare function ArtifactList({ artifacts, isStreaming, onOpen, }: ArtifactListProps): react_jsx_runtime.JSX.Element | null;
+declare function ArtifactList({ artifacts, isStreaming, onOpen, }: ArtifactListProps): react.JSX.Element | null;
 
 /**
  * Shape of a registered artifact type.
@@ -1125,7 +1194,7 @@ interface EventContentProps {
  *   bar — the panel reads as a tiny trace.
  * - Observations use a quiet tinted background, no side-stripe.
  */
-declare function EventContent({ event, className, isRunning, maxDurationSeconds, }: EventContentProps): react_jsx_runtime.JSX.Element | null;
+declare function EventContent({ event, className, isRunning, maxDurationSeconds, }: EventContentProps): react.JSX.Element | null;
 
 /**
  * Convert StreamingChunk to Event format
@@ -1153,7 +1222,7 @@ interface EventTimelineProps {
  * Unified event timeline component
  * Displays thinking, tool execution, and observation events
  */
-declare function EventTimeline({ events, className }: EventTimelineProps): react_jsx_runtime.JSX.Element | null;
+declare function EventTimeline({ events, className }: EventTimelineProps): react.JSX.Element | null;
 
 interface PlanTimelineProps {
     plan: PlanData;
@@ -1164,7 +1233,7 @@ interface PlanTimelineProps {
  * Minimal timeline for Plan & Execute mode.
  * Matches in-house style: simple "Plan:" header + inline text rows.
  */
-declare function PlanTimeline({ plan, streamingChunks, className, }: PlanTimelineProps): react_jsx_runtime.JSX.Element;
+declare function PlanTimeline({ plan, streamingChunks, className, }: PlanTimelineProps): react.JSX.Element;
 
 type TimelineItemKind = "thinking" | "planning" | "tool" | "observation" | "subagent";
 interface TimelineItemData {
@@ -1199,7 +1268,7 @@ interface TimelineProps {
  * side. Spacing varies by adjacency so the panel reads like prose, not a
  * uniform list.
  */
-declare function Timeline({ items, badgeSize, className }: TimelineProps): react_jsx_runtime.JSX.Element | null;
+declare function Timeline({ items, badgeSize, className }: TimelineProps): react.JSX.Element | null;
 interface TimelineItemProps {
     status: EventStatus;
     isLast?: boolean;
@@ -1211,7 +1280,7 @@ interface TimelineItemProps {
  * Single timeline item (alternative API). Matches the refreshed look of
  * the parent `Timeline`: hairline rail, ink-dot markers, no card chrome.
  */
-declare function TimelineItem({ status, isLast, badgeSize, children, className, }: TimelineItemProps): react_jsx_runtime.JSX.Element;
+declare function TimelineItem({ status, isLast, badgeSize, children, className, }: TimelineItemProps): react.JSX.Element;
 
 interface StatusBadgeProps {
     status: EventStatus;
@@ -1235,7 +1304,7 @@ interface StatusBadgeProps {
  * `--chat-primary`; callers whose primary is neutral can override the
  * activity accent independently via `BrandingData.activityAccentColor`.
  */
-declare function StatusBadge({ status, size, className, kind }: StatusBadgeProps): react_jsx_runtime.JSX.Element;
+declare function StatusBadge({ status, size, className, kind }: StatusBadgeProps): react.JSX.Element;
 
 interface TimelineRowProps {
     /** Primary label — subtask description, agent name, or humanized handle. */
@@ -1265,6 +1334,171 @@ interface TimelineRowProps {
  * that rotates on expand; the duration is rendered as a tabular-num pill
  * with quiet weight so it reads as data, not chrome.
  */
-declare function TimelineRow({ label, description, durationSeconds, isFailed, defaultExpanded, nestedEvents, hideChevron, }: TimelineRowProps): react_jsx_runtime.JSX.Element;
+declare function TimelineRow({ label, description, durationSeconds, isFailed, defaultExpanded, nestedEvents, hideChevron, }: TimelineRowProps): react.JSX.Element;
 
-export { ActivityMeter, AgentMark, type ApprovalButtonSlotProps, type ApprovalChatInputSlotProps, ArtifactChunkData, type ArtifactEntry, ArtifactInlineCard, type ArtifactInlineCardProps, ArtifactList, type ArtifactListProps, Attachment, AuthPromptVisualization, type AuthPromptVisualizationProps, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, Chevron, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, CodePreviewVisualization, type CodePreviewVisualizationProps, ComposerToolbar, DispatchMark, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FormVisualization, type FormVisualizationProps, INTERNAL_TOOLS, InlineCitation, type InlineCitationProps, KpiMetric, KpiVisualization, KpiVisualizationData, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, ReasoningStream, type ReasoningStreamProps, type RunOutcome, type RunStep, type RunStepStatus, type RunStepTool, type RunStepToolKind, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StepBlock, type StepBlockProps, StepMark, StreamingChunk, SubagentBody, SubagentChunkData, SubagentGroup, type SubagentGroupProps, SubagentPanel, type SubagentPanelProps, TableVisualization, type TableVisualizationProps, ThinkingIndicator, type ThinkingIndicatorProps, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, TimelineRow, type TimelineRowProps, ToolApprovalPanel, type ToolApprovalPanelProps, type ToolApprovalSlots, ToolChip, VisualizationActionEvent, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, WriteMark, authPromptVisualizationSchema, buildRunSteps, cardVisualizationSchema, chartVisualizationSchema, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, decodeFrame, durationSeconds, formVisualizationSchema, getArtifact, getRegisteredArtifactTypes, getRegisteredTypes, getVisualization, humanizeHandle, humanizeToolName, initials, isInternalTool, kpi, kpiVisualizationSchema, registerArtifact, registerVisualization, stepsWallClockSeconds, tableVisualizationSchema };
+/** Common request envelope; each adapter owns its target, payload and revision. */
+interface InteractionActionRequest<Action extends string, Payload, Revision = number> {
+    action: Action;
+    payload: Payload;
+    expectedRevision: Revision;
+    idempotencyKey: string;
+}
+interface InteractionActionOutcome {
+    accepted: boolean;
+    reason?: string;
+    /** Transport loss / gateway failure: acceptance is unknown, not rejected. */
+    uncertain?: boolean;
+}
+
+declare const interactionSchema: z.ZodObject<{
+    id: z.ZodString;
+    threadId: z.ZodString;
+    component: z.ZodString;
+    version: z.ZodNumber;
+    revision: z.ZodNumber;
+    selectionLimit: z.ZodNumber;
+    title: z.ZodString;
+    data: z.ZodObject<{
+        items: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            title: z.ZodString;
+            description: z.ZodOptional<z.ZodString>;
+            url: z.ZodOptional<z.ZodString>;
+            image_url: z.ZodOptional<z.ZodString>;
+            price: z.ZodOptional<z.ZodString>;
+            details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            latitude: z.ZodOptional<z.ZodNumber>;
+            longitude: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>>;
+    }, z.core.$strip>;
+    state: z.ZodObject<{
+        selectedIds: z.ZodArray<z.ZodString>;
+        comparing: z.ZodBoolean;
+    }, z.core.$strip>;
+}, z.core.$strip>;
+type InteractionSurface = z.infer<typeof interactionSchema>;
+type InteractionRequest = InteractionActionRequest<"select" | "compare", {
+    ids: string[];
+} | Record<string, never>>;
+interface InteractionTransport {
+    load(id: string, signal: AbortSignal): Promise<InteractionSurface>;
+    act(id: string, request: InteractionRequest, signal: AbortSignal): Promise<InteractionSurface>;
+}
+declare class InteractionFailure extends Error {
+    status: number;
+    surface?: InteractionSurface | undefined;
+    constructor(message: string, status: number, surface?: InteractionSurface | undefined);
+}
+declare function InteractionProvider({ threadId, transport, children, }: {
+    threadId: string;
+    transport: InteractionTransport;
+    children: ReactNode;
+}): react.JSX.Element;
+
+type Request = InteractionActionRequest<string, unknown, unknown>;
+type State = {
+    busy: boolean;
+    accepted: boolean;
+    uncertain: boolean;
+    reason?: string;
+};
+/** One target's acceptance lifecycle, shared by the continuation adapters. */
+declare class ActionSubmission<R extends Request> {
+    private state;
+    private pending?;
+    private listeners;
+    getSnapshot: () => State;
+    subscribe: (listener: () => void) => () => void;
+    private update;
+    submit(draft: Omit<R, "idempotencyKey">, dispatch: (request: R) => Promise<InteractionActionOutcome>): Promise<InteractionActionOutcome>;
+}
+
+interface PanelContext {
+    activeId: string | null;
+    activeResourceId: string | null;
+    /** The narrow inline card's collapsed state; the layout owns it so every frame and entry path agrees. */
+    activeCollapsed: boolean;
+    setActiveCollapsed(collapsed: boolean): void;
+    open(id: string, resourceId?: string, opts?: {
+        collapsed?: boolean;
+    }): void;
+    focus(): void;
+    close(): void;
+    container: HTMLDivElement | null;
+}
+declare const useWorkPanel: () => PanelContext | null;
+/** The rendered document title, so embedded content can avoid repeating it safely. */
+declare const useWorkPanelTitle: () => string | null;
+/** Domain actions stay with their state owner, but remain visible while scrolling. */
+declare function WorkPanelActions({ children }: {
+    children: ReactNode;
+}): react.JSX.Element;
+/** A stable conversation column and a resizable result column; no transcript remount. */
+declare function WorkPanelLayout({ children }: {
+    children: ReactNode;
+}): react.JSX.Element;
+/**
+ * Portals preserve the caller's providers, including interaction/auth state.
+ * In the narrow tier the panel renders inline at its own mount position; the
+ * content lives in a stable host element that moves between frames, so a tier
+ * flip or the open-full modal never remounts it.
+ */
+declare function WorkPanel({ id, title, inlineSummary, children, onClose, footer, contentRef, onContentScroll, label, icon, keepMounted, }: {
+    id: string;
+    title: string;
+    /** Collapsed-card title in the narrow tier; defaults to `title`. */
+    inlineSummary?: string;
+    children: ReactNode;
+    onClose?: () => void;
+    /** Persistent actions outside the scrolling result body. */
+    footer?: ReactNode;
+    contentRef?: Ref<HTMLDivElement>;
+    onContentScroll?: UIEventHandler<HTMLDivElement>;
+    label?: string;
+    /** Resource identity shared by side, inline and full-screen toolbars. */
+    icon?: ReactNode;
+    /** Retain an editor's local draft after its first open, scoped to this work item. */
+    keepMounted?: boolean;
+}): react.JSX.Element | null;
+
+/** Shared identity and navigation for a result, a question or an editable draft. */
+declare function WorkItemHeader({ title, label, summary, expanded, onOpen, actionLabel, titleId, headingLevel: Heading, status, }: {
+    title: string;
+    label: string;
+    summary?: ReactNode;
+    expanded?: boolean;
+    onOpen?: () => void;
+    actionLabel?: string;
+    titleId?: string;
+    headingLevel?: "h3" | "h5";
+    status?: ReactNode;
+}): react.JSX.Element;
+
+/** Legacy forms succeed only when their host explicitly acknowledges delivery. */
+declare function submitVisualizationAction(handler: ((event: VisualizationActionEvent) => unknown) | undefined, event: VisualizationActionEvent): Promise<void>;
+
+/**
+ * Stable chronological slots; receiving a tool never relocates prior speech.
+ *
+ * The run is drawn as a rail: speech, reasoning and work in order, with work
+ * that ran concurrently forked into lanes. The one live slot carries the
+ * activity accent, so the eye lands on where execution is now. On completion
+ * the rail folds behind the header and the final answer stands alone.
+ */
+declare function TranscriptFlow({ transcript, chunks, isStreaming, renderText, executionTime, streamStartedAt, activityMark, activityLabels, waitingMark, }: {
+    transcript: AgentTranscript;
+    chunks?: StreamingChunk[];
+    isStreaming?: boolean;
+    executionTime?: number;
+    streamStartedAt?: number;
+    renderText: (text: string, streaming?: boolean) => ReactNode;
+    /** Host mark for the header; the package's unbranded mark otherwise. */
+    activityMark?: ActivityMarkRenderer;
+    /** Overrides for any header or lane string. */
+    activityLabels?: Partial<ActivityLabels>;
+    /** A host's static waiting mark; stands in for `activityMark` while the
+     *  run works or waits, so hosts that only set `waitingMark` keep their mark. */
+    waitingMark?: ReactNode;
+}): react.JSX.Element;
+
+export { ActionSubmission, ActivityMeter, AgentMark, type ApprovalButtonSlotProps, type ApprovalChatInputSlotProps, ArtifactChunkData, type ArtifactEntry, ArtifactInlineCard, type ArtifactInlineCardProps, ArtifactList, type ArtifactListProps, Attachment, AuthPromptVisualization, type AuthPromptVisualizationProps, CardVisualization, type CardVisualizationProps, ChartVisualization, type ChartVisualizationProps, ChatHeader, type ChatHeaderAction, type ChatHeaderProps, Chevron, CitationSources, type CitationSourcesProps, ClarificationData, ClarificationPanel, type ClarificationPanelProps, CodePreviewVisualization, type CodePreviewVisualizationProps, ComposerToolbar, DispatchMark, Event, EventContent, EventStatus, EventTimeline, type EventTimelineProps, FormVisualization, type FormVisualizationProps, INTERNAL_TOOLS, InlineCitation, type InlineCitationProps, type InteractionActionOutcome, type InteractionActionRequest, InteractionFailure, InteractionProvider, type InteractionRequest, type InteractionSurface, type InteractionTransport, KpiMetric, KpiVisualization, KpiVisualizationData, type KpiVisualizationProps, LoadingDots, type LoadingDotsProps, MediaChunkData, MessageAttachments, type MessageAttachmentsProps, PlanData, PlanTimeline, type PlanTimelineProps, ReasoningPanel, type ReasoningPanelProps, ReasoningStream, type ReasoningStreamProps, type RunOutcome, type RunStep, type RunStepStatus, type RunStepTool, type RunStepToolKind, SourceDetailModal, type SourceDetailModalProps, SourceReference, StatusBadge, StepBlock, type StepBlockProps, StepMark, StreamingChunk, SubagentBody, SubagentChunkData, SubagentGroup, type SubagentGroupProps, SubagentPanel, type SubagentPanelProps, THREAD_LAYOUT, TableVisualization, type TableVisualizationProps, ThinkingIndicator, type ThinkingIndicatorProps, ThreadLayoutProvider, type ThreadLayoutProviderProps, type ThreadLayoutTier, type ThreadLayoutValue, TimeMarker, type TimeMarkerProps, Timeline, TimelineItem, type TimelineItemData, type TimelineItemProps, type TimelineProps, TimelineRow, type TimelineRowProps, ToolApprovalPanel, type ToolApprovalPanelProps, type ToolApprovalSlots, ToolChip, TranscriptFlow, VisualizationActionEvent, VisualizationActionHandler, VisualizationChunkData, VisualizationConfig, type VisualizationEntry, VisualizationRenderer, type VisualizationRendererProps, WorkItemHeader, WorkPanel, WorkPanelActions, WorkPanelLayout, WriteMark, authPromptVisualizationSchema, buildRunSteps, cardVisualizationSchema, chartVisualizationSchema, classifyTier, codePreviewVisualizationSchema, convertChunkToEvent, convertTimelineToEvents, decodeFrame, deriveTier, durationSeconds, formVisualizationSchema, getArtifact, getRegisteredArtifactTypes, getRegisteredTypes, getVisualization, humanizeHandle, humanizeToolName, initials, interactionSchema, isInternalTool, kpi, kpiVisualizationSchema, registerArtifact, registerVisualization, stepsWallClockSeconds, submitVisualizationAction, tableVisualizationSchema, useThreadLayout, useWorkPanel, useWorkPanelTitle };
