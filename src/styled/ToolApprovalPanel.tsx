@@ -2,6 +2,7 @@ import {
 	useCallback,
 	useEffect,
 	useState,
+	useSyncExternalStore,
 	type ComponentType,
 	type ReactNode,
 } from "react";
@@ -239,6 +240,24 @@ function formatChipValue(value: unknown): string {
  * Buttons and the chat input are slottable via the `slots` prop so host apps
  * can swap in their own brand-aligned components.
  */
+// Window-level ⏎/Esc decide an approval only while it is the only one
+// waiting on the page. With two on screen (several client agents asking at
+// once) one keypress would decide all of them, so none takes the keys and
+// each is decided with its own buttons.
+const armedPanels = new Set<symbol>();
+const armedListeners = new Set<() => void>();
+function setPanelArmed(id: symbol, armed: boolean) {
+	if (armed) armedPanels.add(id);
+	else armedPanels.delete(id);
+	armedListeners.forEach((listener) => listener());
+}
+function subscribeArmedPanels(listener: () => void) {
+	armedListeners.add(listener);
+	return () => armedListeners.delete(listener);
+}
+const armedPanelCount = () => armedPanels.size;
+const noArmedPanels = () => 0;
+
 export function ToolApprovalPanel({
 	approval,
 	onApprove,
@@ -252,6 +271,15 @@ export function ToolApprovalPanel({
 	const [mode, setMode] = useState<Mode>("idle");
 	const [chatInput, setChatInput] = useState("");
 	const [detailsOpen, setDetailsOpen] = useState(false);
+	const [panelId] = useState(() => Symbol("tool-approval"));
+	const armed = mode === "idle" && !disabled;
+	useEffect(() => {
+		if (!armed) return;
+		setPanelArmed(panelId, true);
+		return () => setPanelArmed(panelId, false);
+	}, [armed, panelId]);
+	const armedCount = useSyncExternalStore(subscribeArmedPanels, armedPanelCount, noArmedPanels);
+	const ownsShortcuts = armed && armedCount === 1;
 
 	const handleAllow = useCallback(() => {
 		onApprove(approval.toolInputs);
@@ -277,7 +305,7 @@ export function ToolApprovalPanel({
 	// Keyboard shortcuts: ⏎ approves, Esc declines. Skip while focus is in
 	// an editable element so the host composer/details inputs aren't hijacked.
 	useEffect(() => {
-		if (mode !== "idle" || disabled) return;
+		if (!ownsShortcuts) return;
 		const onKeyDown = (e: KeyboardEvent) => {
 			const target = e.target as HTMLElement | null;
 			const tag = target?.tagName;
@@ -300,7 +328,7 @@ export function ToolApprovalPanel({
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [mode, disabled, handleAllow, handleReject]);
+	}, [ownsShortcuts, handleAllow, handleReject]);
 
 	const summary = approval.toolDescription?.trim() || `Run ${approval.toolName}`;
 	const toolIdentity = approval.toolLabel?.trim() || approval.toolName;
@@ -331,7 +359,7 @@ export function ToolApprovalPanel({
 						<RejectButton onClick={handleReject} disabled={disabled}>
 							Decline
 						</RejectButton>
-						{!disabled && (
+						{ownsShortcuts && (
 							<span
 								aria-hidden
 								className="ml-auto text-[11px] opacity-50 select-none hidden sm:inline">
