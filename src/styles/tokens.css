@@ -121,6 +121,7 @@
 }
 
 .dark {
+	--chat-error: #ff9a9a;
 	--chat-surface-raised: #232327;
 	--chat-surface: #18181b;
 	--chat-message-bg: rgba(255, 255, 255, 0.05);

@@ -3,6 +3,8 @@
  * `error` field.
  */
 
+import { StreamInterruptedError } from "./stream-liveness";
+
 import { isNetworkError } from "./network";
 
 const GENERIC_SEND_FAILURE_TEXT = "Sorry, I encountered an error. Please try again.";
@@ -25,6 +27,7 @@ export function describeSendFailure(
   responseStarted: boolean,
   assistantName: string | undefined
 ): SendFailureReport {
+  if (err instanceof StreamInterruptedError) return { transcript: err.message, error: err.message };
   if (!isNetworkError(err)) {
     return {
       transcript: GENERIC_SEND_FAILURE_TEXT,

@@ -5,6 +5,7 @@
  * and branding. Returns a shape directly compatible with ChatProvider props.
  */
 
+import { createStreamLiveness, StreamInterruptedError } from "./stream-liveness";
 import { updateTranscript, type AgentTranscript } from "../types/transcript";
 import {
   useState,
@@ -272,6 +273,7 @@ function mapSessionBranding(
  * as raw text in every non-first-party build.
  */
 export const HANDLED_STREAM_EVENT_TYPES = [
+  "heartbeat",
   "assistant_chunk",
   "transcript_block",
   "subagent_dispatch",
@@ -471,12 +473,13 @@ export async function parseSSEStream(
     scheduler.request();
   };
 
+  const liveness = createStreamLiveness(reader);
   try {
     while (true) {
       // A body that dies mid-stream rejects here with the same bare TypeError
       // as a failed fetch; name it before it is mistaken for a parser bug.
-      const { done, value } = await reader.read().catch((err) => {
-        throw toNetworkError(err);
+      const { done, value } = await liveness.read().catch((err) => {
+        throw err instanceof StreamInterruptedError ? err : toNetworkError(err);
       });
       if (done) break;
 
@@ -494,10 +497,12 @@ export async function parseSSEStream(
         if (!line.startsWith("data: ")) continue;
 
         const data = line.slice(6);
-        if (data === "[DONE]") break;
+        if (data === "[DONE]") { liveness.observe({ type: "done" }); break; }
 
         try {
           const parsed = JSON.parse(data);
+          liveness.observe(parsed);
+          if (parsed.type === "heartbeat") continue;
           frameTimeMs = readFrameTime(parsed);
 
           if (parsed.type === "transcript_block" && parsed.version === 1) {

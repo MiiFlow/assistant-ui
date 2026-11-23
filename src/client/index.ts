@@ -82,3 +82,5 @@ export type {
   WidgetEventPayload,
   WidgetEventCallback,
 } from "./types";
+
+export { createStreamLiveness, StreamInterruptedError, STREAM_INTERRUPTED } from "./stream-liveness";
