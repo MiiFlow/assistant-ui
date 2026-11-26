@@ -645,6 +645,16 @@
   align-items: center;
   gap: 4px;
 }
+/* A column like the side panel's frame: when the host bounds the card's
+   height, the content shrinks and scrolls, and the footer (with the result's
+   actions) stays inside the card instead of past its clipped edge. */
+.interaction-inline-panel.is-expanded {
+  display: flex;
+  flex-direction: column;
+}
+.interaction-inline-panel.is-expanded > .interaction-panel-header {
+  flex: none;
+}
 .interaction-inline-panel.is-expanded .interaction-panel-content {
   max-height: 70vh;
 }
